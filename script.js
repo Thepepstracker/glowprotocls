@@ -32,6 +32,14 @@ document.addEventListener('snipcart.ready', () => {
   Snipcart.events.on('item.removed', updateCartCount);
   Snipcart.events.on('item.updated', updateCartCount);
   updateCartCount();
+
+    // --- GOAFFPRO ORDER TRACKING ---
+    Snipcart.events.on('order.completed', (order) => {
+          window.goaffpro_order = {
+                  number: order.token,
+                  total: order.total
+          };
+    });
 });
 
 function updateCartCount() {
