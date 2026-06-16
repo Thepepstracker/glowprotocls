@@ -539,6 +539,70 @@ ul { list-style: none; }
   color: rgba(255,255,255,0.3);
 }
 
+/* --- AFFILIATES --- */
+.affiliates {
+     padding: 6rem 3rem;
+     background: var(--bg-dark);
+     color: #fff;
+     text-align: center;
+}
+
+.affiliates .section-label { color: var(--accent); }
+
+.affiliates .section-heading { color: #fff; }
+
+.affiliates .section__divider { background: rgba(255,255,255,0.15); }
+
+.affiliates__grid {
+     display: grid;
+     grid-template-columns: repeat(3, 1fr);
+     gap: 3rem;
+     max-width: 900px;
+     margin: 0 auto 4rem;
+}
+
+.affiliates__card {
+     border-top: 1px solid rgba(255,255,255,0.15);
+     padding-top: 2rem;
+     text-align: left;
+}
+
+.affiliates__numeral {
+     font-family: var(--font-serif);
+     font-size: 1.5rem;
+     font-style: italic;
+     color: var(--accent);
+     display: block;
+     margin-bottom: 1rem;
+}
+
+.affiliates__title {
+     font-family: var(--font-sans);
+     font-size: 11px;
+     font-weight: 500;
+     letter-spacing: 0.15em;
+     text-transform: uppercase;
+     color: #fff;
+     margin-bottom: 0.75rem;
+}
+
+.affiliates__desc {
+     font-size: 13px;
+     font-weight: 300;
+     color: rgba(255,255,255,0.6);
+     line-height: 1.7;
+}
+
+.affiliates__cta {
+     margin-top: 1rem;
+}
+
+.affiliates .btn--primary {
+     background: var(--accent);
+     color: #fff;
+}
+
+.affiliates .btn--primary:hover { background: #7a8e7a; }
 /* --- RESPONSIVE --- */
 @media (max-width: 768px) {
   .nav { padding: 1rem 1.5rem; }
@@ -563,4 +627,6 @@ ul { list-style: none; }
   .product-card:last-child { border-bottom: none; }
   .footer__top { grid-template-columns: 1fr; gap: 2rem; }
   .footer__bottom { flex-direction: column; gap: 0.5rem; }
+     .affiliates { padding: 4rem 1.5rem; }
+     .affiliates__grid { grid-template-columns: 1fr; gap: 2rem; }
 }
