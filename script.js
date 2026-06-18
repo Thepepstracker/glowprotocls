@@ -25,30 +25,6 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
-// --- SNIPCART CART COUNT UPDATE ---
-document.addEventListener('snipcart.ready', () => {
-  Snipcart.events.on('cart.reset', updateCartCount);
-  Snipcart.events.on('item.added', updateCartCount);
-  Snipcart.events.on('item.removed', updateCartCount);
-  Snipcart.events.on('item.updated', updateCartCount);
-  updateCartCount();
-
-    // --- GOAFFPRO ORDER TRACKING ---
-    Snipcart.events.on('order.completed', (order) => {
-          window.goaffpro_order = {
-                  number: order.token,
-                  total: order.total
-          };
-    });
-});
-
-function updateCartCount() {
-  const count = Snipcart.store.getState().cart.items.count;
-  document.querySelectorAll('.snipcart-items-count').forEach(el => {
-    el.textContent = count;
-  });
-}
-
 // --- INTERSECTION OBSERVER FOR FADE-IN ANIMATIONS ---
 const observerOptions = {
   threshold: 0.1,
