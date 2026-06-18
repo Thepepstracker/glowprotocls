@@ -571,6 +571,24 @@ ul { list-style: none; }
      overflow: hidden;
 }
 
+.product-card__img-wrap {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.product-card__img-wrap img {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
+  display: block;
+  background: #1a1a1a;
+}
+
+
+
 .product-card::before {
      content: '';
      position: absolute;
