@@ -1,144 +1,531 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Peptides — Glow Lab Research Order Request Form</title>
+<!-- GLOW LAB RESEARCH ORDER FORM -->
+<!-- Paste into your page/custom HTML block -->
+
 <style>
-  :root{--gold:#c9963a;--black:#111;--charcoal:#2a2a2a;--soft:#f8f6f2;--line:#e7dcc7;}
-  *{box-sizing:border-box}
-  body{margin:0;background:#f6f4ef;font-family:Arial, Helvetica, sans-serif;color:var(--black);}
-  .page{max-width:860px;margin:30px auto;background:white;padding:46px 58px 60px;border:1px solid var(--line);box-shadow:0 16px 40px rgba(0,0,0,.06)}
-  .logo{display:block;width:310px;max-width:76%;margin:0 auto 20px;}
-  .topline{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:18px 0 26px}
-  h1{text-align:center;font-size:31px;letter-spacing:.16em;text-transform:uppercase;margin:0;color:#111;font-weight:500;}
-  .pagetitle{text-align:center;font-size:40px;letter-spacing:.2em;text-transform:uppercase;margin:0 0 6px;color:#111;font-weight:600;}
-  .sub{text-align:center;margin:10px auto 28px;max-width:650px;color:#555;line-height:1.45;font-size:15px;}
-  .badge{text-align:center;margin:0 auto 34px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);}
-  section{margin:26px 0 30px;padding:25px 26px;border:1px solid var(--line);background:#fffdf9;border-radius:18px;}
-  h2{font-size:17px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 16px;color:#111;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:10px;}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;}
-  .field{margin-bottom:14px;}
-  label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#333;margin-bottom:7px;font-weight:700;}
-  input[type=text],input[type=email],input[type=tel],input[type=file],select,textarea{
-    width:100%;border:1px solid #ddd;background:white;border-radius:8px;padding:9px 12px;
-    font-family:inherit;font-size:15px;color:#111;
-  }
-  input[type=text],input[type=email],input[type=tel],select{height:38px;}
-  textarea{min-height:102px;resize:vertical;}
-  textarea.short{min-height:72px;}
-  input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);border-color:var(--gold);}
-  .hint{font-size:12px;color:#777;margin-top:6px;line-height:1.35;}
-  .shipping{display:flex;justify-content:space-between;align-items:center;background:#111;color:white;border-radius:12px;padding:14px 18px;margin-top:10px;}
-  .shipping strong{color:#f3d493;}
-  .payment{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;}
-  .pay-card{border:1px solid var(--line);border-radius:14px;background:white;padding:16px;text-align:center;min-height:112px;}
-  .pay-card h3{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 8px;color:#111;}
-  .pay-card p{margin:2px 0;font-size:15px;color:#333;}
-  .preferred{border:2px solid var(--gold);}
-  .optional{font-weight:400;color:#777;text-transform:none;letter-spacing:0;}
-  .check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-size:14px;line-height:1.35;color:#333;}
-  .check input[type=checkbox]{width:18px;height:18px;accent-color:var(--gold);flex:0 0 auto;margin-top:1px;}
-  .note{background:#111;color:white;border-radius:16px;padding:20px 22px;line-height:1.45;}
-  .note h3{margin:0 0 8px;text-transform:uppercase;letter-spacing:.12em;color:#f3d493;font-size:14px;}
-  .note p{margin:0;font-size:14px;}
-  .footer{text-align:center;color:#777;font-size:12px;line-height:1.4;margin-top:28px;}
-  .gold{color:var(--gold)}
-  .submit-btn{display:block;width:100%;margin-top:26px;padding:16px;background:var(--gold);color:#111;border:none;border-radius:12px;
-    font-size:16px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;font-family:inherit;}
-  .submit-btn:hover{background:#b8862e;}
-  .submit-btn:disabled{background:#ccc;cursor:not-allowed;}
-  .success{display:none;background:#0d3d21;color:#eaf7ef;border-radius:16px;padding:22px;margin-top:22px;text-align:center;line-height:1.5;}
-  .error-msg{display:none;background:#5c1a1a;color:#fdecec;border-radius:16px;padding:18px;margin-top:22px;text-align:center;line-height:1.5;}
-  @media(max-width:700px){.page{margin:0;padding:30px 20px}.grid,.payment{grid-template-columns:1fr}.logo{width:260px}h1{font-size:23px}.pagetitle{font-size:28px}.shipping{display:block;text-align:center}.shipping span{display:block;margin-top:5px}}
+:root{
+  --gold:#c9963a;
+  --gold-dark:#a97824;
+  --black:#111;
+  --soft:#f8f6f2;
+  --line:#e7dcc7;
+}
+*{box-sizing:border-box}
+.glr-form-wrap{
+  max-width:1100px;
+  margin:40px auto;
+  background:#fff;
+  padding:46px;
+  border:1px solid var(--line);
+  box-shadow:0 16px 40px rgba(0,0,0,.06);
+  font-family:Arial, Helvetica, sans-serif;
+  color:#111;
+}
+.glr-header{text-align:center;margin-bottom:30px}
+.glr-logo{
+  font-family:Georgia,serif;
+  font-size:52px;
+  color:var(--gold);
+  line-height:1;
+}
+.glr-brand{
+  letter-spacing:.22em;
+  font-size:20px;
+  margin-top:6px;
+}
+.glr-research{
+  color:var(--gold);
+  letter-spacing:.28em;
+  font-size:13px;
+}
+.glr-title{
+  font-family:Georgia,serif;
+  font-size:42px;
+  letter-spacing:.08em;
+  margin:28px 0 8px;
+}
+.glr-sub{
+  max-width:720px;
+  margin:0 auto;
+  color:#555;
+  line-height:1.5;
+}
+.glr-sale{
+  margin:26px auto 0;
+  display:inline-block;
+  padding:12px 24px;
+  border:1px solid var(--gold);
+  color:var(--gold-dark);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  font-weight:700;
+}
+.glr-section{
+  margin:28px 0;
+  padding:26px;
+  border:1px solid var(--line);
+  background:#fffdf9;
+  border-radius:18px;
+}
+.glr-section h2{
+  margin:0 0 18px;
+  font-size:16px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  border-bottom:1px solid var(--line);
+  padding-bottom:12px;
+}
+.glr-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+.glr-field label{
+  display:block;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  font-weight:700;
+  margin-bottom:7px;
+}
+.glr-field input,
+.glr-field select,
+.glr-field textarea{
+  width:100%;
+  border:1px solid #ddd;
+  border-radius:8px;
+  padding:10px 12px;
+  font-size:15px;
+  font-family:inherit;
+}
+.glr-field textarea{min-height:90px}
+.glr-product-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:18px;
+}
+.glr-product{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px;
+  text-align:center;
+}
+.glr-product img{
+  width:90px;
+  height:120px;
+  object-fit:contain;
+  margin-bottom:10px;
+}
+.glr-product h3{
+  margin:8px 0 4px;
+  font-size:16px;
+  text-transform:uppercase;
+}
+.glr-product .mg{
+  font-size:13px;
+  color:#555;
+}
+.glr-price{
+  margin:10px 0;
+}
+.glr-price del{
+  color:#777;
+  margin-right:8px;
+}
+.glr-price strong{
+  color:var(--gold-dark);
+  font-size:20px;
+}
+.glr-product input{
+  width:80px;
+  margin-top:8px;
+  text-align:center;
+}
+.glr-summary{
+  background:#111;
+  color:#fff;
+  border-radius:16px;
+  padding:22px;
+}
+.glr-summary-row{
+  display:flex;
+  justify-content:space-between;
+  margin:8px 0;
+  font-size:16px;
+}
+.glr-summary-total{
+  border-top:1px solid #555;
+  margin-top:14px;
+  padding-top:14px;
+  font-size:22px;
+  color:#f3d493;
+  font-weight:700;
+}
+.glr-payment{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+}
+.glr-pay-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
+  text-align:center;
+}
+.glr-pay-card.preferred{
+  border:2px solid var(--gold);
+}
+.glr-pay-card h3{
+  margin:0 0 8px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-size:13px;
+}
+.glr-check{
+  display:flex;
+  gap:10px;
+  margin:12px 0;
+  font-size:14px;
+  line-height:1.4;
+}
+.glr-check input{
+  width:18px;
+  height:18px;
+  accent-color:var(--gold);
+}
+.glr-submit{
+  width:100%;
+  background:var(--gold);
+  color:#111;
+  border:none;
+  border-radius:12px;
+  padding:17px;
+  font-weight:700;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  font-size:16px;
+  cursor:pointer;
+}
+.glr-submit:hover{background:var(--gold-dark)}
+.glr-note{
+  margin-top:22px;
+  background:#111;
+  color:#fff;
+  border-radius:16px;
+  padding:20px;
+  line-height:1.5;
+}
+.glr-note strong{color:#f3d493}
+@media(max-width:850px){
+  .glr-form-wrap{padding:28px 18px}
+  .glr-grid,.glr-payment,.glr-product-grid{grid-template-columns:1fr}
+  .glr-title{font-size:32px}
+}
 </style>
-</head>
-<body>
-  <main class="page">
-    <p style="text-align:center;margin:0 0 14px;"><a href="/" style="color:#c9963a;font-size:13px;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;">&larr; Back to Glow Protocols</a></p>
-    <img class="logo" src="glow-lab-logo.jpeg" alt="Glow Lab Research logo" />
-    <div class="topline"></div>
-    <p class="pagetitle">Peptides</p>
-    <h1>Order Request Form</h1>
-    <p class="sub">Please complete the information below to submit your order request. Once received, your information will be verified, payment will be matched, and your order will move into processing.</p>
-    <div class="badge">Advanced Peptide Science • Quality Assured</div>
 
-    <form id="orderForm" action="https://formsubmit.co/glowwithus@glowprotocols.com" method="POST" enctype="multipart/form-data">
-      <!-- FormSubmit configuration -->
-      <input type="hidden" name="_subject" value="New Peptide Order Request — Glow Lab Research">
-      <input type="hidden" name="_template" value="table">
-      <input type="hidden" name="_captcha" value="true">
-      <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
+<div class="glr-form-wrap">
+  <div class="glr-header">
+    <div class="glr-logo">GL.</div>
+    <div class="glr-brand">GLOW LAB</div>
+    <div class="glr-research">— RESEARCH —</div>
 
-      <section>
-        <h2>Customer Information</h2>
-        <div class="grid">
-          <div class="field"><label for="fullName">Full Name</label><input type="text" id="fullName" name="Full Name" required></div>
-          <div class="field"><label for="email">Email Address</label><input type="email" id="email" name="Email Address" required></div>
-          <div class="field"><label for="phone">Phone Number</label><input type="tel" id="phone" name="Phone Number" required></div>
-          <div class="field"><label for="orderNum">Order Number</label><input type="text" id="orderNum" name="Order Number"><div class="hint">Enter the order number generated when you completed your order.</div></div>
+    <div class="glr-title">Order Request Form</div>
+    <p class="glr-sub">
+      Complete the form below to submit your order request. Once submitted, your order information will be verified and matched with payment confirmation before processing.
+    </p>
+    <div class="glr-sale">Skool Early Access • 25% Off</div>
+  </div>
+
+  <form id="glrOrderForm" action="https://formsubmit.co/glowwithus@glowprotocols.com" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="_subject" value="New Glow Lab Research Order Request">
+    <input type="hidden" name="_template" value="table">
+    <input type="hidden" name="_captcha" value="true">
+    <input type="text" name="_honey" style="display:none">
+
+    <input type="hidden" id="orderDetails" name="Order Details">
+    <input type="hidden" id="subtotalHidden" name="Subtotal">
+    <input type="hidden" id="shippingHidden" name="Priority Shipping">
+    <input type="hidden" id="totalHidden" name="Estimated Total">
+
+    <div class="glr-section">
+      <h2>Customer Information</h2>
+      <div class="glr-grid">
+        <div class="glr-field">
+          <label>Full Name</label>
+          <input type="text" name="Full Name" required>
         </div>
-      </section>
-
-      <section>
-        <h2>Shipping Information</h2>
-        <div class="field"><label for="address">Shipping Address</label><input type="text" id="address" name="Shipping Address" required></div>
-        <div class="grid">
-          <div class="field"><label for="city">City</label><input type="text" id="city" name="City" required></div>
-          <div class="field"><label for="state">State</label><input type="text" id="state" name="State" required></div>
-          <div class="field"><label for="zip">ZIP Code</label><input type="text" id="zip" name="ZIP Code" required inputmode="numeric"></div>
+        <div class="glr-field">
+          <label>Email Address</label>
+          <input type="email" name="Email Address" required>
         </div>
-        <div class="shipping"><div>Shipping Method</div><span><strong>Priority Shipping</strong> — $15 flat rate</span></div>
-      </section>
-
-      <section>
-        <h2>Order Request</h2>
-        <div class="field"><label for="products">Products Requested + Quantities</label><textarea id="products" name="Products Requested" required></textarea><div class="hint">Please list each catalog item and quantity requested.</div></div>
-        <div class="field"><label for="notes">Additional Notes <span class="optional">Optional</span></label><textarea id="notes" name="Additional Notes" class="short"></textarea></div>
-      </section>
-
-      <section>
-        <h2>Complete Your Order</h2>
-        <p class="sub" style="margin:0 auto 18px;text-align:left;max-width:none;">After submitting your order request, please complete payment using one of the methods below. Include your <strong>Order Number</strong> in the payment note whenever possible to help expedite verification.</p>
-        <div class="payment">
-          <div class="pay-card preferred"><h3>Zelle Preferred</h3><p><strong>Heather Zader</strong></p><p>943-241-8176</p></div>
-          <div class="pay-card"><h3>Venmo</h3><p><strong>@glowlabresearch</strong></p></div>
-          <div class="pay-card"><h3>Cash App</h3><p><strong>@glowlabresearch</strong></p></div>
+        <div class="glr-field">
+          <label>Phone Number</label>
+          <input type="tel" name="Phone Number" required>
         </div>
-      </section>
-
-      <section>
-        <h2>Payment Confirmation</h2>
-        <div class="grid">
-          <div class="field">
-            <label for="payMethod">Payment Method</label>
-            <select id="payMethod" name="Payment Method" required>
-              <option value="" disabled selected>Select…</option>
-              <option>Zelle</option>
-              <option>Venmo</option>
-              <option>Cash App</option>
-            </select>
-          </div>
-          <div class="field"><label for="payRef">Payment Reference <span class="optional">Optional</span></label><input type="text" id="payRef" name="Payment Reference"><div class="hint">Enter any confirmation/reference number your app provides.</div></div>
+        <div class="glr-field">
+          <label>Order Number</label>
+          <input type="text" name="Order Number" placeholder="Optional if not yet assigned">
         </div>
-        <div class="field"><label for="payProof">Upload Payment Confirmation <span class="optional">Optional but Recommended</span></label><input type="file" id="payProof" name="attachment" accept="image/*,.pdf"><div class="hint">Upload a screenshot or receipt of your completed payment to help us verify your order quickly.</div></div>
-      </section>
-
-      <section>
-        <h2>Acknowledgments</h2>
-        <label class="check" style="text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;"><input type="checkbox" name="Ack — Verification" value="Agreed" required><span>I understand my order request will be verified before processing.</span></label>
-        <label class="check" style="text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;"><input type="checkbox" name="Ack — Email Confirmation" value="Agreed" required><span>I understand I will receive an email confirmation once my order has been verified.</span></label>
-        <label class="check" style="text-transform:none;letter-spacing:0;font-weight:400;font-size:14px;"><input type="checkbox" name="Ack — Shipping Fee" value="Agreed" required><span>I understand order totals include a flat <strong>$15 Priority Shipping</strong> fee.</span></label>
-      </section>
-
-      <button type="submit" class="submit-btn">Submit Order Request</button>
-    </form>
-
-    <div class="note" style="margin-top:26px;">
-      <h3>Order Verification</h3>
-      <p>To ensure accurate and timely processing, all orders are verified against the information provided above. Once your payment has been matched to your order, you'll receive an email confirmation and your order will move into processing.</p>
+      </div>
     </div>
-    <p class="footer">Glow Lab Research • Advanced Peptide Science • Quality Assured</p>
-  </main>
-</body>
-</html>
+
+    <div class="glr-section">
+      <h2>Shipping Information</h2>
+      <div class="glr-field">
+        <label>Shipping Address</label>
+        <input type="text" name="Shipping Address" required>
+      </div>
+      <br>
+      <div class="glr-grid">
+        <div class="glr-field">
+          <label>City</label>
+          <input type="text" name="City" required>
+        </div>
+        <div class="glr-field">
+          <label>State</label>
+          <input type="text" name="State" required>
+        </div>
+        <div class="glr-field">
+          <label>ZIP Code</label>
+          <input type="text" name="ZIP Code" required>
+        </div>
+      </div>
+    </div>
+
+    <div class="glr-section">
+      <h2>Select Products</h2>
+
+      <div class="glr-product-grid">
+
+        <div class="glr-product" data-name="BAC Water" data-price="7.49">
+          <h3>BAC Water</h3>
+          <div class="mg">Bacteriostatic Water</div>
+          <div class="glr-price"><del>$9.99</del><strong>$7.49</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="MOTS-C 10mg" data-price="25.50">
+          <h3>MOTS-C</h3>
+          <div class="mg">10mg</div>
+          <div class="glr-price"><del>$34.00</del><strong>$25.50</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="NAD+ 500mg" data-price="37.49">
+          <h3>NAD+</h3>
+          <div class="mg">500mg</div>
+          <div class="glr-price"><del>$49.99</del><strong>$37.49</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="GHK-CU" data-price="28.49">
+          <h3>GHK-CU</h3>
+          <div class="mg">Research Grade</div>
+          <div class="glr-price"><del>$37.99</del><strong>$28.49</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="Tirzepatide 20mg" data-price="58.50">
+          <h3>Tirzepatide</h3>
+          <div class="mg">20mg</div>
+          <div class="glr-price"><del>$78.00</del><strong>$58.50</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="Tirzepatide 10mg" data-price="31.49">
+          <h3>Tirzepatide</h3>
+          <div class="mg">10mg</div>
+          <div class="glr-price"><del>$41.99</del><strong>$31.49</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="Retatrutide 10mg" data-price="33.74">
+          <h3>Retatrutide</h3>
+          <div class="mg">10mg</div>
+          <div class="glr-price"><del>$44.99</del><strong>$33.74</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="KPV 10mg" data-price="25.49">
+          <h3>KPV</h3>
+          <div class="mg">10mg</div>
+          <div class="glr-price"><del>$33.99</del><strong>$25.49</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="Adamax" data-price="36.00">
+          <h3>Adamax</h3>
+          <div class="mg">Research Grade</div>
+          <div class="glr-price"><del>$48.00</del><strong>$36.00</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="Glutathione 750mg" data-price="28.00">
+          <h3>Glutathione</h3>
+          <div class="mg">750mg</div>
+          <div class="glr-price"><del>$37.33</del><strong>$28.00</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+        <div class="glr-product" data-name="DSIP 5mg" data-price="24.00">
+          <h3>DSIP</h3>
+          <div class="mg">5mg</div>
+          <div class="glr-price"><del>$32.00</del><strong>$24.00</strong></div>
+          <label>Qty</label>
+          <input type="number" min="0" value="0" class="qty">
+        </div>
+
+      </div>
+    </div>
+
+    <div class="glr-section glr-summary">
+      <h2 style="color:white;border-color:#555;">Order Summary</h2>
+      <div id="itemsList">No products selected yet.</div>
+      <div class="glr-summary-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+      <div class="glr-summary-row"><span>Priority Shipping</span><span>$15.00</span></div>
+      <div class="glr-summary-row glr-summary-total"><span>Estimated Total</span><span id="total">$15.00</span></div>
+    </div>
+
+    <div class="glr-section">
+      <h2>Payment Information</h2>
+      <p style="color:#555;line-height:1.5;margin-top:0;">
+        After submitting your order request, complete payment using one of the options below. Please include your name or order number in the payment note whenever possible.
+      </p>
+
+      <div class="glr-payment">
+        <div class="glr-pay-card preferred">
+          <h3>Zelle Preferred</h3>
+          <p><strong>Heather Zader</strong></p>
+          <p>943-241-8176</p>
+        </div>
+        <div class="glr-pay-card">
+          <h3>Venmo</h3>
+          <p><strong>@glowlabresearch</strong></p>
+        </div>
+        <div class="glr-pay-card">
+          <h3>Cash App</h3>
+          <p><strong>@glowlabresearch</strong></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="glr-section">
+      <h2>Payment Confirmation</h2>
+      <div class="glr-grid">
+        <div class="glr-field">
+          <label>Payment Method</label>
+          <select name="Payment Method" required>
+            <option value="">Select...</option>
+            <option>Zelle</option>
+            <option>Venmo</option>
+            <option>Cash App</option>
+          </select>
+        </div>
+        <div class="glr-field">
+          <label>Payment Reference</label>
+          <input type="text" name="Payment Reference" placeholder="Optional">
+        </div>
+      </div>
+      <br>
+      <div class="glr-field">
+        <label>Upload Payment Confirmation</label>
+        <input type="file" name="attachment" accept="image/*,.pdf">
+      </div>
+    </div>
+
+    <div class="glr-section">
+      <h2>Additional Notes</h2>
+      <div class="glr-field">
+        <label>Notes</label>
+        <textarea name="Additional Notes" placeholder="Anything else we should know?"></textarea>
+      </div>
+    </div>
+
+    <div class="glr-section">
+      <h2>Acknowledgments</h2>
+      <label class="glr-check">
+        <input type="checkbox" required name="Ack Verification" value="Agreed">
+        <span>I understand my order request will be verified before processing.</span>
+      </label>
+      <label class="glr-check">
+        <input type="checkbox" required name="Ack Shipping" value="Agreed">
+        <span>I understand my order includes $15 Priority Shipping.</span>
+      </label>
+      <label class="glr-check">
+        <input type="checkbox" required name="Ack Research Use" value="Agreed">
+        <span>I understand all listed items are intended for research use only.</span>
+      </label>
+    </div>
+
+    <button type="submit" class="glr-submit">Submit Order Request</button>
+  </form>
+
+  <div class="glr-note">
+    <strong>Order Verification:</strong>
+    Your order request will be matched with your payment confirmation. Once verified, you will receive an email confirmation and your order will move into processing.
+  </div>
+</div>
+
+<script>
+const SHIPPING = 15;
+
+function money(num){
+  return "$" + Number(num).toFixed(2);
+}
+
+function updateOrderSummary(){
+  const products = document.querySelectorAll(".glr-product");
+  let subtotal = 0;
+  let details = [];
+  let display = "";
+
+  products.forEach(product => {
+    const name = product.dataset.name;
+    const price = parseFloat(product.dataset.price);
+    const qty = parseInt(product.querySelector(".qty").value || 0);
+
+    if(qty > 0){
+      const lineTotal = price * qty;
+      subtotal += lineTotal;
+      details.push(`${name} x ${qty} = ${money(lineTotal)}`);
+      display += `<div class="glr-summary-row"><span>${name} x ${qty}</span><span>${money(lineTotal)}</span></div>`;
+    }
+  });
+
+  const total = subtotal + SHIPPING;
+
+  document.getElementById("itemsList").innerHTML = display || "No products selected yet.";
+  document.getElementById("subtotal").textContent = money(subtotal);
+  document.getElementById("total").textContent = money(total);
+
+  document.getElementById("orderDetails").value = details.join(" | ");
+  document.getElementById("subtotalHidden").value = money(subtotal);
+  document.getElementById("shippingHidden").value = money(SHIPPING);
+  document.getElementById("totalHidden").value = money(total);
+}
+
+document.querySelectorAll(".qty").forEach(input => {
+  input.addEventListener("input", updateOrderSummary);
+});
+
+document.getElementById("glrOrderForm").addEventListener("submit", function(e){
+  const hasItem = Array.from(document.querySelectorAll(".qty")).some(input => parseInt(input.value || 0) > 0);
+  if(!hasItem){
+    e.preventDefault();
+    alert("Please select at least one product quantity before submitting.");
+  }
+});
+
+updateOrderSummary();
+</script>
