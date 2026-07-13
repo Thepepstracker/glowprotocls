@@ -292,7 +292,20 @@ function updateCartBtn(){const n=cartCount();document.getElementById('cartBtn').
 function stepQty(d){const i=document.getElementById('qty');i.value=Math.max(1,(parseInt(i.value)||1)+d);}
 function addToOrder(slug){const q=Math.max(1,parseInt(document.getElementById('qty').value)||1);CART[slug]=(CART[slug]||0)+q;updateCartBtn();toast(`Added ${q} × ${bySlug(slug).name} to your order`);}
 function setQty(slug,q){q=parseInt(q)||0;if(q<=0)delete CART[slug];else CART[slug]=q;updateCartBtn();render();}
-function submitOrder(e){e.preventDefault();toast('Thank you! (Draft preview — order + payment instructions flow goes here.)');}
+function submitOrder(e){
+  e.preventDefault();
+  var f=e.target;
+  var items=Object.keys(CART);
+  if(!items.length){toast('Your order is empty');return;}
+  var lines=items.map(function(s){var p=bySlug(s);return '- '+CART[s]+' x '+p.name+' '+p.dose+' ('+(p.price!=null?money(p.price):'price TBD')+')';});
+  var sub=items.reduce(function(a,s){return a+(bySlug(s).price||0)*CART[s];},0);
+  var nm=(f.querySelector('[name="name"]')||{}).value||'';
+  var em=(f.querySelector('[name="email"]')||{}).value||'';
+  var nt=(f.querySelector('[name="notes"]')||{}).value||'';
+  var body='New order request from '+nm+'\n\nItems:\n'+lines.join('\n')+'\n\nOrder total: '+money(sub)+'\n\nCustomer name: '+nm+'\nCustomer email: '+em+'\nNotes: '+nt+'\n';
+  window.location.href='mailto:orders@glowlabresearch.com?subject='+encodeURIComponent('New Order Request — Glow Lab Protocols')+'&body='+encodeURIComponent(body);
+  setTimeout(function(){document.getElementById('main').innerHTML='<section class="cart"><div class="wrap"><h1 class="serif">Almost there!</h1><p class="sub">Your email app should have opened with your order ready to send to orders@glowlabresearch.com — just hit send, and we\'ll reply with your payment instructions.</p><div class="empty"><a class="btn" onclick="go(\'\')">Back to catalog</a></div></div></section>';window.scrollTo(0,0);},400);
+}
 let tT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2600);}
 function go(route){location.hash = route?('#'+route):'#';window.scrollTo(0,0);}
 function render(){
