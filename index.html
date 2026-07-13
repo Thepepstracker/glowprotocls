@@ -303,8 +303,8 @@ function submitOrder(e){
   var em=(f.querySelector('[name="email"]')||{}).value||'';
   var nt=(f.querySelector('[name="notes"]')||{}).value||'';
   var body='New order request from '+nm+'\n\nItems:\n'+lines.join('\n')+'\n\nOrder total: '+money(sub)+'\n\nCustomer name: '+nm+'\nCustomer email: '+em+'\nNotes: '+nt+'\n';
-  window.location.href='mailto:orders@glowlabresearch.com?subject='+encodeURIComponent('New Order Request — Glow Lab Protocols')+'&body='+encodeURIComponent(body);
-  setTimeout(function(){document.getElementById('main').innerHTML='<section class="cart"><div class="wrap"><h1 class="serif">Almost there!</h1><p class="sub">Your email app should have opened with your order ready to send to orders@glowlabresearch.com — just hit send, and we\'ll reply with your payment instructions.</p><div class="empty"><a class="btn" onclick="go(\'\')">Back to catalog</a></div></div></section>';window.scrollTo(0,0);},400);
+  window.location.href='mailto:orders@glowlabprotocols.com?subject='+encodeURIComponent('New Order Request — Glow Lab Protocols')+'&body='+encodeURIComponent(body);
+  setTimeout(function(){document.getElementById('main').innerHTML='<section class="cart"><div class="wrap"><h1 class="serif">Almost there!</h1><p class="sub">Your email app should have opened with your order ready to send to orders@glowlabprotocols.com — just hit send, and we\'ll reply with your payment instructions.</p><div class="empty"><a class="btn" onclick="go(\'\')">Back to catalog</a></div></div></section>';window.scrollTo(0,0);},400);
 }
 let tT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2600);}
 function go(route){location.hash = route?('#'+route):'#';window.scrollTo(0,0);}
