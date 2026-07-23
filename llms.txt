@@ -1,19 +1,45 @@
 # Glow Lab Protocols
-> Premium research peptides and peptide blends — 99%+ purity, third-party tested. For research use only.
+> Premium research peptides and peptide blends — 99%+ purity, third-party tested. For research use only. Not for human consumption.
 
-Glow Lab Protocols (https://glowlabprotocols.com) is an online store for research-grade peptides and topicals. Every batch is third-party tested for identity and purity. Products ship fast and discreet; priority shipping is $15 and free on orders over $250.
+Glow Lab Protocols (https://glowlabprotocols.com) is an online store for research-grade peptides, blends, and topicals. Every batch is third-party tested for identity and purity and held to a 99%+ purity standard. Products ship as lyophilized powder, fast and discreet. Priority shipping is $15 and free on orders over $250.
 
-## Research peptides
-BPC-157, Tirzepatide (10 mg / 20 mg), Retatrutide (10 mg / 20 mg), Tesamorelin + Ipamorelin, KLOW blend (GHK-Cu, BPC-157, TB-500, KPV), GHK-Cu, Glutathione (750 mg / 1500 mg), PT-141, Selank, SS-31, AICAR, 5-Amino-1MQ, NAD+, MOTS-C, KPV, DSIP, Adamax (5 mg / 10 mg), Thymosin Alpha-1, BAC water.
+## Research peptides (with sizes and prices, USD)
+- BAC Water — 30 mL — $9.99 (diluent for reconstitution)
+- MOTS-C — 10 mg — $34.00
+- NAD+ — 500 mg — $49.99
+- GHK-Cu — 100 mg — $37.99
+- Tirzepatide — 10 mg — $41.99 / 20 mg — $78.00
+- Retatrutide — 10 mg — $44.99 / 20 mg — $82.00
+- KPV — 10 mg — $33.99
+- Adamax — 5 mg — $48.00 / 10 mg — $58.99
+- Glutathione — 750 mg — $37.33 / 1500 mg — $59.00
+- DSIP — 5 mg — $32.00
+- Thymosin Alpha-1 — 5 mg — $42.00
+- Tesamorelin + Ipamorelin — 10 mg / 10 mg — $82.00
+- KLOW blend (GHK-Cu, BPC-157, TB-500, KPV) — $86.99
+- AICAR — 50 mg — $52.00
+- 5-Amino-1MQ — 50 mg — $36.00
+- SS-31 — 10 mg — $42.99
+- PT-141 — 10 mg — $32.99
+- Selank — 10 mg — $32.99
+- BPC-157 — 5 mg — $32.00
 
 ## Skincare & topicals
-Glow Topicals (Protocol 01, Protocol 02), Rose Recovery Mist, Cu-Hair 01, Cu-Hair 02.
+- Glow Topicals: Protocol 01 (15 mL, $48), Protocol 02 (15 mL, $32)
+- Rose Recovery Mist — 60 mL — $19.00
+- Cu-Hair 01 — 30 mL — $42.00 / Cu-Hair 02 — 15 mL — $55.00
 
-## Standards
+## Research guides
+- BPC-157 Research Guide: https://glowlabprotocols.com/bpc-157-research-guide.html
+- How to Reconstitute Research Peptides: https://glowlabprotocols.com/how-to-reconstitute-peptides.html
+- Peptide Storage & Handling: https://glowlabprotocols.com/peptide-storage-and-handling.html
+
+## Standards & policies
 - 99%+ purity, third-party tested on every batch
 - Lyophilized powder; store at -20 C; reconstitute with bacteriostatic water
 - Discreet, fast shipping — free over $250
 - RESEARCH USE ONLY. NOT FOR HUMAN CONSUMPTION.
 
 ## Contact
-orders@glowlabprotocols.com
+Orders and support: orders@glowlabprotocols.com
+Store: https://glowlabprotocols.com
