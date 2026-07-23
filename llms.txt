@@ -4,7 +4,7 @@
 Glow Lab Protocols (https://glowlabprotocols.com) is an online store for research-grade peptides, blends, and topicals. Every batch is third-party tested for identity and purity and held to a 99%+ purity standard. Products ship as lyophilized powder, fast and discreet. Priority shipping is $15 and free on orders over $250.
 
 ## Research peptides (with sizes and prices, USD)
-- BAC Water — 30 mL — $9.99 (diluent for reconstitution)
+- BAC Water — 10 mL — $9.99 (diluent for reconstitution)
 - MOTS-C — 10 mg — $34.00
 - NAD+ — 500 mg — $49.99
 - GHK-Cu — 100 mg — $37.99
