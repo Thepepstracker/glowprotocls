@@ -1,0 +1,29 @@
+name: Link WordPress Product Photos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/link_wordpress_product_photos.py'
+      - '.github/workflows/link-wordpress-product-photos.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  link-photos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Link uploaded WordPress photos to catalog
+        run: python tools/link_wordpress_product_photos.py
+      - name: Commit catalog image links
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html wordpress-photo-link-report.txt
+          git rm -f tools/link_wordpress_product_photos.py .github/workflows/link-wordpress-product-photos.yml
+          git commit -m "Link final WordPress product photos" || exit 0
+          git push
