@@ -1,0 +1,39 @@
+name: Final product photo update
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Link final product photos
+        run: python tools/link_wordpress_product_photos.py
+      - name: Remove one-time updater files
+        run: |
+          rm -f tools/link_wordpress_product_photos.py
+          rm -f .github/workflows/link-wordpress-product-photos.yml
+          rm -f .github/workflows/final-product-photo-update.yml
+          rm -f photo-update-trigger.txt
+      - name: Commit updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Link final product photos"
+            git push
+          fi
