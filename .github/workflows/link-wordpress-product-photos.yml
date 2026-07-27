@@ -1,29 +1,39 @@
-name: Link WordPress Product Photos
+name: Link final product photos
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/link_wordpress_product_photos.py'
-      - '.github/workflows/link-wordpress-product-photos.yml'
+      - "tools/link_wordpress_product_photos.py"
+      - ".github/workflows/link-wordpress-product-photos.yml"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  link-photos:
+  update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
-      - name: Link uploaded WordPress photos to catalog
-        run: python tools/link_wordpress_product_photos.py
-      - name: Commit catalog image links
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Link final product photos
+        run: python tools/link-wordpress-product_photos.py
+      - name: Remove one-time updater
+        run: |
+          rm -f tools/link_wordpress_product_photos.py
+          rm -f .github/workflows/link-wordpress-product-photos.yml
+      - name: Commit updates
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html wordpress-photo-link-report.txt
-          git rm -f tools/link_wordpress_product_photos.py .github/workflows/link-wordpress-product-photos.yml
-          git commit -m "Link final WordPress product photos" || exit 0
-          git push
+          git add index.html wordpress-photo-link-report.txt tools/link_wordpress_product_photos.py .github/workflows/link-wordpress-product-photos.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "Link final product photos"
+            git push
+          fi
