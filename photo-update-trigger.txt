@@ -1,2 +1,0 @@
-Trigger the one-time final product photo catalog update.
-Manual dispatch fallback requested July 27, 2026.

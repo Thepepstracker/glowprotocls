@@ -1,0 +1,34 @@
+FINAL PRODUCT PHOTO LINK REPORT
+
+PRODUCT_SLUG: glutathione-1500
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/01-glutathione-1500mg.webp
+STATUS: LINKED
+---
+PRODUCT_SLUG: reta-20
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/02-reta-20mg.webp
+STATUS: LINKED
+---
+PRODUCT_SLUG: klow-blend
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/03-klow-80mg.webp
+STATUS: LINKED
+---
+PRODUCT_SLUG: bpc-157
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/04-bpc-157-10mg.webp
+STATUS: LINKED
+---
+PRODUCT_SLUG: selank
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/05-selank-10mg.webp
+STATUS: LINKED
+---
+PRODUCT_SLUG: tesamorelin-ipamorelin
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/06-tesa-ipa-13mg-3mg.webp
+STATUS: LINKED
+---
+PRODUCT_SLUG: pt-141
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/07-pt-141-10mg.webp
+STATUS: LINKED
+---
+PRODUCT_SLUG: ss-31
+IMAGE: https://glps.shop/wp-content/uploads/2026/07/08-ss-31-10mg.webp
+STATUS: LINKED
+---
