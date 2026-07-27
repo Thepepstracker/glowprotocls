@@ -18,35 +18,50 @@ PRODUCT_IMAGES = {
 }
 
 
-def replace_product_image(text: str, product_slug: str, image_url: str) -> str:
+def object_bounds(text: str, product_slug: str) -> tuple[int, int]:
     marker = f'"slug":"{product_slug}"'
-    product_start = text.find(marker)
-    if product_start < 0:
+    marker_pos = text.find(marker)
+    if marker_pos < 0:
         raise LookupError(f"Catalog product slug not found: {product_slug}")
 
-    next_product = text.find('},{"slug":"', product_start + len(marker))
-    product_end = next_product if next_product >= 0 else len(text)
-    img_marker = '"img":"'
-    img_start = text.find(img_marker, product_start, product_end)
-    if img_start < 0:
-        raise LookupError(f"Image field not found for product: {product_slug}")
+    start = marker_pos
+    while start >= 0 and text[start] != "{":
+        start -= 1
+    if start < 0:
+        raise ValueError(f"Could not locate product object start: {product_slug}")
 
-    value_start = img_start + len(img_marker)
-    cursor = value_start
-    while cursor < product_end:
-        quote = text.find('"', cursor, product_end)
-        if quote < 0:
-            break
-        backslashes = 0
-        check = quote - 1
-        while check >= value_start and text[check] == "\\":
-            backslashes += 1
-            check -= 1
-        if backslashes % 2 == 0:
-            escaped_url = json.dumps(image_url, ensure_ascii=False)[1:-1]
-            return text[:value_start] + escaped_url + text[quote:]
-        cursor = quote + 1
-    raise ValueError(f"Could not determine end of image value for: {product_slug}")
+    depth = 0
+    in_string = False
+    escaped = False
+    for cursor in range(start, len(text)):
+        char = text[cursor]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return start, cursor + 1
+
+    raise ValueError(f"Could not locate product object end: {product_slug}")
+
+
+def replace_product_image(text: str, product_slug: str, image_url: str) -> str:
+    start, end = object_bounds(text, product_slug)
+    product = json.loads(text[start:end])
+    product["img"] = image_url
+    replacement = json.dumps(product, ensure_ascii=False, separators=(",", ":"))
+    return text[:start] + replacement + text[end:]
 
 
 def main() -> None:
