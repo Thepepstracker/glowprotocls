@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900" role="img" aria-label="Glow Lab Protocols product image">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#faf7f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="900" rx="36" fill="url(#g)"/>
+  <rect x="70" y="70" width="760" height="760" rx="28" fill="none" stroke="#d8bd7e" stroke-width="3"/>
+  <circle cx="450" cy="360" r="132" fill="#ffffff" stroke="#c9a24b" stroke-width="5"/>
+  <text x="450" y="335" text-anchor="middle" font-family="Georgia,serif" font-size="88" font-weight="700" fill="#c9a24b">GLP</text>
+  <text x="450" y="395" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="7" fill="#1b1b1b">GLOW LAB</text>
+  <text x="450" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="5" fill="#1b1b1b">PROTOCOLS</text>
+  <text x="450" y="590" text-anchor="middle" font-family="Georgia,serif" font-size="48" fill="#1b1b1b">Product Photo</text>
+  <text x="450" y="645" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" letter-spacing="2" fill="#6f6a61">IMAGE BEING UPDATED</text>
+</svg>
