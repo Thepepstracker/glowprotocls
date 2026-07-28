@@ -1,0 +1,40 @@
+name: Repair product image sources
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "tools/repair_product_image_sources.py"
+      - ".github/workflows/repair-product-image-sources.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Repair product image sources
+        run: python tools/repair_product_image_sources.py
+      - name: Remove one-time updater
+        run: |
+          rm -f tools/repair_product_image_sources.py
+          rm -f .github/workflows/repair-product-image-sources.yml
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Repair product image sources and fallbacks"
+            git push
+          fi
