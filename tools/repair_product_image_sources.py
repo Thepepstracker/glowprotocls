@@ -7,20 +7,13 @@ INDEX = Path("index.html")
 PLACEHOLDER = Path("product-images/product-placeholder.svg")
 REPORT = Path("product-image-repair-report.txt")
 
-LOCAL_IMAGES = {
-    "aicar": "/product-images/aicar.png",
-    "bpc-157": "/product-images/bpc157.png",
-    "klow-blend": "/product-images/klow.png",
-    "reta-20": "/product-images/retatrutide.png",
-    "ss-31": "/product-images/ss31.png",
-}
-
 HELPER = (
     'const uploadedImageBySlug={'
     'aicar:"/product-images/aicar.png",'
     '"bpc-157":"/product-images/bpc157.png",'
     '"klow-blend":"/product-images/klow.png",'
     '"reta-20":"/product-images/retatrutide.png",'
+    'selank:"/selank.png",'
     '"ss-31":"/product-images/ss31.png"'
     '};'
     'const productImage=p=>uploadedImageBySlug[p.slug]||p.img||"/product-images/product-placeholder.svg";'
@@ -58,8 +51,6 @@ def main() -> None:
         if image_count < 2:
             raise RuntimeError(f"Expected at least two product image renderers, found {image_count}")
         text = text.replace(image_tag, fallback_tag)
-    else:
-        image_count = 0
 
     INDEX.write_text(text, encoding="utf-8")
     PLACEHOLDER.parent.mkdir(parents=True, exist_ok=True)
@@ -71,6 +62,7 @@ def main() -> None:
         "- BPC-157 10 mg\n"
         "- KLOW 80 mg\n"
         "- Retatrutide 20 mg (corrected slug from reta to reta-20)\n"
+        "- Selank 10 mg\n"
         "- SS-31 10 mg\n\n"
         "Fallback protection added to catalog cards and product modals.\n"
         "Products whose external WordPress image is unavailable now show a branded placeholder instead of a broken image.\n",
