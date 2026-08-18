@@ -154,7 +154,7 @@ footer{background:#fff;border-top:1px solid var(--line);padding:52px 0 28px;marg
   <nav class="links">
     <a onclick="go('')">Home</a>
     <a onclick="go('');setTimeout(()=>document.getElementById('catalog').scrollIntoView({behavior:'smooth'}),60)">Peptides</a>
-    <a href="https://glps.shop/my-account/">Account</a><a class="cartbtn" href="https://glps.shop/cart/">Order</a>
+    <a href="/coa.html">COAs</a><a href="/affiliate.html">Affiliates</a><a href="https://glps.shop/my-account/">Account</a><a class="cartbtn" href="https://glps.shop/cart/">Order</a>
   </nav>
 </div></header>
 <div id="main"></div>
@@ -305,7 +305,7 @@ function footer(){return `<footer><div class="wrap">
   </div>
   <div class="disc">Research Use Only. Not for Human Consumption.</div>
   <div class="copy">© 2026 Glow Lab Protocols · glowlabprotocols.com · 844-GLOWLAB</div>
-</div><nav style="text-align:center;padding:20px 24px;font-size:14px;border-top:1px solid #ece5d7"><strong>Research Guides:</strong> <a href="/bpc-157-research-guide.html" style="color:#c9a24b;text-decoration:none">BPC-157 Guide</a> &middot; <a href="/how-to-reconstitute-peptides.html" style="color:#c9a24b;text-decoration:none">Reconstituting Peptides</a> &middot; <a href="/peptide-storage-and-handling.html" style="color:#c9a24b;text-decoration:none">Storage &amp; Handling</a> &middot; <a href="/terms.html" style="color:#c9a24b;text-decoration:none">Terms &amp; Conditions</a></nav><nav style="text-align:center;padding:14px 24px 22px;font-size:14px"><strong>Your Account:</strong> <a href="https://glps.shop/my-account/" style="color:#c9a24b;text-decoration:none">Sign In / Create Account</a> &middot; <a href="https://glps.shop/my-account/orders/" style="color:#c9a24b;text-decoration:none">Order History</a></nav></footer>`;}
+</div><nav style="text-align:center;padding:20px 24px;font-size:14px;border-top:1px solid #ece5d7"><strong>Research Guides:</strong> <a href="/bpc-157-research-guide.html" style="color:#c9a24b;text-decoration:none">BPC-157 Guide</a> &middot; <a href="/how-to-reconstitute-peptides.html" style="color:#c9a24b;text-decoration:none">Reconstituting Peptides</a> &middot; <a href="/peptide-storage-and-handling.html" style="color:#c9a24b;text-decoration:none">Storage &amp; Handling</a> &middot; <a href="/terms.html" style="color:#c9a24b;text-decoration:none">Terms &amp; Conditions</a> &middot; <a href="/coa.html" style="color:#c9a24b;text-decoration:none">Certificates of Analysis</a> &middot; <a href="/affiliate.html" style="color:#c9a24b;text-decoration:none">Affiliate Program</a></nav><nav style="text-align:center;padding:14px 24px 22px;font-size:14px"><strong>Your Account:</strong> <a href="https://glps.shop/my-account/" style="color:#c9a24b;text-decoration:none">Sign In / Create Account</a> &middot; <a href="https://glps.shop/my-account/orders/" style="color:#c9a24b;text-decoration:none">Order History</a></nav></footer>`;}
 
 function cartCount(){return Object.values(CART).reduce((a,b)=>a+b,0);}
 function updateCartBtn(){var el=document.getElementById('cartBtn');if(!el)return;const n=cartCount();el.textContent = n?`Order (${n})`:'Order';}
