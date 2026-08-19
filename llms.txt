@@ -4,12 +4,12 @@
 Glow Lab Protocols (https://glowlabprotocols.com) is an online store for research-grade peptides, blends, and topicals. Every batch is third-party tested for identity and purity and held to a 99%+ purity standard. Products ship as lyophilized powder, fast and discreet. Priority shipping is $15 and free on orders over $250.
 
 ## Research peptides (with sizes and prices, USD)
-- BAC Water — 10 mL — $9.99 (diluent for reconstitution)
+- BAC Water — 10 mL — $9.99 (sterile laboratory diluent)
 - MOTS-C — 10 mg — $34.00
 - NAD+ — 500 mg — $49.99
 - GHK-Cu — 100 mg — $37.99
-- Tirzepatide — 10 mg — $41.99 / 20 mg — $78.00
-- Retatrutide — 10 mg — $44.99 / 20 mg — $82.00
+- GLP-2T — 10 mg — $41.99 / 20 mg — $78.00
+- GLP-3R — 10 mg — $44.99 / 20 mg — $82.00
 - KPV — 10 mg — $33.99
 - Adamax — 5 mg — $48.00 / 10 mg — $58.99
 - Glutathione — 750 mg — $37.33 / 1500 mg — $59.00
@@ -19,7 +19,7 @@ Glow Lab Protocols (https://glowlabprotocols.com) is an online store for researc
 - KLOW blend (GHK-Cu, BPC-157, TB-500, KPV) — 80 mg — $86.99
 - AICAR — 50 mg — $52.00
 - 5-Amino-1MQ — 5 mg — $36.00
-- SS-31 — 10 mg — $42.99
+- GLP-31 — 10 mg — $42.99
 - PT-141 — 10 mg — $32.99
 - Selank — 10 mg — $32.99
 - BPC-157 — 10 mg — $32.00
@@ -33,12 +33,11 @@ Glow Lab Protocols (https://glowlabprotocols.com) is an online store for researc
 
 ## Research guides
 - BPC-157 Research Guide: https://glowlabprotocols.com/bpc-157-research-guide.html
-- How to Reconstitute Research Peptides: https://glowlabprotocols.com/how-to-reconstitute-peptides.html
 - Peptide Storage & Handling: https://glowlabprotocols.com/peptide-storage-and-handling.html
 
 ## Standards & policies
 - 99%+ purity, third-party tested on every batch
-- Lyophilized powder; store at -20 C; reconstitute with bacteriostatic water
+- Lyophilized powder; store at -20 C; supplied as lyophilized powder
 - Discreet, fast shipping — free over $250
 - RESEARCH USE ONLY. NOT FOR HUMAN CONSUMPTION.
 
