@@ -25,8 +25,6 @@ window.GLP_ES = {
   "Complete Catalog": "Catálogo completo",
   "Research Peptides": "Péptidos de investigación",
   "View & Order": "Ver y pedir",
-  "Pre-Order": "Preventa",
-  "PRE-ORDER": "PREVENTA",
   "Priority Shipping: $15.00": "Envío prioritario: $15.00",
   "Fast · Secure · Discreet · Free over $250": "Rápido · Seguro · Discreto · Gratis en pedidos +$250",
   "Skincare & Topicals": "Cuidado de la piel y tópicos",
