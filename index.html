@@ -255,7 +255,7 @@ function renderProduct(slug){
     <div style="max-width:720px">
       <div class="pblock"><h3>Key Research Notes</h3><ul>${benefits}</ul></div>
       <div class="pblock"><h3>Specifications</h3><table class="spectbl">${specs}</table></div>
-      <div class="pblock"><h3>${p.prep_label}</h3><div class="prep">${p.prep}</div></div>
+      ${p.prep?`<div class="pblock"><h3>${p.prep_label}</h3><div class="prep">${p.prep}</div></div>`:``}
       ${dosing}
     </div>
   </div></section>`;
