@@ -115,7 +115,9 @@ window.GLP_ES = {
   "Research References": "Referencias de investigación",
   "Peptide of the Week": "Péptido de la semana",
   "(2–8 °C in solution)": "(2–8 °C en solución)",
-  "−20 °C (2–8 °C in solution)": "−20 °C (2–8 °C en solución)"
+  "−20 °C (2–8 °C in solution)": "−20 °C (2–8 °C en solución)",
+  "Loyalty": "Fidelidad",
+  "Glow Loyalty": "Glow Fidelidad"
  },
  "p": {
   "lipo-c-b12": {
