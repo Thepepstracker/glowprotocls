@@ -34,3 +34,5 @@ Allow: /
 
 Sitemap: https://glowlabprotocols.com/sitemap.xml
 Sitemap: https://glowlabprotocols.com/llms.txt
+
+# rebuild trigger
