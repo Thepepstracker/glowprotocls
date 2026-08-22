@@ -413,4 +413,50 @@ if(document.readyState!=="loading")setTimeout(place,300);else document.addEventL
 setTimeout(place,1500);
 })();
 </script>
+<script id="glp-bundles-js">
+(function(){
+var B=[{"img":"bundle-metabolic-reset.jpg","name":"Metabolic Reset","sub":"GLP-2T &middot; MOTS-c &middot; NAD+","wc":737,"sizes":[["10 mg",125,739],["15 mg",151,740],["20 mg",162,741],["30 mg",183,742]]},{"img":"bundle-metabolic-reset-2.jpg","name":"Metabolic Reset II","sub":"GLP-3R &middot; MOTS-c &middot; NAD+","wc":738,"sizes":[["10 mg",128,743],["20 mg",165,744]]}];
+function money(n){return "$"+Number(n).toFixed(2);}
+function build(){
+ if(document.getElementById("glp-bundles"))return;
+ var cat=document.getElementById("catalog"); if(!cat)return;
+ var wrap=document.createElement("section"); wrap.id="glp-bundles";
+ wrap.style.cssText="max-width:1180px;margin:0 auto;padding:46px 22px 8px";
+ var h=document.createElement("div");
+ h.innerHTML='<h2 style="font-family:\'Cormorant Garamond\',serif;font-size:32px;text-align:center;margin:0 0 6px;font-weight:600">Research Bundles</h2><div style="width:60px;height:2px;background:#c9a24b;margin:0 auto 26px"></div>';
+ wrap.appendChild(h);
+ var grid=document.createElement("div");
+ grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:20px";
+ B.forEach(function(b){
+  var card=document.createElement("div");
+  card.style.cssText="border:1px solid #e7e3da;border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column";
+  var im=document.createElement("img"); im.src="/"+b.img; im.alt=b.name; im.loading="lazy";
+  im.style.cssText="display:block;width:100%;height:auto";
+  card.appendChild(im);
+  var body=document.createElement("div"); body.style.cssText="padding:18px 20px 20px;display:flex;flex-direction:column;gap:8px";
+  var t=document.createElement("div"); t.textContent=b.name;
+  t.style.cssText="font-family:\'Cormorant Garamond\',serif;font-size:24px;font-weight:600";
+  var sub=document.createElement("div"); sub.innerHTML=b.sub;
+  sub.style.cssText="font-size:12.5px;letter-spacing:.06em;color:#6a6a6a;text-transform:uppercase";
+  var sel=document.createElement("select");
+  sel.style.cssText="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-top:4px";
+  b.sizes.forEach(function(z,i){var o=document.createElement("option");o.value=i;o.textContent=z[0]+"  \u2014  "+money(z[1]);sel.appendChild(o);});
+  var price=document.createElement("div");
+  price.style.cssText="font-size:21px;font-weight:600;margin-top:2px";
+  price.textContent=money(b.sizes[0][1]);
+  sel.addEventListener("change",function(){price.textContent=money(b.sizes[sel.value][1]);});
+  var btn=document.createElement("a"); btn.textContent="Add to Order"; btn.href="#";
+  btn.style.cssText="display:block;text-align:center;background:#111;color:#fff;text-decoration:none;padding:12px;border-radius:6px;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-top:6px";
+  btn.addEventListener("click",function(e){e.preventDefault();var z=b.sizes[sel.value];
+   window.location.href="https://glps.shop/cart/?add-to-cart="+b.wc+"&variation_id="+z[2]+"&attribute_size="+encodeURIComponent(z[0])+"&quantity=1";});
+  body.appendChild(t);body.appendChild(sub);body.appendChild(sel);body.appendChild(price);body.appendChild(btn);
+  card.appendChild(body); grid.appendChild(card);
+ });
+ wrap.appendChild(grid);
+ cat.parentNode.insertBefore(wrap,cat);
+}
+if(document.readyState!=="loading")setTimeout(build,400);else document.addEventListener("DOMContentLoaded",function(){setTimeout(build,400);});
+setTimeout(build,1600);
+})();
+</script>
 </body></html>
