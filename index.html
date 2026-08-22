@@ -390,4 +390,27 @@ setTimeout(run,1800);setTimeout(run,3400);
 window.addEventListener("hashchange",function(){setTimeout(run,300);});
 })();
 </script>
+<script id="glp-sale-banner-js">
+(function(){
+function place(){
+ if(document.getElementById("glp-sale-banner"))return;
+ var hdr=document.querySelector("header"); if(!hdr)return;
+ var img=new Image();
+ img.onload=function(){
+  if(document.getElementById("glp-sale-banner"))return;
+  var a=document.createElement("a");
+  a.id="glp-sale-banner"; a.href="#catalog";
+  a.style.cssText="display:block;width:100%;line-height:0;background:#f7f4ef";
+  img.style.cssText="display:block;width:100%;height:auto;margin:0";
+  img.alt="31% off sale - use code GLOW31";
+  a.appendChild(img);
+  hdr.parentNode.insertBefore(a,hdr.nextSibling);
+ };
+ img.onerror=function(){};
+ img.src="/sale-banner.jpg";
+}
+if(document.readyState!=="loading")setTimeout(place,300);else document.addEventListener("DOMContentLoaded",function(){setTimeout(place,300);});
+setTimeout(place,1500);
+})();
+</script>
 </body></html>
