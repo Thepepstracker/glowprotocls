@@ -457,6 +457,8 @@ function build(){
 }
 if(document.readyState!=="loading")setTimeout(build,400);else document.addEventListener("DOMContentLoaded",function(){setTimeout(build,400);});
 setTimeout(build,1600);
+window.addEventListener("hashchange",function(){setTimeout(build,250);setTimeout(build,900);});
+setInterval(build,2500);
 })();
 </script>
 </body></html>
