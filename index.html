@@ -392,25 +392,36 @@ window.addEventListener("hashchange",function(){setTimeout(run,300);});
 </script>
 <script id="glp-sale-banner-js">
 (function(){
-function place(){
- if(document.getElementById("glp-sale-banner"))return;
+var SRC=["/sale-banner.jpg","/pep-of-the-week.jpg"];
+var ok=[],idx=0,timer=null;
+function mount(){
+ if(document.getElementById("glp-sale-banner")||!ok.length)return;
  var hdr=document.querySelector("header"); if(!hdr)return;
- var img=new Image();
- img.onload=function(){
-  if(document.getElementById("glp-sale-banner"))return;
-  var a=document.createElement("a");
-  a.id="glp-sale-banner"; a.href="#catalog";
-  a.style.cssText="display:block;width:100%;line-height:0;background:#f7f4ef";
-  img.style.cssText="display:block;width:100%;height:auto;margin:0";
-  img.alt="31% off sale - use code GLOW31";
-  a.appendChild(img);
-  hdr.parentNode.insertBefore(a,hdr.nextSibling);
- };
- img.onerror=function(){};
- img.src="/sale-banner.jpg";
+ var a=document.createElement("a"); a.id="glp-sale-banner"; a.href="#catalog";
+ a.style.cssText="display:block;width:100%;line-height:0;background:#f7f4ef;position:relative";
+ ok.forEach(function(src,i){
+  var im=document.createElement("img"); im.src=src; im.alt="Glow Lab Protocols promotion";
+  im.style.cssText="display:block;width:100%;height:auto;margin:0;transition:opacity .6s ease;"+(i===0?"":"position:absolute;top:0;left:0;opacity:0;");
+  a.appendChild(im);
+ });
+ hdr.parentNode.insertBefore(a,hdr.nextSibling);
+ if(ok.length>1&&!timer){
+  timer=setInterval(function(){
+   var imgs=a.querySelectorAll("img"); if(imgs.length<2)return;
+   var next=(idx+1)%imgs.length;
+   imgs[idx].style.opacity="0"; imgs[next].style.opacity="1";
+   idx=next;
+  },6000);
+ }
 }
-if(document.readyState!=="loading")setTimeout(place,300);else document.addEventListener("DOMContentLoaded",function(){setTimeout(place,300);});
-setTimeout(place,1500);
+var pending=SRC.length;
+SRC.forEach(function(src,i){
+ var t=new Image();
+ t.onload=function(){ok[i]=src;if(--pending===0){ok=ok.filter(Boolean);mount();}};
+ t.onerror=function(){if(--pending===0){ok=ok.filter(Boolean);mount();}};
+ t.src=src;
+});
+setTimeout(function(){ok=ok.filter(Boolean);mount();},2500);
 })();
 </script>
 <script id="glp-bundles-js">
