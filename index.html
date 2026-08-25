@@ -378,7 +378,7 @@ if(document.readyState!=="loading")setTimeout(init,400);else document.addEventLi
 </script>
 <script id="glp-potw">
 (function(){
-var SLUG="nad",NAME="NAD+",REG="49.99",SALE="25.00";
+var SLUG="ghk-cu",NAME="GHK-Cu",REG="37.99",SALE="25.00";
 function lbl(){try{return localStorage.getItem("glp_lang")==="es"?"P\u00e9ptido de la semana":"Peptide of the Week";}catch(e){return "Peptide of the Week";}}
 function css(){if(document.getElementById("glp-potw-css"))return;var st=document.createElement("style");st.id="glp-potw-css";st.textContent=".glp-potw{position:absolute;top:10px;left:10px;z-index:5;background:#c0392b;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:3px;line-height:1}.glp-potw-inline{display:inline-block;background:#c0392b;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:3px;margin-bottom:10px}.glp-was{opacity:.5;font-weight:400;margin-right:10px}.glp-now{color:#c0392b}";document.head.appendChild(st);}
 function price(el){if(!el||el.querySelector(".glp-now"))return;el.innerHTML='<s class="glp-was">$'+REG+'</s><span class="glp-now">$'+SALE+'</span>';}
@@ -473,9 +473,9 @@ setInterval(build,2500);
 })();
 </script>
 
-<script id="glp-sale-ghk">
+<script id="glp-sale-nad">
 (function(){
-var SLUG="ghk-cu",NAME="GHK-Cu",REG="37.99",SALE="25.00";
+var SLUG="nad",NAME="NAD+",REG="49.99",SALE="25.00";
 function lbl(){try{return localStorage.getItem("glp_lang")==="es"?"Oferta":"Sale";}catch(e){return "Sale";}}
 function css(){if(document.getElementById("glp-sale-css"))return;var st=document.createElement("style");st.id="glp-sale-css";st.textContent=".glp-sale{position:absolute;top:10px;left:10px;z-index:5;background:#c0392b;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:3px;line-height:1}.glp-sale-inline{display:inline-block;background:#c0392b;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:3px;margin-bottom:10px}.glp-was{opacity:.5;font-weight:400;margin-right:10px}.glp-now{color:#c0392b}";document.head.appendChild(st);}
 function price(el){if(!el||el.querySelector(".glp-now"))return;el.innerHTML='<s class="glp-was">$'+REG+'</s><span class="glp-now">$'+SALE+'</span>';}
