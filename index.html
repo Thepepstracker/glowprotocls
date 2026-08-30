@@ -451,11 +451,11 @@ function build(){
   sub.style.cssText="font-size:12.5px;letter-spacing:.06em;color:#6a6a6a;text-transform:uppercase";
   var sel=document.createElement("select");
   sel.style.cssText="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;margin-top:4px";
-  b.sizes.forEach(function(z,i){var o=document.createElement("option");o.value=i;o.textContent=z[0]+"  \u2014  "+money(z[1]);sel.appendChild(o);});
+  b.sizes.forEach(function(z,i){var o=document.createElement("option");o.value=i;o.textContent=z[0]+"  \u2014  "+money(z[1]*0.8);sel.appendChild(o);});
   var price=document.createElement("div");
   price.style.cssText="font-size:21px;font-weight:600;margin-top:2px";
-  price.textContent=money(b.sizes[0][1]);
-  sel.addEventListener("change",function(){price.textContent=money(b.sizes[sel.value][1]);});
+  price.innerHTML='<s class="glp-was">'+money(b.sizes[0][1])+'</s> <span class="glp-now">'+money(b.sizes[0][1]*0.8)+'</span>';
+  sel.addEventListener("change",function(){price.innerHTML='<s class="glp-was">'+money(b.sizes[sel.value][1])+'</s> <span class="glp-now">'+money(b.sizes[sel.value][1]*0.8)+'</span>';});
   var btn=document.createElement("a"); btn.textContent="Add to Order"; btn.href="#";
   btn.style.cssText="display:block;text-align:center;background:#111;color:#fff;text-decoration:none;padding:12px;border-radius:6px;font-size:12.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-top:6px";
   btn.addEventListener("click",function(e){e.preventDefault();var z=b.sizes[sel.value];
@@ -497,7 +497,7 @@ setTimeout(run,400);setTimeout(run,1200);
     ["thymosin alpha-1",42,.20],["tesamorelin / ipamorelin",82,.20],["klow",86.99,.20],
     ["aicar",52,.20],["5-amino-1mq",36,.20],["glp-31",42.99,.20],["pt-141",32.99,.20],
     ["selank",32.99,.20],["bpc-157",32,.20],["protocol 01",48,.50],["protocol 02",32,.50],
-    ["glow eyes luxe with kpv",64.99,.25],["rose recovery mist",19,.20],
+    ["glow eyes",39.99,null,19.99],["glow eyes luxe with kpv",64.99,.25],["rose recovery mist",19,.20],
     ["cu-hair 01",42,.50],["cu-hair 02",55,.50],["ara-290",45,.20],["fox-04",79,.20]
   ];
   /* Intentionally not listed (no changes): NAD+, GHK-Cu, Glow Eyes. */
