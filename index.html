@@ -487,4 +487,54 @@ window.addEventListener("hashchange",function(){setTimeout(run,60);});
 setTimeout(run,400);setTimeout(run,1200);
 })();
 </script>
+<script id="glp-sale-aug2026">
+/* Storewide sale display (Aug 2026) - presentation only; WooCommerce untouched. */
+(function(){
+  var SALE=[
+    ["lipo-c with b-12",43.99,.20],["bac water",9.99,.20],["mots-c",34,.20],
+    ["glp-2t",41.99,.20],["glp-3r",44.99,.20],["kpv",33.99,.20],["adamax",48,.20],
+    ["glutathione",37.33,null,30,"Pep of the Week"],["dsip",32,.20],
+    ["thymosin alpha-1",42,.20],["tesamorelin / ipamorelin",82,.20],["klow",86.99,.20],
+    ["aicar",52,.20],["5-amino-1mq",36,.20],["glp-31",42.99,.20],["pt-141",32.99,.20],
+    ["selank",32.99,.20],["bpc-157",32,.20],["protocol 01",48,.50],["protocol 02",32,.50],
+    ["glow eyes luxe with kpv",64.99,.25],["rose recovery mist",19,.20],
+    ["cu-hair 01",42,.50],["cu-hair 02",55,.50],["ara-290",45,.20],["fox-04",79,.20]
+  ];
+  /* Intentionally not listed (no changes): NAD+, GHK-Cu, Glow Eyes. */
+  function fmt(n){return "$"+n.toFixed(2);}
+  function now(e){if(e[3]!=null)return e[3];return Math.round(e[1]*(1-e[2])*100)/100;}
+  function match(t){t=(t||"").trim().toLowerCase();for(var i=0;i<SALE.length;i++){if(SALE[i][0]===t)return SALE[i];}return null;}
+  function label(el,e){
+    if(!e[4])return;
+    var p=el.parentNode;
+    if(p.querySelector(".glp-potw-inline"))return;
+    var b=document.createElement("span");b.className="glp-potw-inline";b.textContent=e[4];
+    p.insertBefore(b,el);
+  }
+  function patch(el,e){
+    if(!el||el.querySelector(".glp-now"))return;
+    if(el.textContent.trim()!==fmt(e[1]))return;
+    el.innerHTML='<s class="glp-was">'+fmt(e[1])+'</s> <span class="glp-now">'+fmt(now(e))+'</span>';
+    label(el,e);
+  }
+  function cards(){
+    document.querySelectorAll(".card").forEach(function(c){
+      var n=c.querySelector(".cname");if(!n)return;
+      var e=match(n.textContent);if(!e)return;
+      patch(c.querySelector(".cprice"),e);
+    });
+  }
+  function detail(){
+    var hs=document.querySelectorAll("h1");
+    for(var i=0;i<hs.length;i++){
+      var e=match(hs[i].textContent);
+      if(e){patch(document.querySelector(".pprice"),e);return;}
+    }
+  }
+  function run(){cards();detail();}
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",run);}else{run();}
+  window.addEventListener("hashchange",function(){setTimeout(run,60);setTimeout(run,400);setTimeout(run,1200);});
+  setTimeout(run,60);setTimeout(run,400);setTimeout(run,1200);
+})();
+</script>
 </body></html>
