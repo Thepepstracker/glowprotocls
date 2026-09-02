@@ -13,13 +13,15 @@
   function cents(n) { return Math.max(0, Math.round(Number(n) * 100)); }
 
   function readCart() {
-    var GB = window.__GB;
-    if (!GB) return null;
-    var cart = GB.cart || {}, items = [];
-    Object.keys(cart).forEach(function (slug, i) {
-      var p = GB.bySlug(slug); if (!p || p.price == null) return;
-      items.push({ slug: slug, name: p.name, dose: p.dose, qty: cart[slug], price: p.price, g: i, v: 0 });
+    var GB = window.__GB; if (!GB) return null;
+    var cart = GB.cart || {}, sz = window.__GBSIZE || {}, ex = window.__GBEXTRA || {}, items = [], gi = 0;
+    Object.keys(cart).forEach(function (slug) {
+      var p = GB.bySlug(slug); if (!p) return;
+      var price = (sz[slug] && sz[slug].price != null) ? sz[slug].price : p.price; if (price == null) return;
+      items.push({ name: p.name + (sz[slug] ? ' (' + sz[slug].size + ')' : ''), dose: p.dose || '', qty: cart[slug], price: price, g: gi++, v: 0 });
     });
+    Object.keys(ex).forEach(function (k) { var e = ex[k]; if (!e || e.price == null) return;
+      items.push({ name: e.name, dose: e.size || '', qty: e.qty || 1, price: e.price, g: gi++, v: 0 }); });
     return items;
   }
 
@@ -163,7 +165,23 @@
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 
   // watch for the checkout form appearing (SPA re-renders #main on route change)
-  function scan() { var f = document.querySelector('.orderform'); if (f) enhance(f); }
+  function injectCheckout() {
+    var main = document.getElementById('main'); if (!main || main.querySelector('.orderform')) return;
+    main.innerHTML = '<section class="cart"><div class="wrap"><h1 class="serif" style="text-align:center;font-size:40px;margin-bottom:6px">Your Order</h1>' +
+      '<form class="orderform" onsubmit="return false"><h2 class="serif">Your Details</h2><p class="sub"></p>' +
+      '<div class="field"><label>Full Name</label><input required name="name"></div>' +
+      '<div class="field"><label>Email</label><input required type="email" name="email"></div>' +
+      '<div class="field"><label>Notes (optional)</label><textarea name="notes" rows="3"></textarea></div>' +
+      '<button class="btn" style="width:100%">Submit Order</button>' +
+      '<p class="ruo" style="text-align:center;margin-top:14px">Research use only — not for human consumption.</p></form></div></section>';
+    var f = main.querySelector('.orderform'); if (f) enhance(f);
+  }
+  function scan() {
+    if (location.hash.replace(/^#/, '') !== 'order') return;
+    var f = document.querySelector('.orderform');
+    if (f) { enhance(f); return; }
+    var items = readCart(); if (items && items.length) injectCheckout();
+  }
   var mo = new MutationObserver(scan);
   document.addEventListener('DOMContentLoaded', function () {
     var main = document.getElementById('main'); if (main) mo.observe(main, { childList: true, subtree: true });
