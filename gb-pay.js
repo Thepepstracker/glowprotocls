@@ -172,7 +172,7 @@
     codeBox.input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); codeBox.apply.click(); } });
 
     function resetCard() {
-      S.stage = 'idle'; S.session = null;
+      S.stage = 'idle'; S.session = null; S.init = null; S.initSent = false;
       frame.style.display = 'none'; frame.removeAttribute('src');
       cardBtn.disabled = false; walletBtn.disabled = false; cardBtn.textContent = 'Pay by card';
       say('');
@@ -256,7 +256,7 @@
     }
     S.charge = charge;
     S.onReady = function () {
-      if (S.stage === 'charging') return;
+      if (S.stage === 'charging' || S.stage === 'ready') return;   // idempotent, and never clobbers a decline
       S.stage = 'ready';
       frame.style.display = 'block';
       cardBtn.disabled = false; walletBtn.disabled = false;
@@ -294,7 +294,13 @@
       if (e.origin !== PARENT) return;
       var S = ACTIVE; if (!S) return;
       var m = e.data || {};
-      if (m.type === 'maef-ready') { if (S.init) S.postToFrame(S.init); S.onReady(); }
+      if (m.type === 'maef-ready') {
+        // The parent answers `maef-init` with another `maef-ready`. Re-sending init on every ready is
+        // therefore an infinite loop between the two frames — it measured ~94,000 messages a second,
+        // which pins the CPU and starves the charge. Hand it the session exactly once.
+        if (!S.initSent && S.init) { S.initSent = true; S.postToFrame(S.init); }
+        S.onReady();
+      }
       else if (m.type === 'maef-size' && typeof m.h === 'number') { S.frame.style.height = Math.min(460, Math.max(58, Math.ceil(m.h))) + 'px'; }
       else if (m.type === 'maef-result') {
         if (m.status === 'approved' || m.status === 'review') {
