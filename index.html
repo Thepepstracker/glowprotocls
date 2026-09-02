@@ -158,6 +158,7 @@ footer{background:#fff;border-top:1px solid var(--line);padding:52px 0 28px;marg
   </nav>
 </div></header>
 <div id="main"></div>
+<form name="gb-orders" data-netlify="true" netlify hidden><input name="order-ref"><input name="name"><input type="email" name="email"><input name="total"><input name="ship-to"><textarea name="items"></textarea></form>
 <div id="footer"></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -340,6 +341,7 @@ function render(){
 }
 window.addEventListener('hashchange',render);
 window.addEventListener('DOMContentLoaded',function(){document.getElementById('footer').innerHTML=footer();render();});
+try{window.__GB={get cart(){return CART},bySlug:bySlug,money:money,products:PRODUCTS};}catch(e){}
 
 </script>
 <script>
@@ -538,4 +540,5 @@ setTimeout(run,400);setTimeout(run,1200);
   setTimeout(run,60);setTimeout(run,400);setTimeout(run,1200);
 })();
 </script>
+<script src="/gb-pay.js" defer></script>
 </body></html>
