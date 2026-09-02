@@ -1,0 +1,374 @@
+{
+ "_readme": "SINGLE SOURCE OF TRUTH for every price on glowglps.com. Edit here (or in the Price Desk at /price-desk.html) and the storefront, the checkout total, the card charge and the parent cover catalogue all follow. Never edit prices inside index.html.",
+ "version": 1,
+ "updated": "2026-09-02T17:15:22Z",
+ "currency": "USD",
+ "shipping": {
+  "flat": 15.0,
+  "free_over": 250
+ },
+ "sale": {
+  "label": "Sale",
+  "sitewide_pct": 0.0,
+  "bundles_pct": 0.2,
+  "ends": null
+ },
+ "products": {
+  "lipo-c-b12": {
+   "name": "Lipo-C with B-12",
+   "regular": 43.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "bac-water": {
+   "name": "BAC Water",
+   "regular": 9.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "mots-c": {
+   "name": "MOTS-C",
+   "regular": 34,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "nad": {
+   "name": "NAD+",
+   "regular": 49.99,
+   "pct": null,
+   "fixed": 25.0,
+   "badge": null
+  },
+  "ghk-cu": {
+   "name": "GHK-Cu",
+   "regular": 37.99,
+   "pct": null,
+   "fixed": null,
+   "badge": null
+  },
+  "tirz-10": {
+   "name": "GLP-2T",
+   "regular": 41.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null,
+   "sizes": [
+    {
+     "s": "10 mg",
+     "regular": 41.99
+    },
+    {
+     "s": "15 mg",
+     "regular": 68
+    },
+    {
+     "s": "20 mg",
+     "regular": 78
+    },
+    {
+     "s": "30 mg",
+     "regular": 99
+    }
+   ]
+  },
+  "reta": {
+   "name": "GLP-3R",
+   "regular": 44.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null,
+   "sizes": [
+    {
+     "s": "10 mg",
+     "regular": 44.99
+    },
+    {
+     "s": "20 mg",
+     "regular": 82
+    }
+   ]
+  },
+  "kpv": {
+   "name": "KPV",
+   "regular": 33.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "adamax": {
+   "name": "Adamax",
+   "regular": 48,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null,
+   "sizes": [
+    {
+     "s": "5 mg",
+     "regular": 48
+    },
+    {
+     "s": "10 mg",
+     "regular": 58.99
+    }
+   ]
+  },
+  "glutathione": {
+   "name": "Glutathione",
+   "regular": 37.33,
+   "pct": null,
+   "fixed": 30.0,
+   "badge": "Pep of the Week",
+   "sizes": [
+    {
+     "s": "750 mg",
+     "regular": 37.33
+    },
+    {
+     "s": "1500 mg",
+     "regular": 59
+    }
+   ]
+  },
+  "dsip": {
+   "name": "DSIP",
+   "regular": 32,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "thymosin-alpha-1": {
+   "name": "Thymosin Alpha-1",
+   "regular": 42,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "tesamorelin-ipamorelin": {
+   "name": "Tesamorelin / Ipamorelin",
+   "regular": 82,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "klow-blend": {
+   "name": "KLOW",
+   "regular": 86.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "aicar": {
+   "name": "AICAR",
+   "regular": 52,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null,
+   "sizes": [
+    {
+     "s": "50 mg",
+     "regular": 52
+    },
+    {
+     "s": "100 mg",
+     "regular": 82
+    }
+   ]
+  },
+  "5-amino-1mq": {
+   "name": "5-Amino-1MQ",
+   "regular": 36,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "ss-31": {
+   "name": "GLP-31",
+   "regular": 42.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "pt-141": {
+   "name": "PT-141",
+   "regular": 32.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "selank": {
+   "name": "Selank",
+   "regular": 32.99,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "bpc-157": {
+   "name": "BPC-157",
+   "regular": 32,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "protocol-01": {
+   "name": "Protocol 01",
+   "regular": 48,
+   "pct": 0.5,
+   "fixed": null,
+   "badge": null
+  },
+  "protocol-02": {
+   "name": "Protocol 02",
+   "regular": 32,
+   "pct": 0.5,
+   "fixed": null,
+   "badge": null
+  },
+  "glow-eyes": {
+   "name": "Glow Eyes",
+   "regular": 39.99,
+   "pct": null,
+   "fixed": 19.99,
+   "badge": null
+  },
+  "glow-eyes-luxe-kpv": {
+   "name": "Glow Eyes Luxe with KPV",
+   "regular": 64.99,
+   "pct": 0.25,
+   "fixed": null,
+   "badge": null
+  },
+  "rose-recovery-mist": {
+   "name": "Rose Recovery Mist",
+   "regular": 19,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "cu-hair-01": {
+   "name": "Cu-Hair 01",
+   "regular": 42,
+   "pct": 0.5,
+   "fixed": null,
+   "badge": null
+  },
+  "cu-hair-02": {
+   "name": "Cu-Hair 02",
+   "regular": 55,
+   "pct": 0.5,
+   "fixed": null,
+   "badge": null
+  },
+  "ara-290": {
+   "name": "ARA-290",
+   "regular": 45,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "fox-04": {
+   "name": "FOX-04",
+   "regular": 79,
+   "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  }
+ },
+ "bundles": {
+  "737": {
+   "name": "Metabolic Reset",
+   "pct": null,
+   "sizes": [
+    {
+     "s": "10 mg",
+     "regular": 125
+    },
+    {
+     "s": "15 mg",
+     "regular": 151
+    },
+    {
+     "s": "20 mg",
+     "regular": 162
+    },
+    {
+     "s": "30 mg",
+     "regular": 183
+    }
+   ],
+   "img": "bundle-metabolic-reset.jpg",
+   "sub": "GLP-2T &middot; MOTS-c &middot; NAD+",
+   "wc": 737
+  },
+  "738": {
+   "name": "Metabolic Reset II",
+   "pct": null,
+   "sizes": [
+    {
+     "s": "10 mg",
+     "regular": 128
+    },
+    {
+     "s": "20 mg",
+     "regular": 165
+    }
+   ],
+   "img": "bundle-metabolic-reset-2.jpg",
+   "sub": "GLP-3R &middot; MOTS-c &middot; NAD+",
+   "wc": 738
+  },
+  "751": {
+   "name": "R4 Cellular Reset",
+   "pct": null,
+   "sizes": [
+    {
+     "s": "8-vial set",
+     "regular": 530
+    }
+   ],
+   "img": "bundle-r4-cellular-reset.jpg",
+   "sub": "FOXO4-DRI &times;3 &middot; Glutathione &middot; Epithalon &times;2 &middot; GLP-31 &times;2",
+   "wc": 751
+  },
+  "774": {
+   "name": "Epithalon 100 mg Bundle",
+   "pct": null,
+   "sizes": [
+    {
+     "s": "2-vial set",
+     "regular": 169.99
+    }
+   ],
+   "img": "bundle-epithalon-100mg.jpg",
+   "sub": "Epithalon 50 mg &times;2",
+   "wc": 774
+  },
+  "795": {
+   "name": "Radiance Reset Duo",
+   "pct": null,
+   "sizes": [
+    {
+     "s": "2-vial set",
+     "regular": 79
+    }
+   ],
+   "img": "bundle-radiance-reset.jpg",
+   "sub": "Glutathione 1500 mg &middot; Lipo-C 10 mL",
+   "wc": 795
+  }
+ },
+ "coupons": [
+  {
+   "code": "GLOW20",
+   "type": "percent",
+   "value": 20,
+   "active": false,
+   "expires": null,
+   "min_subtotal": 0,
+   "free_shipping": false,
+   "note": "example \u2014 set active:true to switch it on"
+  }
+ ]
+}

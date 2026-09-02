@@ -880,3 +880,6 @@ ul { list-style: none; }
      .footer__top { grid-template-columns: 1fr; gap: 3rem; }
      .footer__brand { max-width: 100%; }
 }
+
+/* sale pricing (was/now) — priced from catalog.json, rendered by priceHTML() */
+.glp-sale{position:absolute;top:10px;left:10px;z-index:5;background:#c0392b;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 9px;border-radius:3px;line-height:1}.glp-sale-inline{display:inline-block;background:#c0392b;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:3px;margin-bottom:10px}.glp-was{opacity:.5;font-weight:400;margin-right:10px}.glp-now{color:#c0392b}.glp-potw-inline{display:inline-block;background:#c9a24b;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;border-radius:3px;margin:0 0 10px}

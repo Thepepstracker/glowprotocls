@@ -2,6 +2,9 @@
 
 [build]
   publish = "."
+  # bakes catalog.json into the storefront; fails the deploy rather than shipping
+  # a page that shows a price the checkout would not charge
+  command = "node tools/sync-catalog.mjs"
 
 [[headers]]
   for = "/*"
@@ -22,3 +25,9 @@
 
 [functions]
   directory = "netlify/functions"
+
+[[headers]]
+  for = "/price-desk.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Cache-Control = "no-store"
