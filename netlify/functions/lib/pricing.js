@@ -74,10 +74,18 @@ function shippingFor(subtotal, cat) {
  * Validated ONLY here, and only ever called server-side for the amount that is actually charged.
  * The browser may display a coupon's effect; it can never assert one.
  */
+function couponList(cat) {
+  // NOT from the catalogue file: this repository is public, so a code committed to it is a code
+  // anyone can read before it launches. They come from the environment, server-side only.
+  const raw = (typeof process !== 'undefined' && process.env && process.env.GLP_COUPONS) || '';
+  if (raw) { try { const j = JSON.parse(raw); if (Array.isArray(j)) return j; } catch (e) { /* malformed: no coupons, never a crash */ } }
+  return Array.isArray(cat && cat.coupons) ? cat.coupons : [];   // local/test only
+}
+
 function findCoupon(cat, code) {
   const want = String(code || '').trim().toUpperCase();
   if (!want) return null;
-  return (cat.coupons || []).find((c) => String(c.code || '').trim().toUpperCase() === want) || null;
+  return couponList(cat).find((c) => String(c.code || '').trim().toUpperCase() === want) || null;
 }
 
 function applyCoupon(cat, code, subtotal, shipping) {
@@ -226,4 +234,4 @@ function priceOrder(cat, rawLines, code) {
   };
 }
 
-module.exports = { r2, cents, effective, priceCatalog, shippingFor, applyCoupon, findCoupon, priceCart, priceLadder, priceOrder };
+module.exports = { couponList, r2, cents, effective, priceCatalog, shippingFor, applyCoupon, findCoupon, priceCart, priceLadder, priceOrder };

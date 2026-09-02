@@ -359,16 +359,5 @@
    "wc": 795
   }
  },
- "coupons": [
-  {
-   "code": "GLOW20",
-   "type": "percent",
-   "value": 20,
-   "active": false,
-   "expires": null,
-   "min_subtotal": 0,
-   "free_shipping": false,
-   "note": "example \u2014 set active:true to switch it on"
-  }
- ]
+ "_coupons": "Discount codes are NOT stored here: this repository is public. They live in the Netlify environment variable GLP_COUPONS and are read server-side at checkout only."
 }
