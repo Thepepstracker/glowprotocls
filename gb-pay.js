@@ -54,7 +54,7 @@
       '<div class="field"><label>Shipping address</label><input required name="address"></div>' +
       '<div class="field" style="display:flex;gap:10px"><span style="flex:2"><label>City</label><input required name="city"></span>' +
       '<span style="flex:1"><label>State</label><input required name="state" maxlength="2" placeholder="GA"></span>' +
-      '<span style="flex:1"><label>ZIP</label><input required name="zip"></span></div>';
+      '<span style="flex:1.4"><label>ZIP</label><input required name="zip" inputmode="numeric" maxlength="10"></span></div>';
     if (notes && notes.closest('.field')) form.insertBefore(addr, notes.closest('.field'));
     else form.appendChild(addr);
 
@@ -114,7 +114,11 @@
     frame.title = 'Card details'; frame.setAttribute('allow', 'payment'); frame.setAttribute('referrerpolicy', 'no-referrer');
     var walletBtn = el('button', 'gbpay-btn gbpay-btn-alt', 'Apple Pay · Google Pay · Pay Later'); walletBtn.type = 'button';
     var note = el('div', 'gbpay-note', '');
-    root.appendChild(cardBtn); root.appendChild(frame); root.appendChild(walletBtn); root.appendChild(note);
+    // The card field goes ABOVE the button that submits it. While it is hidden the block still reads
+    // "Pay by card" then the wallet option — card first, as required — and once the field is mounted
+    // the buyer types into it and presses the button underneath, which is the only order that reads
+    // correctly. A Pay button sitting above the card number invites a press before the card is typed.
+    root.appendChild(frame); root.appendChild(cardBtn); root.appendChild(walletBtn); root.appendChild(note);
 
     var S = {                                       // this checkout's state — the listener reads THIS
       form: form, lines: lines, sumEl: sumEl, codeBox: codeBox, frame: frame,
@@ -261,7 +265,7 @@
       frame.style.display = 'block';
       cardBtn.disabled = false; walletBtn.disabled = false;
       cardBtn.textContent = S.quote ? 'Pay ' + money(S.quote.total) : 'Pay now';
-      say('Enter your card above, then press Pay.');
+      say('Enter your card details above, then press Pay.');
     };
     S.onDeclined = function (m) {
       S.stage = 'ready';
