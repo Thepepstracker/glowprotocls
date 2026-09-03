@@ -46,7 +46,7 @@
    "name": "GHK-Cu",
    "regular": 37.99,
    "pct": null,
-   "fixed": null,
+   "fixed": 25.0,
    "badge": null
   },
   "tirz-10": {
