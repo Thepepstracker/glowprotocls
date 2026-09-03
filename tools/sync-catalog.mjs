@@ -91,7 +91,16 @@ if (/\*\s*0\.8\b/.test(html.slice(html.indexOf('id="glp-bundles-js"'), html.inde
 
 writeFileSync(join(ROOT, 'index.html'), html);
 
+/* ── 4. the feed the cover parent reads: price points, and nothing else ──────────────────────────
+ * The parent only needs to know which unit prices a buyer can be charged so its own catalogue can
+ * cover them. It has no business receiving a product name, so it is not sent one. */
+writeFileSync(join(ROOT, 'ladder.json'), JSON.stringify({
+  updated: cat.updated || '', sitewide_pct: Number(cat.sale?.sitewide_pct || 0),
+  shipping: payload.shipping, points: ladder,
+}, null, 1));
+
 const onSale = Object.values(price).filter((r) => r.was != null).length;
 const codes = require(join(ROOT, 'netlify/functions/lib/pricing.js')).couponList(cat).filter((c) => c.active !== false).length;
 console.log('sync-catalog: %d products (%d on sale), %d bundles, %d live price points, %d active discount code(s)',
   Object.keys(price).length, onSale, B.length, ladder.length, codes);
+console.log('sync-catalog: ladder ' + ladder[0].toFixed(2) + ' … ' + ladder[ladder.length - 1].toFixed(2));

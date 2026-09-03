@@ -1,7 +1,8 @@
 /* Glow Lab Protocols — THE pricing engine.
- * One rule set, one place. tools/sync-catalog.mjs bakes the result into the storefront at build time,
- * so what the buyer sees on glowlabprotocols.com comes from catalog.json and nothing else.
- * Payment itself happens on glps.shop (WooCommerce) — this file never charges anything.
+ * One rule set, used in three places, so a price can never mean two different things:
+ *   1. tools/sync-catalog.mjs  bakes the result into the storefront at build time (what the buyer SEES)
+ *   2. netlify/functions/*     recomputes it server-side at checkout        (what the card is CHARGED)
+ *   3. the parent cover-catalogue sync reads the same ladder                (what the gateway is TOLD)
  * If you change a rule here, change it nowhere else.
  */
 'use strict';
@@ -148,7 +149,8 @@ function priceCart(cat, lines) {
   return { lines: out, subtotal };
 }
 
-/* Every distinct unit price in the catalogue. Used by the build summary as a sanity check. */
+/* Every distinct price a buyer can actually be charged for one unit — the ladder the parent's cover
+ * catalogue has to be able to reach. */
 function priceLadder(cat) {
   const { price, bundles } = priceCatalog(cat);
   const set = new Set();
@@ -163,8 +165,9 @@ function priceLadder(cat) {
 
 
 /* ── THE ORDER ────────────────────────────────────────────────────────────────────────────────────
- * One function, used by the build to compute the totals shown on the storefront. Payment happens on
- * glps.shop (WooCommerce), so these figures must match the WooCommerce prices — see catalog.json.
+ * One function, called by /quote (to show a total) and by /pay-session (to charge one). Both must
+ * return the same integers or the buyer is quoted one number and billed another — the bug this whole
+ * file exists to make impossible.
  *
  * A coupon is spread across the line unit prices rather than carried as a separate order-level field,
  * because the parent validates that the opaque cart lines sum to the signed subtotal to the cent. The
