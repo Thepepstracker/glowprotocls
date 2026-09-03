@@ -158,7 +158,7 @@ footer{background:#fff;border-top:1px solid var(--line);padding:52px 0 28px;marg
   </nav>
 </div></header>
 <div id="main"></div>
-<form name="gb-orders" data-netlify="true" netlify hidden><input name="order-ref"><input name="status"><input name="discount"><input name="name"><input type="email" name="email"><input name="total"><input name="ship-to"><textarea name="items"></textarea></form>
+<form name="gb-orders" data-netlify="true" netlify hidden><input name="order-ref"><input name="status"><input name="name"><input type="email" name="email"><input name="phone"><input name="address"><input name="city"><input name="state"><input name="zip"><input name="ship-to"><input name="total"><textarea name="items"></textarea><textarea name="notes"></textarea></form>
 <div id="footer"></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -309,6 +309,11 @@ function renderCart(){
       <p class="sub">Real card checkout is coming soon. For now, submit your order and we’ll send payment instructions.</p>
       <div class="field"><label>Full Name</label><input required name="name"></div>
       <div class="field"><label>Email</label><input required type="email" name="email"></div>
+      <div class="field"><label>Phone</label><input required name="phone" inputmode="tel"></div>
+      <div class="field"><label>Shipping Address</label><input required name="address"></div>
+      <div class="field" style="display:flex;gap:10px"><span style="flex:2"><label>City</label><input required name="city"></span>
+        <span style="flex:1"><label>State</label><input required name="state" maxlength="2" placeholder="GA"></span>
+        <span style="flex:1.4"><label>ZIP</label><input required name="zip" inputmode="numeric" maxlength="10"></span></div>
       <div class="field"><label>Notes (optional)</label><textarea name="notes" rows="3"></textarea></div>
       <button class="btn" style="width:100%">Submit Order</button>
       <p class="ruo" style="text-align:center;margin-top:14px">Research use only — not for human consumption.</p>
@@ -340,14 +345,34 @@ function submitOrder(e){
   var f=e.target;
   var items=Object.keys(CART);
   if(!items.length){toast('Your order is empty');return;}
-  var lines=items.map(function(s){var p=bySlug(s);return '- '+CART[s]+' x '+p.name+' '+p.dose+' ('+(p.price!=null?money(p.price):'price TBD')+')';});
+  var btn=f.querySelector('button[type="submit"],button:not([type])');
+  var lines=items.map(function(s){var p=bySlug(s);return CART[s]+' x '+p.name+' '+(p.dose||'')+' ('+(p.price!=null?money(p.price):'price TBD')+')';});
   var sub=items.reduce(function(a,s){return a+(bySlug(s).price||0)*CART[s];},0);
-  var nm=(f.querySelector('[name="name"]')||{}).value||'';
-  var em=(f.querySelector('[name="email"]')||{}).value||'';
-  var nt=(f.querySelector('[name="notes"]')||{}).value||'';
-  var body='New order request from '+nm+'\n\nItems:\n'+lines.join('\n')+'\n\nOrder total: '+money(sub)+'\n\nCustomer name: '+nm+'\nCustomer email: '+em+'\nNotes: '+nt+'\n';
-  window.location.href='mailto:orders@glowlabprotocols.com?subject='+encodeURIComponent('New Order Request — Glow Lab Protocols')+'&body='+encodeURIComponent(body);
-  setTimeout(function(){document.getElementById('main').innerHTML='<section class="cart"><div class="wrap"><h1 class="serif">Almost there!</h1><p class="sub">Your email app should have opened with your order ready to send to orders@glowlabprotocols.com — just hit send, and we\'ll reply with your payment instructions.</p><div class="empty"><a class="btn" onclick="go(\'\')">Back to catalog</a></div></div></section>';window.scrollTo(0,0);},400);
+  var ship=sub>=250?0:15, total=sub+ship;
+  var q=function(n){var el=f.querySelector('[name="'+n+'"]');return el?el.value.trim():'';};
+  var ref='GLP-'+Date.now().toString(36).toUpperCase();
+  var shipto=[q('address'),q('city'),q('state')+' '+q('zip')].filter(Boolean).join(', ');
+  var data={'form-name':'gb-orders','order-ref':ref,'status':'NEW - awaiting payment',
+    'name':q('name'),'email':q('email'),'phone':q('phone'),
+    'address':q('address'),'city':q('city'),'state':q('state'),'zip':q('zip'),
+    'ship-to':shipto,'total':money(total),'items':lines.join('\n'),'notes':q('notes')};
+  var enc=Object.keys(data).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(data[k]);}).join('&');
+  if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+  function fallbackMailto(){
+    var body='New order request from '+data.name+'\n\nOrder ref: '+ref+'\n\nItems:\n'+data.items+'\n\nOrder total: '+data.total+'\n\nName: '+data.name+'\nEmail: '+data.email+'\nPhone: '+data.phone+'\nShip to: '+data['ship-to']+'\nNotes: '+data.notes+'\n';
+    window.location.href='mailto:orders@glowlabprotocols.com?subject='+encodeURIComponent('New Order '+ref+' — Glow Lab Protocols')+'&body='+encodeURIComponent(body);
+  }
+  function confirmed(){
+    try{Object.keys(CART).forEach(function(k){delete CART[k];});if(window.updateCartBtn)updateCartBtn();}catch(_){}
+    document.getElementById('main').innerHTML='<section class="cart"><div class="wrap"><h1 class="serif">Order received — thank you.</h1><p class="sub">Your order <b>'+ref+'</b> is in. We’ll email you secure payment instructions shortly, then ship to the address you gave.</p><div class="empty"><a class="btn" onclick="go(\'\')">Back to catalog</a></div></div></section>';
+    window.scrollTo(0,0);
+  }
+  fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:enc})
+    .then(function(r){
+      if(r.ok){confirmed();}
+      else{if(btn){btn.disabled=false;btn.textContent='Submit Order';}toast('Could not submit — opening email as a backup');fallbackMailto();}
+    })
+    .catch(function(){if(btn){btn.disabled=false;btn.textContent='Submit Order';}toast('Network issue — opening email as a backup');fallbackMailto();});
 }
 let tT;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2600);}
 function go(route){location.hash = route?('#'+route):'#';window.scrollTo(0,0);}
