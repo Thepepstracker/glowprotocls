@@ -1,10 +1,65 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Research Order Form - Glow Lab Protocols</title><meta name="robots" content="noindex,follow"><link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"></head><body style="margin:0;background:#faf7f1"><style>
+/* GLP unified header - identical on every page. Scoped so it cannot collide. */
+.glp-hdr{position:sticky;top:0;z-index:60;background:rgba(255,255,255,.96);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  border-bottom:1px solid #ece5d7;font-family:'Cormorant Garamond',Georgia,serif}
+.glp-hdr *{box-sizing:border-box}
+.glp-hdr__bar{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  max-width:1180px;margin:0 auto;padding:14px 22px}
+.glp-hdr__brand{display:flex;align-items:center;gap:11px;text-decoration:none;flex:0 0 auto}
+.glp-hdr__brand img{height:34px;width:auto;display:block}
+.glp-hdr__wm{line-height:1}
+.glp-hdr__wm b{display:block;font-size:16px;font-weight:700;letter-spacing:.13em;color:#1b1b1b}
+.glp-hdr__wm i{display:block;font-style:normal;font-size:9.5px;font-weight:600;
+  letter-spacing:.34em;color:#6f6a61;margin-top:3px}
+.glp-hdr__nav{display:flex;align-items:center;gap:24px;
+  font-family:'Cormorant Garamond',Georgia,serif;font-size:15px;font-weight:600;letter-spacing:.05em}
+.glp-hdr__nav a{color:#1b1b1b;text-decoration:none;padding-bottom:2px;
+  border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+.glp-hdr__nav a:hover{color:#c9a24b;border-color:#c9a24b}
+.glp-hdr__cta{background:#1b1b1b;color:#fff !important;padding:9px 18px;border-radius:2px;
+  font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border-bottom:0 !important}
+.glp-hdr__cta:hover{background:#c9a24b;color:#fff !important}
+.glp-hdr__burger{display:none;background:none;border:0;padding:8px;cursor:pointer;line-height:0}
+.glp-hdr__burger span{display:block;width:22px;height:1.5px;background:#1b1b1b;margin:5px 0;transition:.25s}
+.glp-hdr[data-open="1"] .glp-hdr__burger span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.glp-hdr[data-open="1"] .glp-hdr__burger span:nth-child(2){opacity:0}
+.glp-hdr[data-open="1"] .glp-hdr__burger span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+@media(max-width:880px){
+  .glp-hdr__burger{display:block}
+  .glp-hdr__nav{position:absolute;left:0;right:0;top:100%;display:none;flex-direction:column;
+    align-items:stretch;gap:0;background:#fff;border-bottom:1px solid #ece5d7;
+    padding:6px 22px 18px;box-shadow:0 18px 30px rgba(0,0,0,.06)}
+  .glp-hdr[data-open="1"] .glp-hdr__nav{display:flex}
+  .glp-hdr__nav a{padding:13px 0;border-bottom:1px solid #f3ede1;font-size:16px}
+  .glp-hdr__nav a:hover{border-color:#f3ede1}
+  .glp-hdr__cta{margin-top:14px;text-align:center;padding:13px 18px;border-bottom:0 !important}
+}
+</style>
+<header class="glp-hdr" data-open="0">
+<div class="glp-hdr__bar">
+  <a class="glp-hdr__brand" href="/"><img src="/img/glp-mark-8ae0a0b7.png" alt="Glow Lab Protocols"><span class="glp-hdr__wm"><b>GLOW&nbsp;LAB</b><i>PROTOCOLS</i></span></a>
+  <button class="glp-hdr__burger" type="button" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
+  <nav class="glp-hdr__nav">
+    <a href="/">Home</a>
+    <a href="/#catalog">Peptides</a>
+    <a href="/coa.html">COAs</a>
+    <a href="/glow-loyalty.html">Loyalty</a>
+    <a href="/affiliate.html">Affiliates</a>
+    <a href="https://glps.shop/my-account/">Account</a>
+    
+    <a class="glp-hdr__cta" href="https://glps.shop/cart/">Order</a>
+  </nav>
+</div>
+</header>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- GLOW LAB RESEARCH ORDER FORM -->
 <!-- Paste into your page/custom HTML block -->
 
 <style>
 :root{
-  --gold:#c9963a;
-  --gold-dark:#a97824;
+  --gold:#c9a24b;
+  --gold-dark:#a8842f;
   --black:#111;
   --soft:#f8f6f2;
   --line:#e7dcc7;
@@ -528,3 +583,19 @@ document.getElementById("glrOrderForm").addEventListener("submit", function(e){
 
 updateOrderSummary();
 </script>
+
+<script id="glp-hdr-js">
+(function(){
+  var h=document.querySelector('.glp-hdr'); if(!h) return;
+  var b=h.querySelector('.glp-hdr__burger'); if(!b) return;
+  b.addEventListener('click',function(){
+    var open=h.getAttribute('data-open')==='1';
+    h.setAttribute('data-open',open?'0':'1');
+    b.setAttribute('aria-expanded',open?'false':'true');
+  });
+  h.querySelectorAll('.glp-hdr__nav a').forEach(function(a){
+    a.addEventListener('click',function(){h.setAttribute('data-open','0');});
+  });
+})();
+</script>
+</body></html>
