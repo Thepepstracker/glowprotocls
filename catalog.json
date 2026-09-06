@@ -1,7 +1,7 @@
 {
  "_readme": "SINGLE SOURCE OF TRUTH for every price on glowglps.com. Edit here (or in the Price Desk at /price-desk.html) and the storefront, the checkout total, the card charge and the parent cover catalogue all follow. Never edit prices inside index.html.",
  "version": 1,
- "updated": "2026-09-02T17:15:22Z",
+ "updated": "2026-09-06T18:20:00Z",
  "currency": "USD",
  "shipping": {
   "flat": 15.0,
@@ -143,6 +143,13 @@
    "name": "Thymosin Alpha-1",
    "regular": 42,
    "pct": 0.2,
+   "fixed": null,
+   "badge": null
+  },
+  "tb-500": {
+   "name": "TB-500",
+   "regular": 49,
+   "pct": null,
    "fixed": null,
    "badge": null
   },
