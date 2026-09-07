@@ -1,7 +1,7 @@
 {
  "_readme": "SINGLE SOURCE OF TRUTH for every price on glowglps.com. Edit here (or in the Price Desk at /price-desk.html) and the storefront, the checkout total, the card charge and the parent cover catalogue all follow. Never edit prices inside index.html.",
  "version": 1,
- "updated": "2026-09-06T18:20:00Z",
+ "updated": "2026-09-07T06:30:00Z",
  "currency": "USD",
  "shipping": {
   "flat": 15.0,
@@ -119,16 +119,18 @@
    "name": "Glutathione",
    "regular": 37.33,
    "pct": null,
-   "fixed": 30.0,
+   "fixed": 25.0,
    "badge": "Pep of the Week",
    "sizes": [
     {
      "s": "750 mg",
-     "regular": 37.33
+     "regular": 37.33,
+     "fixed": 25.0
     },
     {
      "s": "1500 mg",
-     "regular": 59
+     "regular": 59,
+     "fixed": 30.0
     }
    ]
   },

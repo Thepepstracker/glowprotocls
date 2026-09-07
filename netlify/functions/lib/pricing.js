@@ -43,7 +43,11 @@ function priceCatalog(cat) {
     if (p.badge) row.badge = String(p.badge);
     if (Array.isArray(p.sizes) && p.sizes.length) {
       row.sizes = p.sizes.map((z) => {
-        const ez = effective(z.regular, p, site);      // a size inherits its product's rule
+        /* A size inherits its product's rule UNLESS it carries its own. A percentage inherits
+         * cleanly; a fixed price cannot — one dollar amount can only ever mean one size, and
+         * cascading it sold the 1500 mg Glutathione for the 750 mg price. */
+        const rule = (z.fixed != null || z.pct != null) ? z : p;
+        const ez = effective(z.regular, rule, site);
         return { s: String(z.s), now: ez.now, was: ez.was };
       });
     }
