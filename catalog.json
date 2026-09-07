@@ -1,7 +1,7 @@
 {
  "_readme": "SINGLE SOURCE OF TRUTH for every price on glowglps.com. Edit here (or in the Price Desk at /price-desk.html) and the storefront, the checkout total, the card charge and the parent cover catalogue all follow. Never edit prices inside index.html.",
  "version": 1,
- "updated": "2026-09-07T06:30:00Z",
+ "updated": "2026-09-07T15:00:00Z",
  "currency": "USD",
  "shipping": {
   "flat": 15.0,
@@ -52,25 +52,29 @@
   "tirz-10": {
    "name": "GLP-2T",
    "regular": 41.99,
-   "pct": 0.2,
-   "fixed": null,
-   "badge": null,
+   "pct": null,
+   "fixed": 25.0,
+   "badge": "Pep of the Week",
    "sizes": [
     {
      "s": "10 mg",
-     "regular": 41.99
+     "regular": 41.99,
+     "fixed": 25.0
     },
     {
      "s": "15 mg",
-     "regular": 68
+     "regular": 68,
+     "pct": 0.2
     },
     {
      "s": "20 mg",
-     "regular": 78
+     "regular": 78,
+     "pct": 0.2
     },
     {
      "s": "30 mg",
-     "regular": 99
+     "regular": 99,
+     "pct": 0.2
     }
    ]
   },
@@ -120,7 +124,7 @@
    "regular": 37.33,
    "pct": null,
    "fixed": 25.0,
-   "badge": "Pep of the Week",
+   "badge": null,
    "sizes": [
     {
      "s": "750 mg",

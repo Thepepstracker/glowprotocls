@@ -11,7 +11,7 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 - MOTS-C — 10 mg — $27.20 (was $34.00)
 - NAD+ — 500 mg — $25.00 (was $49.99)
 - GHK-Cu — 100 mg — $25.00 (was $37.99)
-- GLP-2T — 10 mg $33.59 (was $41.99) / 15 mg $54.40 (was $68.00) / 20 mg $62.40 (was $78.00) / 30 mg $79.20 (was $99.00)
+- GLP-2T — 10 mg $25.00 (was $41.99) / 15 mg $54.40 (was $68.00) / 20 mg $62.40 (was $78.00) / 30 mg $79.20 (was $99.00)
 - GLP-3R — 10 mg $35.99 (was $44.99) / 20 mg $65.60 (was $82.00)
 - KPV — 10 mg — $27.19 (was $33.99)
 - Adamax — 5 mg $38.40 (was $48.00) / 10 mg $47.19 (was $58.99)
@@ -59,4 +59,4 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 ## Contact
 Store: https://glowglps.com
 
-<!-- generated 2026-09-07T06:18:57.978Z by tools/sync-catalog.mjs from catalog.json -->
+<!-- generated 2026-09-07T15:15:03.152Z by tools/sync-catalog.mjs from catalog.json -->
