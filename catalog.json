@@ -230,7 +230,11 @@
    "regular": 48,
    "pct": 0.5,
    "fixed": null,
-   "badge": null
+   "badge": null,
+   "sizes": [
+    { "s": "15 mL / 0.5 oz", "regular": 48 },
+    { "s": "50 mL / 1.7 oz", "regular": 119 }
+   ]
   },
   "protocol-02": {
    "name": "Protocol 02",
