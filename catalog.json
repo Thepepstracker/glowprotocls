@@ -21,6 +21,13 @@
    "fixed": null,
    "badge": null
   },
+  "acetic-acid": {
+   "name": "Acetic Acid 0.6%",
+   "regular": 7.99,
+   "pct": 0,
+   "fixed": null,
+   "badge": null
+  },
   "bac-water": {
    "name": "BAC Water",
    "regular": 9.99,
