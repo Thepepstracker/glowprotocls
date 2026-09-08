@@ -46,7 +46,7 @@
    "name": "GHK-Cu",
    "regular": 37.99,
    "pct": null,
-   "fixed": 25.0,
+   "fixed": null,
    "badge": null
   },
   "tirz-10": {
@@ -134,7 +134,8 @@
     {
      "s": "1500 mg",
      "regular": 59,
-     "fixed": 30.0
+     "fixed": null,
+     "pct": 0
     }
    ]
   },
