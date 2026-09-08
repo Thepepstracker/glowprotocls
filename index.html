@@ -459,40 +459,6 @@ setTimeout(run,1800);setTimeout(run,3400);
 window.addEventListener("hashchange",function(){setTimeout(run,300);});
 })();
 </script>
-<script id="glp-sale-banner-js">
-(function(){
-var SRC=["/pep-of-the-week-2.webp"];
-var ok=[],idx=0,timer=null;
-function mount(){
- if(document.getElementById("glp-sale-banner")||!ok.length)return;
- var hdr=document.querySelector("header"); if(!hdr)return;
- var a=document.createElement("a"); a.id="glp-sale-banner"; a.href="#catalog";
- a.style.cssText="display:block;width:100%;line-height:0;background:#f7f4ef;position:relative";
- ok.forEach(function(src,i){
-  var im=document.createElement("img"); im.src=src; im.alt="Glow Lab Protocols promotion";
-  im.style.cssText="display:block;width:100%;height:auto;margin:0;transition:opacity .6s ease;"+(i===0?"":"position:absolute;top:0;left:0;opacity:0;");
-  a.appendChild(im);
- });
- hdr.parentNode.insertBefore(a,hdr.nextSibling);
- if(ok.length>1&&!timer){
-  timer=setInterval(function(){
-   var imgs=a.querySelectorAll("img"); if(imgs.length<2)return;
-   var next=(idx+1)%imgs.length;
-   imgs[idx].style.opacity="0"; imgs[next].style.opacity="1";
-   idx=next;
-  },6000);
- }
-}
-var pending=SRC.length;
-SRC.forEach(function(src,i){
- var t=new Image();
- t.onload=function(){ok[i]=src;if(--pending===0){ok=ok.filter(Boolean);mount();}};
- t.onerror=function(){if(--pending===0){ok=ok.filter(Boolean);mount();}};
- t.src=src;
-});
-setTimeout(function(){ok=ok.filter(Boolean);mount();},2500);
-})();
-</script>
 <script id="glp-bundles-js">
 (function(){
 var B=[{"img":"bundle-metabolic-reset.jpg","name":"Metabolic Reset","sub":"GLP-2T &middot; MOTS-c &middot; NAD+","wc":737,"sizes":[["10 mg",100,125],["15 mg",120.8,151],["20 mg",129.6,162],["30 mg",146.4,183]]},{"img":"bundle-metabolic-reset-2.jpg","name":"Metabolic Reset II","sub":"GLP-3R &middot; MOTS-c &middot; NAD+","wc":738,"sizes":[["10 mg",102.4,128],["20 mg",132,165]]},{"img":"bundle-r4-cellular-reset.jpg","name":"R4 Cellular Reset","sub":"FOXO4-DRI &times;3 &middot; Glutathione &middot; Epithalon &times;2 &middot; GLP-31 &times;2","wc":751,"sizes":[["8-vial set",424,530]]},{"img":"bundle-epithalon-100mg.jpg","name":"Epithalon 100 mg Bundle","sub":"Epithalon 50 mg &times;2","wc":774,"sizes":[["2-vial set",135.99,169.99]]},{"img":"bundle-radiance-reset.jpg","name":"Radiance Reset Duo","sub":"Glutathione 1500 mg &middot; Lipo-C 10 mL","wc":795,"sizes":[["2-vial set",63.2,79]]}];
