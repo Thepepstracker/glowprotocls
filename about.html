@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/premium.css">
+<script>document.documentElement.className+=" glp-js"</script>
 <style>
 .a-quote{font-family:var(--serif);font-size:clamp(24px,3.4vw,38px);line-height:1.32;
   font-weight:500;color:var(--ink);max-width:20ch}
@@ -206,6 +207,9 @@
  var io=new IntersectionObserver(function(en){en.forEach(function(x,i){if(x.isIntersecting){
    var el=x.target;setTimeout(function(){el.classList.add('in')},i*70);io.unobserve(el);}})},
    {rootMargin:'0px 0px -8% 0px',threshold:.06});
- els.forEach(function(e){io.observe(e)});})();
+ els.forEach(function(e){io.observe(e)});
+ /* last-resort failsafe: if the observer somehow never fires, show
+    everything anyway rather than leaving the page blank. */
+ setTimeout(function(){els.forEach(function(e){e.classList.add('in')})},3000);})();
 </script>
 </body></html>

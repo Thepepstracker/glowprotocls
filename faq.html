@@ -12,6 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/premium.css">
+<script>document.documentElement.className+=" glp-js"</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
 {"@type":"Question","name":"Are your peptides third-party tested?","acceptedAnswer":{"@type":"Answer","text":"Yes. Testing is performed by an independent analytical laboratory, Horizon Analytical, on the compound and batch supplied to us. Most products carry both a purity certificate and an endotoxin certificate, and every certificate we hold is published openly on our Certificates of Analysis page."}},
 {"@type":"Question","name":"Does the COA on the site match the exact vial I receive?","acceptedAnswer":{"@type":"Answer","text":"Not necessarily. Certificates are provided by our supplier and reflect testing on the batch we sourced. Batch and lot numbers change over time, and we do not warrant that a displayed COA corresponds to the exact vial you receive. If you need a batch-specific certificate for a particular order, ask us before you purchase."}},
@@ -313,6 +314,9 @@
  var io=new IntersectionObserver(function(en){en.forEach(function(x,i){if(x.isIntersecting){
    var el=x.target;setTimeout(function(){el.classList.add('in')},i*70);io.unobserve(el);}})},
    {rootMargin:'0px 0px -8% 0px',threshold:.06});
- els.forEach(function(e){io.observe(e)});})();
+ els.forEach(function(e){io.observe(e)});
+ /* last-resort failsafe: if the observer somehow never fires, show
+    everything anyway rather than leaving the page blank. */
+ setTimeout(function(){els.forEach(function(e){e.classList.add('in')})},3000);})();
 </script>
 </body></html>
