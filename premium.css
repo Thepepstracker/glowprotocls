@@ -174,7 +174,7 @@ html:not(.glp-js) .reveal{opacity:1;transform:none;transition:none}
   letter-spacing:.34em;color:#6f6a61;margin-top:3px}
 .glp-hdr__nav{display:flex;align-items:center;gap:24px;
   font-family:'Cormorant Garamond',Georgia,serif;font-size:15px;font-weight:600;letter-spacing:.05em}
-.glp-hdr__nav a{color:#1b1b1b;text-decoration:none;padding-bottom:2px;
+.glp-hdr__nav a{cursor:pointer;color:#1b1b1b;text-decoration:none;padding-bottom:2px;
   border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
 .glp-hdr__nav a:hover{color:#c9a24b;border-color:#c9a24b}
 .glp-hdr__cta{background:#1b1b1b;color:#fff !important;padding:9px 18px;border-radius:2px;
@@ -195,3 +195,7 @@ html:not(.glp-js) .reveal{opacity:1;transform:none;transition:none}
   .glp-hdr__nav a:hover{border-color:#f3ede1}
   .glp-hdr__cta{margin-top:14px;text-align:center;padding:13px 18px;border-bottom:0 !important}
 }
+
+/* Anything with a click handler but no href still needs the hand cursor -
+   the browser only infers it from href. Caught on the homepage nav. */
+a[onclick]:not([href]),[onclick]{cursor:pointer}
