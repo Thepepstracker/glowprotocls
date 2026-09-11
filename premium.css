@@ -49,16 +49,16 @@ a{color:inherit;text-decoration:none}
 .p-body{color:var(--ink-2);font-size:16.5px;line-height:1.78;max-width:66ch}
 .p-body + .p-body{margin-top:1.15em}
 .p-small{font-size:13.5px;color:var(--muted);line-height:1.65}
-.p-rule{width:54px;height:2px;background:var(--gold);margin:26px 0}
+.p-rule{width:40px;height:1px;background:var(--gold);margin:26px 0}
 .p-rule--c{margin-left:auto;margin-right:auto}
 .p-center{text-align:center}
 
 /* --- buttons --- */
 .p-btn{display:inline-block;background:var(--ink);color:#fff;padding:15px 34px;
-  font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
-  border-radius:2px;border:1.5px solid var(--ink);cursor:pointer;
-  transition:background .25s ease,border-color .25s ease,transform .25s ease}
-.p-btn:hover{background:var(--gold);border-color:var(--gold);transform:translateY(-1px)}
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:600;
+  border-radius:0;border:1px solid var(--ink);cursor:pointer;
+  transition:background .35s ease,border-color .35s ease,color .35s ease}
+.p-btn:hover{background:var(--gold-dk);border-color:var(--gold-dk);transform:none}
 .p-btn--o{background:transparent;color:var(--ink)}
 .p-btn--o:hover{background:var(--ink);border-color:var(--ink);color:#fff}
 
@@ -67,9 +67,11 @@ a{color:inherit;text-decoration:none}
   padding:clamp(56px,8vw,104px) 0 clamp(44px,6vw,76px);border-bottom:1px solid var(--line)}
 
 /* --- soft card --- */
-.p-card{background:#fff;border:1px solid var(--line);border-radius:12px;
-  padding:clamp(26px,3.4vw,38px);transition:box-shadow .3s ease,transform .3s ease,border-color .3s ease}
-.p-card:hover{box-shadow:var(--shadow);transform:translateY(-2px);border-color:#e0d5bd}
+.p-card{background:transparent;border:0;border-radius:0;
+  padding:clamp(26px,3.4vw,38px) 0;transition:none}
+.p-card:hover{box-shadow:none;transform:none}
+/* a hairline separates cards instead of boxing each one */
+.p-grid-2 > .p-card,.p-grid-3 > .p-card{border-top:1px solid var(--line)}
 .p-grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(18px,2.4vw,28px)}
 .p-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(18px,2.4vw,28px)}
 
@@ -77,10 +79,14 @@ a{color:inherit;text-decoration:none}
 .p-person__role{font-size:11px;letter-spacing:.24em;text-transform:uppercase;
   color:var(--gold);font-weight:700;margin-bottom:10px}
 .p-person__name{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1.1}
-.p-person__mail{display:inline-block;margin:14px 0 16px;font-size:16px;font-weight:600;
-  color:var(--ink);border-bottom:1.5px solid var(--gold);padding-bottom:2px;
-  transition:color .2s ease;word-break:break-word}
-.p-person__mail:hover{color:var(--gold)}
+.p-person__mail{display:inline-block;margin:14px 0 16px;font-size:17px;font-weight:500;
+  font-family:var(--serif);letter-spacing:.01em;color:var(--ink);position:relative;
+  padding-bottom:3px;transition:color .3s ease;word-break:break-word}
+.p-person__mail::after{content:"";position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--gold);transform:scaleX(0);transform-origin:left;
+  transition:transform .4s cubic-bezier(.22,.61,.36,1)}
+.p-person__mail:hover{color:var(--gold-dk)}
+.p-person__mail:hover::after{transform:scaleX(1)}
 .p-person__list{list-style:none;margin-top:4px}
 .p-person__list li{position:relative;padding-left:20px;font-size:15px;color:var(--ink-2);
   margin-bottom:7px;line-height:1.6}
@@ -89,7 +95,7 @@ a{color:inherit;text-decoration:none}
 
 /* --- key/value strip --- */
 .p-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
-  gap:28px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  gap:28px;border-top:1px solid #f0eade;border-bottom:1px solid #f0eade;
   padding:clamp(28px,4vw,42px) 0}
 .p-strip__k{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;
   color:var(--faint);font-weight:600;margin-bottom:8px}
@@ -110,11 +116,13 @@ a{color:inherit;text-decoration:none}
 .p-acc__a{max-height:0;overflow:hidden;transition:max-height .35s ease}
 .p-acc__a > div{padding:0 0 26px;color:var(--ink-2);font-size:16px;line-height:1.75;max-width:68ch}
 .p-acc__a p + p{margin-top:.9em}
-.p-acc__a a{color:var(--gold);font-weight:600;border-bottom:1px solid rgba(201,162,75,.4)}
+.p-acc__a a{color:var(--gold-dk);font-weight:600;border-bottom:1px solid transparent;
+  transition:border-color .3s ease}
+.p-acc__a a:hover{border-bottom-color:var(--gold)}
 
 /* --- pull quote / note --- */
-.p-note{background:var(--cream);border-left:2px solid var(--gold);
-  padding:22px 26px;border-radius:0 8px 8px 0;font-size:15.5px;color:var(--ink-2);line-height:1.7}
+.p-note{background:transparent;border:0;border-left:1px solid var(--gold);
+  padding:6px 0 6px 22px;border-radius:0;font-size:15.5px;color:var(--ink-2);line-height:1.7}
 .p-note strong{color:var(--ink)}
 
 /* --- footer --- */
