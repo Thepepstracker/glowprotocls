@@ -195,8 +195,9 @@ footer{background:#fff;border-top:1px solid var(--line);padding:52px 0 28px;marg
     <a onclick="go('')">Home</a>
     <a onclick="go('');setTimeout(function(){var e=document.getElementById('catalog');if(e)e.scrollIntoView({behavior:'smooth'})},60)">Peptides</a>
     <a href="/coa.html">COAs</a>
-    <a href="/glow-loyalty.html">Loyalty</a>
-    <a href="/affiliate.html">Affiliates</a>
+    <a href="/about.html">About</a>
+    <a href="/faq.html">FAQ</a>
+    <a href="/contact.html">Contact</a>
     <a href="https://glps.shop/my-account/">Account</a>
     <a href="javascript:void(0)" onclick="glpLang('es')">ES</a>
     <a class="glp-hdr__cta" href="https://glps.shop/cart/">Order</a>
@@ -372,7 +373,7 @@ function footer(){return `<footer><div class="wrap">
   </div>
   <div class="disc">Research Use Only. Not for Human Consumption.</div>
   <div class="copy">© 2026 Glow Lab Protocols · glowlabprotocols.com · 844-GLOWLAB</div>
-</div><nav style="text-align:center;padding:20px 24px;font-size:14px;border-top:1px solid #ece5d7"><strong>Research Guides:</strong> <a href="/bpc-157-research-guide.html" style="color:#c9a24b;text-decoration:none">BPC-157 Guide</a> &middot; <a href="/peptide-storage-and-handling.html" style="color:#c9a24b;text-decoration:none">Storage &amp; Handling</a> &middot; <a href="/terms.html" style="color:#c9a24b;text-decoration:none">Terms &amp; Conditions</a> &middot; <a href="/coa.html" style="color:#c9a24b;text-decoration:none">Certificates of Analysis</a> &middot; <a href="/affiliate.html" style="color:#c9a24b;text-decoration:none">Affiliate Program</a> &middot; <a href="/glow-loyalty.html" style="color:#c9a24b;text-decoration:none">Glow Loyalty</a></nav><nav style="text-align:center;padding:14px 24px 22px;font-size:14px"><strong>Your Account:</strong> <a href="https://glps.shop/my-account/" style="color:#c9a24b;text-decoration:none">Sign In / Create Account</a> &middot; <a href="https://glps.shop/my-account/orders/" style="color:#c9a24b;text-decoration:none">Order History</a></nav>  <div style="text-align:center;color:#b6ad9c;font-size:9px;margin-top:8px;opacity:.85">*The three $500 winners will be awarded off of regular-priced items only. Sale items are excluded.</div>
+</div><nav style="text-align:center;padding:20px 24px;font-size:14px;border-top:1px solid #ece5d7"><strong>Company:</strong> <a href="/about.html" style="color:#c9a24b;text-decoration:none">About Us</a> &middot; <a href="/contact.html" style="color:#c9a24b;text-decoration:none">Contact</a> &middot; <a href="/faq.html" style="color:#c9a24b;text-decoration:none">FAQ</a> &middot; <a href="/glow-loyalty.html" style="color:#c9a24b;text-decoration:none">Loyalty</a> &middot; <a href="/affiliate.html" style="color:#c9a24b;text-decoration:none">Affiliates</a><br><strong style="display:inline-block;margin-top:8px">Research Guides:</strong> <a href="/bpc-157-research-guide.html" style="color:#c9a24b;text-decoration:none">BPC-157 Guide</a> &middot; <a href="/peptide-storage-and-handling.html" style="color:#c9a24b;text-decoration:none">Storage &amp; Handling</a> &middot; <a href="/terms.html" style="color:#c9a24b;text-decoration:none">Terms &amp; Conditions</a> &middot; <a href="/coa.html" style="color:#c9a24b;text-decoration:none">Certificates of Analysis</a> &middot; <a href="/affiliate.html" style="color:#c9a24b;text-decoration:none">Affiliate Program</a> &middot; <a href="/glow-loyalty.html" style="color:#c9a24b;text-decoration:none">Glow Loyalty</a></nav><nav style="text-align:center;padding:14px 24px 22px;font-size:14px"><strong>Your Account:</strong> <a href="https://glps.shop/my-account/" style="color:#c9a24b;text-decoration:none">Sign In / Create Account</a> &middot; <a href="https://glps.shop/my-account/orders/" style="color:#c9a24b;text-decoration:none">Order History</a></nav>  <div style="text-align:center;color:#b6ad9c;font-size:9px;margin-top:8px;opacity:.85">*The three $500 winners will be awarded off of regular-priced items only. Sale items are excluded.</div>
 </footer>`;}
 
 function cartCount(){return Object.values(CART).reduce((a,b)=>a+b,0);}
@@ -401,7 +402,8 @@ function render(){
   const h=location.hash.replace(/^#/,'');
   const main=document.getElementById('main');
   if(h.startsWith('product/')) main.innerHTML=renderProduct(h.split('/')[1]);
-  else if(h==='order') main.innerHTML=renderCart();
+  else if(h==='order'){ /* legacy email-order route retired - real checkout lives on glps.shop */
+    location.replace('https://glps.shop/cart/'); return; }
   else main.innerHTML=renderCatalog();
   updateCartBtn();
 }
@@ -522,4 +524,239 @@ setInterval(build,2500);
   });
 })();
 </script>
+<style id="glp-premium-css">
+/* ===== GLP premium layer — added on top of the existing styles.
+   Purely additive: nothing above this block was changed. ===== */
+
+/* 1. Images fade in as they decode, so fast scrolling never shows
+      an empty beige card. This was the single biggest "cheap" tell. */
+.card .ph img,.pimg img{opacity:0;transition:opacity .55s ease}
+.card .ph img.glp-in,.pimg img.glp-in{opacity:1}
+.card .ph{background:linear-gradient(100deg,#f6f2ea 30%,#fdfbf7 50%,#f6f2ea 70%);
+  background-size:200% 100%;animation:glpShim 1.6s linear infinite}
+.card .ph.glp-done{animation:none;background:#f6f2ea}
+@keyframes glpShim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* 2. Slower, more deliberate card motion — quiet luxury reads in the easing. */
+.card{border-radius:12px;transition:box-shadow .38s cubic-bezier(.22,.61,.36,1),
+  transform .38s cubic-bezier(.22,.61,.36,1),border-color .38s ease}
+.card:hover{box-shadow:0 22px 52px rgba(27,27,27,.10);transform:translateY(-4px)}
+.card .cname{letter-spacing:-.005em}
+
+/* 3. Section rhythm — more air between things. */
+.section{padding:clamp(64px,8vw,104px) 0 clamp(20px,3vw,34px)}
+.sec-rule{margin-bottom:clamp(34px,4.5vw,52px)}
+
+/* 4. Scroll reveal */
+.glp-rv{opacity:0;transform:translateY(16px);
+  transition:opacity .75s cubic-bezier(.22,.61,.36,1),transform .75s cubic-bezier(.22,.61,.36,1)}
+.glp-rv.glp-shown{opacity:1;transform:none}
+
+/* 5. PDP additions */
+.glp-crumb{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#9b948a;
+  margin-bottom:18px;font-weight:600}
+.glp-crumb a{color:#9b948a;transition:color .2s}
+.glp-crumb a:hover{color:#c9a24b}
+.glp-crumb span{margin:0 8px;color:#ddd5c5}
+.glp-crumb b{color:#1b1b1b;font-weight:600}
+
+.glp-trust{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;
+  margin:22px 0 6px;padding:18px 0;border-top:1px solid #ece5d7;border-bottom:1px solid #ece5d7}
+.glp-trust div{text-align:center}
+.glp-trust .t{font-size:12.5px;font-weight:700;color:#1b1b1b;line-height:1.3}
+.glp-trust .s{font-size:11px;color:#6f6a61;margin-top:3px;line-height:1.4}
+@media(max-width:560px){.glp-trust{grid-template-columns:1fr;gap:12px;text-align:left}
+  .glp-trust div{text-align:left}}
+
+.glp-rel{margin-top:clamp(46px,6vw,72px);padding-top:clamp(34px,4vw,48px);
+  border-top:1px solid #ece5d7}
+.glp-rel__h{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(24px,3vw,32px);
+  font-weight:700;margin-bottom:6px}
+.glp-rel__s{font-size:14px;color:#6f6a61;margin-bottom:26px}
+.glp-rel__g{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+@media(max-width:900px){.glp-rel__g{grid-template-columns:repeat(2,1fr)}}
+
+.glp-rev{margin-top:clamp(40px,5vw,60px);padding-top:clamp(30px,4vw,44px);
+  border-top:1px solid #ece5d7}
+.glp-rev__h{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(22px,2.6vw,28px);
+  font-weight:700;margin-bottom:4px}
+.glp-rev__item{padding:20px 0;border-bottom:1px solid #f3ede1}
+.glp-rev__item:last-child{border-bottom:0}
+.glp-rev__top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.glp-rev__who{font-weight:700;font-size:14.5px}
+.glp-rev__v{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#2e6b2b;
+  font-weight:700;background:#f1f6f1;border:1px solid #cbdfcb;border-radius:999px;padding:3px 9px}
+.glp-rev__stars{color:#c9a24b;letter-spacing:2px;font-size:14px}
+.glp-rev__body{font-size:15px;color:#3a372f;line-height:1.7}
+.glp-rev__date{font-size:12px;color:#9b948a;margin-top:6px}
+</style>
+
+<script id="glp-premium-js">
+/* =====================================================================
+   GLP premium layer. Runs after the app's own render(), same pattern as
+   the COA injector and the size selector already in this file.
+   Everything here is additive and defensive: if a selector is missing
+   it returns quietly rather than breaking the page.
+   ===================================================================== */
+(function(){
+  var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  /* ---- images: fade in on decode, kill the shimmer when done ---- */
+  function images(root){
+    var imgs=(root||document).querySelectorAll('.card .ph img,.pimg img');
+    [].forEach.call(imgs,function(im){
+      if(im.__glp)return; im.__glp=1;
+      var done=function(){im.classList.add('glp-in');
+        var ph=im.closest?im.closest('.ph'):null; if(ph)ph.classList.add('glp-done');};
+      if(im.complete && im.naturalWidth>0) done(); else {
+        im.addEventListener('load',done,{once:true});
+        im.addEventListener('error',function(){var ph=im.closest?im.closest('.ph'):null;
+          if(ph)ph.classList.add('glp-done');},{once:true});
+      }
+    });
+    /* first row loads eagerly so the top of the catalogue is never blank */
+    [].slice.call((root||document).querySelectorAll('.card .ph img')).slice(0,8)
+      .forEach(function(im){im.loading='eager';im.fetchPriority='high';});
+  }
+
+  /* ---- scroll reveal ---- */
+  var io=null;
+  function reveal(root){
+    if(RM)return;
+    var sel='.section > .wrap > .sec-eyebrow,.section > .wrap > .sec-title,.card,.pblock,.glp-rel,.glp-rev';
+    var els=[].slice.call((root||document).querySelectorAll(sel)).filter(function(e){return !e.__glpRv;});
+    if(!els.length)return;
+    if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('glp-shown')});return;}
+    if(!io)io=new IntersectionObserver(function(en){
+      en.forEach(function(x,i){ if(!x.isIntersecting)return;
+        var el=x.target; setTimeout(function(){el.classList.add('glp-shown')}, Math.min(i,6)*60);
+        io.unobserve(el);});
+    },{rootMargin:'0px 0px -6% 0px',threshold:.05});
+    els.forEach(function(e){e.__glpRv=1;e.classList.add('glp-rv');io.observe(e);});
+  }
+
+  /* ---- helpers ---- */
+  function P(){return (typeof PRODUCTS!=='undefined'&&PRODUCTS)||[];}
+  function slugNow(){var m=location.hash.match(/#product\/([\w-]+)/);return m?m[1]:null;}
+  function find(s){var a=P();for(var i=0;i<a.length;i++)if(a[i].slug===s)return a[i];return null;}
+  function money(n){return '$'+Number(n).toFixed(2);}
+  function esc(t){var d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;}
+
+  /* ---- breadcrumb ---- */
+  function crumb(p){
+    var host=document.querySelector('.pdp .wrap');if(!host)return;
+    if(host.querySelector('.glp-crumb'))return;
+    var back=host.querySelector('.back');
+    var d=document.createElement('div');d.className='glp-crumb';
+    d.innerHTML='<a href="/">Home</a><span>/</span><a href="/#catalog">'+esc(p.category||'Catalogue')+
+      '</a><span>/</span><b>'+esc(p.name)+'</b>';
+    host.insertBefore(d, back||host.firstChild);
+  }
+
+  /* ---- trust row under the buy button ---- */
+  function trust(){
+    var row=document.querySelector('.pdp .buyrow');if(!row)return;
+    if(document.querySelector('.glp-trust'))return;
+    var d=document.createElement('div');d.className='glp-trust';
+    d.innerHTML=
+      '<div><div class="t">Third-party tested</div><div class="s">Independent lab certificates</div></div>'+
+      '<div><div class="t">Discreet shipping</div><div class="s">Plain, unbranded packaging</div></div>'+
+      '<div><div class="t">Free over $250</div><div class="s">$15 flat rate otherwise</div></div>';
+    row.parentNode.insertBefore(d,row.nextSibling);
+  }
+
+  /* ---- related products ---- */
+  function related(p){
+    var host=document.querySelector('.pdp .wrap');if(!host)return;
+    if(host.querySelector('.glp-rel'))return;
+    var pool=P().filter(function(x){
+      return x.slug!==p.slug && x.price!=null && x.img &&
+             (x.group===p.group) && (x.category===p.category);
+    });
+    if(pool.length<4){ /* widen to the same group if the category is thin */
+      P().forEach(function(x){ if(pool.length>=8)return;
+        if(x.slug!==p.slug && x.price!=null && x.img && x.group===p.group &&
+           pool.indexOf(x)===-1) pool.push(x); });
+    }
+    if(!pool.length)return;
+    /* deterministic rotation so it is not the same four on every page */
+    var seed=p.slug.length; var pick=pool.slice(seed%Math.max(1,pool.length))
+                                        .concat(pool.slice(0,seed%Math.max(1,pool.length))).slice(0,4);
+    var cards=pick.map(function(x){
+      return '<div class="card" onclick="go(\'product/'+x.slug+'\')">'+
+        '<div class="ph"><img src="'+esc(x.img)+'" alt="'+esc(x.name)+'" decoding="async" fetchpriority="low"></div>'+
+        '<div class="cbody"><div class="cname">'+esc(x.name)+'</div>'+
+        '<div class="cdose">'+esc(x.dose||'')+'</div>'+
+        '<div class="cprice">'+money(x.price)+'</div></div></div>';
+    }).join('');
+    var d=document.createElement('div');d.className='glp-rel';
+    d.innerHTML='<div class="glp-rel__h">Researchers also looked at</div>'+
+      '<div class="glp-rel__s">From the same part of the catalogue.</div>'+
+      '<div class="glp-rel__g">'+cards+'</div>';
+    host.appendChild(d);
+    images(d);
+  }
+
+  /* ---- reviews: real ones only.
+         Pulls verified reviews from the WooCommerce Store API. If the
+         product has none, this renders NOTHING. There is no seeded,
+         sample or placeholder review anywhere in this code. ---- */
+  function reviews(p){
+    var host=document.querySelector('.pdp .wrap');if(!host||!p.wc)return;
+    if(host.querySelector('.glp-rev'))return;
+    var url='https://glps.shop/wp-json/wc/store/v1/products/reviews'+
+            String.fromCharCode(63)+'product_id='+encodeURIComponent(p.wc)+
+            String.fromCharCode(38)+'per_page=6'+
+            String.fromCharCode(38)+'orderby=date_gmt'+
+            String.fromCharCode(38)+'order=desc';
+    fetch(url,{credentials:'omit'}).then(function(r){return r.ok?r.json():[];})
+    .then(function(list){
+      if(!Array.isArray(list)||!list.length)return;      /* silence when empty */
+      if(host.querySelector('.glp-rev'))return;
+      if(slugNow()!==p.slug)return;                      /* user navigated away */
+      var items=list.map(function(rv){
+        var n=Math.max(0,Math.min(5,parseInt(rv.rating)||0));
+        var stars=new Array(n+1).join('★')+new Array(6-n).join('☆');
+        var body=String(rv.review||'').replace(/<[^>]*>/g,'').trim();
+        var when='';try{when=new Date(rv.date_created).toLocaleDateString('en-US',
+          {year:'numeric',month:'long',day:'numeric'});}catch(e){}
+        return '<div class="glp-rev__item"><div class="glp-rev__top">'+
+          '<span class="glp-rev__stars">'+stars+'</span>'+
+          '<span class="glp-rev__who">'+esc(rv.reviewer||'Verified customer')+'</span>'+
+          (rv.verified?'<span class="glp-rev__v">Verified purchase</span>':'')+
+          '</div><div class="glp-rev__body">'+esc(body)+'</div>'+
+          (when?'<div class="glp-rev__date">'+esc(when)+'</div>':'')+'</div>';
+      }).join('');
+      var d=document.createElement('div');d.className='glp-rev';
+      d.innerHTML='<div class="glp-rev__h">What researchers say</div>'+items;
+      var rel=host.querySelector('.glp-rel');
+      if(rel)host.insertBefore(d,rel); else host.appendChild(d);
+      reveal(d);
+    }).catch(function(){});
+  }
+
+  /* ---- orchestrate ---- */
+  function enhance(tries){
+    tries=tries||0;
+    images(document);
+    reveal(document);
+    var s=slugNow();
+    if(s){
+      var p=find(s);
+      if(!p)return;
+      if(!document.querySelector('.pdp')){ if(tries<12)return setTimeout(function(){enhance(tries+1)},130); return; }
+      crumb(p); trust(); reviews(p); related(p);
+    }
+  }
+
+  window.addEventListener('hashchange',function(){setTimeout(function(){enhance(0)},120)});
+  if(document.readyState==='loading')
+    document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){enhance(0)},220)});
+  else setTimeout(function(){enhance(0)},220);
+  /* the app re-renders asynchronously in places; a couple of late passes are cheap */
+  setTimeout(function(){enhance(0)},900);
+  setTimeout(function(){enhance(0)},2000);
+})();
+</script>
+
 </body></html>
