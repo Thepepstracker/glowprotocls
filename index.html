@@ -561,25 +561,27 @@ setInterval(build,2500);
 /* product cards: no frame at all */
 .card{border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
 .card .ph{aspect-ratio:4/5;border-radius:3px;overflow:hidden;background:#f7f3ec;
-  transition:transform .5s cubic-bezier(.22,.61,.36,1)}
+  transition:transform .6s cubic-bezier(.22,.61,.36,1)}
 .card:hover{transform:none;box-shadow:none}
-.card:hover .ph{transform:scale(1.015)}
+.card:hover .ph{transform:scale(1.02)}
 .card .cbody{padding:16px 2px 4px;text-align:left}
-.card .cname{font-size:21px;line-height:1.15;transition:color .3s ease}
+.card .cname{font-size:22px;line-height:1.15;transition:color .35s ease}
 .card:hover .cname{color:#a4813a}
-.card .cdose{font-size:11.5px;color:#9b948a;margin:3px 0 7px;letter-spacing:.06em;text-transform:uppercase}
-.card .cprice{font-size:15px;font-weight:600;color:#3a372f;margin-bottom:11px}
-.grid{gap:44px 26px}
+.card .cdose{font-size:11.5px;color:#9b948a;margin:3px 0 8px;letter-spacing:.06em;text-transform:uppercase}
+.card .cprice{font-size:16px;font-weight:600;color:#1b1b1b;margin:0 0 14px}
+.grid{gap:46px 26px}
 
-/* the card CTA becomes a quiet line of type with a rule that draws on hover */
-.card .cview{border:0;border-radius:0;background:transparent;padding:0;margin-top:2px;
-  color:#8a8276;font-size:10px;letter-spacing:.22em;font-weight:600;text-transform:uppercase;
-  display:inline-block;width:auto;position:relative;transition:color .3s ease}
-.card .cview::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:1px;
-  background:#c9a24b;transform:scaleX(0);transform-origin:left;
-  transition:transform .4s cubic-bezier(.22,.61,.36,1)}
-.card:hover .cview{color:#1b1b1b}
-.card:hover .cview::after{transform:scaleX(1)}
+/* No sub-link under the card. The whole card is already clickable, so a
+   grey "view & order" line was a weak duplicate of a link that already
+   existed - and tiny grey caps repeated 23 times read as cheap.
+   The hover does the work instead: the photo scales a touch, the name
+   warms, and a rule draws itself under the card. */
+.card .cview{display:none}
+.card .cbody{position:relative;padding-bottom:16px}
+.card .cbody::after{content:"";position:absolute;left:2px;right:2px;bottom:0;height:1px;
+  background:#1b1b1b;transform:scaleX(0);transform-origin:left;
+  transition:transform .55s cubic-bezier(.22,.61,.36,1)}
+.card:hover .cbody::after{transform:scaleX(1)}
 
 /* selects: no box, a hairline they sit on */
 select,#glp-size-select{
