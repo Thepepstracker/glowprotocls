@@ -552,7 +552,35 @@ setInterval(build,2500);
   transition:opacity .75s cubic-bezier(.22,.61,.36,1),transform .75s cubic-bezier(.22,.61,.36,1)}
 .glp-rv.glp-shown{opacity:1;transform:none}
 
-/* 5. PDP additions */
+/* 5. Catalogue tools - search, sort and card chips.
+      23 near-identical vial photos in one grid is unnavigable; the
+      category was already in the data and was simply never shown. */
+.glp-tools{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;margin:-14px 0 30px}
+.glp-search{position:relative;flex:0 1 300px}
+.glp-search input{width:100%;padding:12px 38px 12px 16px;font-family:'Inter',sans-serif;font-size:14.5px;
+  border:1px solid #e0d8c8;border-radius:999px;background:#fff;transition:.2s;color:#1b1b1b}
+.glp-search input:focus{outline:none;border-color:#c9a24b;box-shadow:0 0 0 3px rgba(201,162,75,.13)}
+.glp-search input::placeholder{color:#a9a094}
+.glp-search svg{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:15px;height:15px;
+  stroke:#a9a094;fill:none;stroke-width:2;pointer-events:none}
+.glp-sort{padding:12px 16px;font-family:'Inter',sans-serif;font-size:13px;border:1px solid #e0d8c8;
+  border-radius:999px;background:#fff;color:#3a372f;cursor:pointer;transition:.2s}
+.glp-sort:focus{outline:none;border-color:#c9a24b}
+.glp-count{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#9b948a;font-weight:600}
+.glp-empty{text-align:center;padding:56px 20px;color:#6f6a61}
+.glp-empty b{display:block;font-family:'Cormorant Garamond',serif;font-size:26px;color:#1b1b1b;
+  margin-bottom:8px;font-weight:600}
+.card{position:relative}
+.glp-chip{position:absolute;top:10px;left:10px;z-index:2;font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;font-weight:700;padding:5px 9px;border-radius:999px;
+  background:rgba(255,255,255,.92);color:#6f6a61;-webkit-backdrop-filter:blur(4px);
+  backdrop-filter:blur(4px);border:1px solid #ece5d7}
+.glp-chip--reagent{color:#2e6b2b;border-color:#cbdfcb;background:rgba(241,246,241,.95)}
+.glp-chip--star{background:#c9a24b;color:#fff;border-color:#c9a24b}
+.card.glp-hide{display:none}
+@media(max-width:560px){.glp-tools{flex-direction:column;align-items:stretch}.glp-search{flex:1 1 auto}}
+
+/* 6. PDP additions */
 .glp-crumb{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#9b948a;
   margin-bottom:18px;font-weight:600}
 .glp-crumb a{color:#9b948a;transition:color .2s}
@@ -735,11 +763,83 @@ setInterval(build,2500);
     }).catch(function(){});
   }
 
+  /* ---- catalogue tools: search, sort, chips ----
+     The Research Peptides grid holds 23 products that photograph almost
+     identically. Search matches name, dose, tagline AND category, so
+     "sleep" finds DSIP by its description rather than its name. */
+  function catalogue(){
+    var cat=document.getElementById('catalog'); if(!cat)return;
+    var grid=cat.querySelector('.grid'); if(!grid||!grid.children.length)return;
+    var rule=cat.querySelector('.sec-rule'); if(!rule)return;
+
+    function slugOf(card){var oc=card.getAttribute('onclick')||'';
+      var m=oc.match(/product\/([\w-]+)/);return m?m[1]:null;}
+
+    /* chips - a reagent should not look like a peptide */
+    [].forEach.call(grid.children,function(card){
+      if(card.querySelector('.glp-chip'))return;
+      var p=find(slugOf(card)); if(!p)return;
+      var ph=card.querySelector('.ph'); if(!ph)return;
+      var label='Peptide', cls='';
+      if(/reagent/i.test(p.category||'')){label='Reagent';cls=' glp-chip--reagent';}
+      else if(p.badge){label=p.badge;cls=' glp-chip--star';}
+      var c=document.createElement('span');c.className='glp-chip'+cls;c.textContent=label;
+      ph.appendChild(c);
+    });
+
+    if(document.querySelector('.glp-tools'))return;
+    var n=grid.children.length;
+    var bar=document.createElement('div');bar.className='glp-tools';
+    bar.innerHTML='<div class="glp-search"><input type="search" id="glpq" placeholder="Search '+n+
+      ' peptides\u2026" autocomplete="off" aria-label="Search the catalogue">'+
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div>'+
+      '<select class="glp-sort" id="glpsort" aria-label="Sort products">'+
+      '<option value="az">Name A \u2013 Z</option>'+
+      '<option value="lo">Price: low to high</option>'+
+      '<option value="hi">Price: high to low</option></select>'+
+      '<span class="glp-count" id="glpcount"></span>';
+    rule.parentNode.insertBefore(bar,rule.nextSibling);
+
+    var empty=document.createElement('div');empty.className='glp-empty';empty.id='glpempty';
+    empty.style.display='none';
+    empty.innerHTML='<b>Nothing matches that</b><span>Try a shorter word, or clear the search to see all '+n+'.</span>';
+    grid.parentNode.insertBefore(empty,grid.nextSibling);
+
+    var original=[].slice.call(grid.children);
+    function apply(){
+      var q=(document.getElementById('glpq').value||'').trim().toLowerCase();
+      var mode=document.getElementById('glpsort').value, shown=0;
+      original.forEach(function(card){
+        var p=find(slugOf(card))||{};
+        var hay=((p.name||'')+' '+(p.dose||'')+' '+(p.tagline||'')+' '+(p.category||'')).toLowerCase();
+        var hit=!q||hay.indexOf(q)>-1;
+        card.classList.toggle('glp-hide',!hit);
+        if(hit)shown++;
+      });
+      var vis=original.filter(function(c){return !c.classList.contains('glp-hide');});
+      vis.sort(function(a,b){
+        var pa=find(slugOf(a))||{},pb=find(slugOf(b))||{};
+        if(mode==='lo')return (pa.price||0)-(pb.price||0);
+        if(mode==='hi')return (pb.price||0)-(pa.price||0);
+        return String(pa.name||'').localeCompare(String(pb.name||''));
+      });
+      vis.forEach(function(c){grid.appendChild(c);});
+      document.getElementById('glpcount').textContent =
+        shown===original.length ? (original.length+' products') : (shown+' of '+original.length);
+      document.getElementById('glpempty').style.display = shown?'none':'block';
+      grid.style.display = shown?'':'none';
+    }
+    document.getElementById('glpq').addEventListener('input',apply);
+    document.getElementById('glpsort').addEventListener('change',apply);
+    apply();
+  }
+
   /* ---- orchestrate ---- */
   function enhance(tries){
     tries=tries||0;
     images(document);
     reveal(document);
+    try{ catalogue(); }catch(e){}
     var s=slugNow();
     if(s){
       var p=find(s);
