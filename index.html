@@ -630,6 +630,7 @@ select:focus{outline:none;border-bottom-color:#c9a24b}
   background:rgba(255,255,255,.78);color:#8a8276;-webkit-backdrop-filter:blur(4px);
   backdrop-filter:blur(4px);border:0;font-size:8.5px;letter-spacing:.18em;padding:4px 8px}
 .glp-chip--reagent{color:#3d7a3a;border:0;background:rgba(234,243,234,.9)}
+.glp-chip--topical{color:#9a5f7a;border:0;background:rgba(247,238,242,.92)}
 .glp-chip--star{background:#c9a24b;color:#fff;border:0}
 .card.glp-hide{display:none}
 @media(max-width:560px){.glp-tools{flex-direction:column;align-items:stretch}.glp-search{flex:1 1 auto}}
@@ -817,6 +818,27 @@ select:focus{outline:none;border-bottom-color:#c9a24b}
     }).catch(function(){});
   }
 
+  /* ---- chips: one on every product card, anywhere on the page ---- */
+  function chipAll(){
+    var cards=document.querySelectorAll('.card');
+    [].forEach.call(cards,function(card){
+      if(card.querySelector('.glp-chip'))return;
+      var oc=card.getAttribute('onclick')||'';
+      var m=oc.match(/product\/([\w-]+)/); if(!m)return;
+      var p=find(m[1]); if(!p)return;
+      var ph=card.querySelector('.ph'); if(!ph)return;
+      var cat=String(p.category||''), label='Peptide', cls='';
+      if(p.badge){ label=p.badge; cls=' glp-chip--star'; }
+      else if(/reagent/i.test(cat)){ label='Reagent'; cls=' glp-chip--reagent'; }
+      else if(/under-?eye/i.test(cat)){ label='Under-Eye'; cls=' glp-chip--topical'; }
+      else if(/mist/i.test(cat)){ label='Mist'; cls=' glp-chip--topical'; }
+      else if(/serum|topical/i.test(cat)){ label='Serum'; cls=' glp-chip--topical'; }
+      var c=document.createElement('span');
+      c.className='glp-chip'+cls; c.textContent=label;
+      ph.appendChild(c);
+    });
+  }
+
   /* ---- catalogue tools: search, sort, chips ----
      The Research Peptides grid holds 23 products that photograph almost
      identically. Search matches name, dose, tagline AND category, so
@@ -829,17 +851,11 @@ select:focus{outline:none;border-bottom-color:#c9a24b}
     function slugOf(card){var oc=card.getAttribute('onclick')||'';
       var m=oc.match(/product\/([\w-]+)/);return m?m[1]:null;}
 
-    /* chips - a reagent should not look like a peptide */
-    [].forEach.call(grid.children,function(card){
-      if(card.querySelector('.glp-chip'))return;
-      var p=find(slugOf(card)); if(!p)return;
-      var ph=card.querySelector('.ph'); if(!ph)return;
-      var label='Peptide', cls='';
-      if(/reagent/i.test(p.category||'')){label='Reagent';cls=' glp-chip--reagent';}
-      else if(p.badge){label=p.badge;cls=' glp-chip--star';}
-      var c=document.createElement('span');c.className='glp-chip'+cls;c.textContent=label;
-      ph.appendChild(c);
-    });
+    /* chips on EVERY product card on the page, not just the peptides grid.
+       A reagent should not look like a peptide, and a face serum should
+       not look like either. Labels come from the category already in the
+       data. */
+    chipAll();
 
     if(document.querySelector('.glp-tools'))return;
     var n=grid.children.length;
@@ -893,6 +909,7 @@ select:focus{outline:none;border-bottom-color:#c9a24b}
     tries=tries||0;
     images(document);
     reveal(document);
+    try{ chipAll(); }catch(e){}
     try{ catalogue(); }catch(e){}
     var s=slugNow();
     if(s){
