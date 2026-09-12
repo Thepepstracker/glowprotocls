@@ -89,6 +89,35 @@ if (/\*\s*0\.8\b/.test(html.slice(html.indexOf('id="glp-bundles-js"'), html.inde
   die('a hardcoded *0.8 bundle discount is back in the bundle renderer — bundle prices must come from catalog.json');
 }
 
+/* ── 3b. structured data: the price Google quotes must be the price we charge ─────────────────── */
+/* Exactly the llms.txt failure mode in section 4, one block higher up: this ItemList was written by
+ * hand and then drifted. GHK-Cu was advertised to search engines at $25.00 while the cart charged
+ * $37.99 — a $12.99 gap a shopper meets only after clicking. Generating it closes that permanently. */
+{
+  let ldFixed = 0, ldSeen = 0; const ldGhost = [];
+  html = html.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g, (full, body) => {
+    let d;
+    try { d = JSON.parse(body); } catch { return full; }                 // not ours to touch
+    if (d['@type'] !== 'ItemList' || !Array.isArray(d.itemListElement)) return full;
+    for (const it of d.itemListElement) {
+      const url = String(it.url || (it.offers && it.offers.url) || '');
+      const sl = url.split('#product/')[1];
+      if (!sl || !it.offers) continue;
+      ldSeen++;
+      const m = price[sl];
+      if (!m) { ldGhost.push(sl); continue; }   // stale entry, reported below - never fail the deploy over it
+      const now = (m.now != null) ? Number(m.now) : null;
+      if (now == null) continue;
+      if (Number(it.offers.price) !== now) ldFixed++;
+      it.offers.price = now;
+    }
+    return '<script type="application/ld+json">' + JSON.stringify(d) + '</script>';
+  });
+  if (!ldSeen) die('structured-data ItemList had no priced products — the selector broke');
+  console.log('sync-catalog: structured data — %d priced entries, %d corrected', ldSeen, ldFixed);
+  if (ldGhost.length) console.warn('sync-catalog: WARNING — structured data still advertises %d product URL(s) that no longer exist: %s', ldGhost.length, ldGhost.join(', '));
+}
+
 writeFileSync(join(ROOT, 'index.html'), html);
 
 const onSale = Object.values(price).filter((r) => r.was != null).length;

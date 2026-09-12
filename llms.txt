@@ -6,38 +6,38 @@ Prices below are what a customer pays today; where a product is discounted the t
 Shipping is $15.00 flat within the United States and free on orders over $250.00. We ship to the United States only.
 
 ## Research peptides and reagents (prices in USD)
-- Lipo-C with B-12 — 10 mL — $35.19 (was $43.99)
-- BAC Water — 10 mL — $7.99 (was $9.99)
-- MOTS-C — 10 mg — $27.20 (was $34.00)
+- Lipo-C with B-12 — 10 mL — $43.99
+- BAC Water — 10 mL — $9.99
+- Acetic Acid 0.6% — 10 mL — $7.99
+- MOTS-C — 10 mg — $34.00
 - NAD+ — 500 mg — $25.00 (was $49.99)
-- GHK-Cu — 100 mg — $25.00 (was $37.99)
-- GLP-2T — 10 mg $25.00 (was $41.99) / 15 mg $54.40 (was $68.00) / 20 mg $62.40 (was $78.00) / 30 mg $79.20 (was $99.00)
-- GLP-3R — 10 mg $35.99 (was $44.99) / 20 mg $65.60 (was $82.00)
-- KPV — 10 mg — $27.19 (was $33.99)
-- Adamax — 5 mg $38.40 (was $48.00) / 10 mg $47.19 (was $58.99)
-- Glutathione — 750 mg $25.00 (was $37.33) / 1500 mg $30.00 (was $59.00)
-- DSIP — 5 mg — $25.60 (was $32.00)
-- Thymosin Alpha-1 — 5 mg — $33.60 (was $42.00)
+- GHK-Cu — 100 mg — $37.99
+- GLP-2T — 10 mg $25.00 (was $41.99) / 15 mg $68.00 / 20 mg $78.00 / 30 mg $99.00
+- GLP-3R — 10 mg $44.99 / 20 mg $82.00
+- KPV — 10 mg — $33.99
+- Adamax — 5 mg $48.00 / 10 mg $58.99
+- Glutathione — 750 mg $25.00 (was $37.33) / 1500 mg $59.00
+- DSIP — 5 mg — $32.00
+- Thymosin Alpha-1 — 5 mg — $42.00
 - TB-500 — 10 mg — $49.00
-- Tesamorelin / Ipamorelin — 10 mg / 3 mg — $65.60 (was $82.00)
-- KLOW — 80 mg — $69.59 (was $86.99)
-- AICAR — 50 mg $41.60 (was $52.00) / 100 mg $65.60 (was $82.00)
-- 5-Amino-1MQ — 5 mg — $28.80 (was $36.00)
-- GLP-31 — 10 mg — $34.39 (was $42.99)
-- PT-141 — 10 mg — $26.39 (was $32.99)
-- Selank — 10 mg — $26.39 (was $32.99)
-- BPC-157 — 10 mg — $25.60 (was $32.00)
-- ARA-290 — 10 mg — $36.00 (was $45.00)
-- FOX-04 — 10 mg — $63.20 (was $79.00)
+- KLOW — 80 mg — $86.99
+- AICAR — 50 mg $52.00 / 100 mg $82.00
+- 5-Amino-1MQ — 5 mg — $36.00
+- GLP-31 — 10 mg — $42.99
+- PT-141 — 10 mg — $32.99
+- Selank — 10 mg — $32.99
+- BPC-157 — 10 mg — $32.00
+- ARA-290 — 10 mg — $45.00
+- FOX-04 — 10 mg — $79.00
 
 ## Skincare and topicals (prices in USD)
-- Protocol 01 — 15 mL — $24.00 (was $48.00)
-- Protocol 02 — 15 mL — $16.00 (was $32.00)
-- Glow Eyes — 0.34 fl oz / 10 mL — $19.99 (was $39.99)
-- Glow Eyes Luxe with KPV — 0.34 fl oz / 10 mL — $48.74 (was $64.99)
-- Rose Recovery Mist — 60 mL — $9.50 (was $19.00)
-- Cu-Hair 01 — 30 mL — $21.00 (was $42.00)
-- Cu-Hair 02 — 15 mL — $27.50 (was $55.00)
+- Protocol 01 — 15 mL / 0.5 oz $48.00 / 50 mL / 1.7 oz $119.00
+- Protocol 02 — 15 mL — $32.00
+- Glow Eyes — 0.34 fl oz / 10 mL — $39.99
+- Glow Eyes Luxe with KPV — 0.34 fl oz / 10 mL — $64.99
+- Rose Recovery Mist — 60 mL — $19.00
+- Cu-Hair 01 — 30 mL — $42.00
+- Cu-Hair 02 — 15 mL — $55.00
 
 ## Research guides
 - BPC-157 Research Guide: https://glowglps.com/bpc-157-research-guide.html
@@ -59,4 +59,4 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 ## Contact
 Store: https://glowglps.com
 
-<!-- generated 2026-09-07T15:15:03.152Z by tools/sync-catalog.mjs from catalog.json -->
+<!-- generated 2026-09-12T00:40:14.153Z by tools/sync-catalog.mjs from catalog.json -->
