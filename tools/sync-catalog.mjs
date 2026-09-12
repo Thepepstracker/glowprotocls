@@ -99,23 +99,31 @@ if (/\*\s*0\.8\b/.test(html.slice(html.indexOf('id="glp-bundles-js"'), html.inde
     let d;
     try { d = JSON.parse(body); } catch { return full; }                 // not ours to touch
     if (d['@type'] !== 'ItemList' || !Array.isArray(d.itemListElement)) return full;
-    for (const it of d.itemListElement) {
+    /* An entry whose slug is no longer a product advertises a URL that does not
+     * resolve. Drop it rather than keep telling search engines to send people
+     * there - tirz-20, adamax-10, reta-20 and glutathione-1500 became size
+     * options on their parent products and are already covered by the parent's
+     * own entry. */
+    d.itemListElement = d.itemListElement.filter((it) => {
       const url = String(it.url || (it.offers && it.offers.url) || '');
       const sl = url.split('#product/')[1];
-      if (!sl || !it.offers) continue;
-      ldSeen++;
+      if (!sl || !it.offers) return true;                 // not a product entry, leave alone
       const m = price[sl];
-      if (!m) { ldGhost.push(sl); continue; }   // stale entry, reported below - never fail the deploy over it
+      if (!m) { ldGhost.push(sl); return false; }         // dead URL - remove
+      ldSeen++;
       const now = (m.now != null) ? Number(m.now) : null;
-      if (now == null) continue;
-      if (Number(it.offers.price) !== now) ldFixed++;
-      it.offers.price = now;
-    }
+      if (now != null) {
+        if (Number(it.offers.price) !== now) ldFixed++;
+        it.offers.price = now;
+      }
+      return true;
+    });
+    d.itemListElement.forEach((it, i) => { if (it.position != null) it.position = i + 1; });
     return '<script type="application/ld+json">' + JSON.stringify(d) + '</script>';
   });
   if (!ldSeen) die('structured-data ItemList had no priced products — the selector broke');
   console.log('sync-catalog: structured data — %d priced entries, %d corrected', ldSeen, ldFixed);
-  if (ldGhost.length) console.warn('sync-catalog: WARNING — structured data still advertises %d product URL(s) that no longer exist: %s', ldGhost.length, ldGhost.join(', '));
+  if (ldGhost.length) console.log('sync-catalog: structured data — dropped %d entry/entries for URLs that no longer resolve: %s', ldGhost.length, ldGhost.join(', '));
 }
 
 writeFileSync(join(ROOT, 'index.html'), html);
