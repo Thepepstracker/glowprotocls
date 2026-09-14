@@ -1,7 +1,7 @@
 {
   "_readme": "SINGLE SOURCE OF TRUTH for every price on glowglps.com. Edit here (or in the Price Desk at /price-desk.html) and the storefront, the checkout total, the card charge and the parent cover catalogue all follow. Never edit prices inside index.html.",
   "version": 1,
-  "updated": "2026-09-07T15:00:00Z",
+  "updated": "2026-09-14T01:20:00Z",
   "currency": "USD",
   "shipping": {
     "flat": 15.0,
@@ -60,14 +60,14 @@
       "name": "GLP-2T",
       "regular": 41.99,
       "pct": null,
-      "fixed": 25.0,
-      "badge": "Pep of the Week",
+      "fixed": null,
+      "badge": null,
       "sizes": [
         {
           "s": "10 mg",
           "regular": 41.99,
-          "fixed": 25.0,
-          "pct": null
+          "fixed": null,
+          "pct": 0
         },
         {
           "s": "15 mg",
@@ -94,13 +94,13 @@
       "regular": 44.99,
       "pct": null,
       "fixed": null,
-      "badge": null,
+      "badge": "Pep of the Week",
       "sizes": [
         {
           "s": "10 mg",
           "regular": 44.99,
-          "pct": 0,
-          "fixed": null
+          "pct": null,
+          "fixed": 30.0
         },
         {
           "s": "20 mg",
@@ -148,8 +148,8 @@
         {
           "s": "750 mg",
           "regular": 37.33,
-          "fixed": 25.0,
-          "pct": null
+          "fixed": null,
+          "pct": 0
         },
         {
           "s": "1500 mg",
