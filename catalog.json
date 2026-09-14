@@ -93,7 +93,7 @@
       "name": "GLP-3R",
       "regular": 44.99,
       "pct": null,
-      "fixed": null,
+      "fixed": 30.0,
       "badge": "Pep of the Week",
       "sizes": [
         {
