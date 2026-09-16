@@ -1,7 +1,7 @@
 {
   "_readme": "SINGLE SOURCE OF TRUTH for every price on glowglps.com. Edit here (or in the Price Desk at /price-desk.html) and the storefront, the checkout total, the card charge and the parent cover catalogue all follow. Never edit prices inside index.html.",
   "version": 1,
-  "updated": "2026-09-14T01:20:00Z",
+  "updated": "2026-09-16T02:31:26Z",
   "currency": "USD",
   "shipping": {
     "flat": 15.0,
@@ -319,6 +319,48 @@
       "pct": null,
       "fixed": null,
       "badge": null
+    },
+    "tesamorelin": {
+      "name": "Tesamorelin",
+      "regular": 49,
+      "badge": null,
+      "fixed": null,
+      "pct": null,
+      "sizes": [
+        {
+          "s": "5 mg",
+          "regular": 49,
+          "fixed": null,
+          "pct": 0
+        },
+        {
+          "s": "10 mg",
+          "regular": 69,
+          "fixed": null,
+          "pct": 0
+        }
+      ]
+    },
+    "ipamorelin": {
+      "name": "Ipamorelin",
+      "regular": 64,
+      "badge": null,
+      "fixed": null,
+      "pct": null
+    },
+    "epithalon-50": {
+      "name": "Epithalon",
+      "regular": 99,
+      "badge": null,
+      "fixed": null,
+      "pct": null
+    },
+    "vitamin-b12": {
+      "name": "Vitamin B-12",
+      "regular": 32.99,
+      "badge": null,
+      "fixed": null,
+      "pct": null
     }
   },
   "bundles": {
