@@ -12,11 +12,11 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 - MOTS-C — 10 mg — $34.00
 - NAD+ — 500 mg — $25.00 (was $49.99)
 - GHK-Cu — 100 mg — $37.99
-- GLP-2T — 10 mg $25.00 (was $41.99) / 15 mg $68.00 / 20 mg $78.00 / 30 mg $99.00
-- GLP-3R — 10 mg $44.99 / 20 mg $82.00
+- GLP-2T — 10 mg $41.99 / 15 mg $68.00 / 20 mg $78.00 / 30 mg $99.00
+- GLP-3R — 10 mg $30.00 (was $44.99) / 20 mg $82.00
 - KPV — 10 mg — $33.99
 - Adamax — 5 mg $48.00 / 10 mg $58.99
-- Glutathione — 750 mg $25.00 (was $37.33) / 1500 mg $59.00
+- Glutathione — 750 mg $37.33 / 1500 mg $59.00
 - DSIP — 5 mg — $32.00
 - Thymosin Alpha-1 — 5 mg — $42.00
 - TB-500 — 10 mg — $49.00
@@ -29,6 +29,10 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 - BPC-157 — 10 mg — $32.00
 - ARA-290 — 10 mg — $45.00
 - FOX-04 — 10 mg — $79.00
+- Tesamorelin — 5 mg $49.00 / 10 mg $69.00
+- Ipamorelin — 10 mg — $64.00
+- Epithalon — 50 mg — $99.00
+- Vitamin B-12 — 10 mL — $32.99
 
 ## Skincare and topicals (prices in USD)
 - Protocol 01 — 15 mL / 0.5 oz $48.00 / 50 mL / 1.7 oz $119.00
@@ -59,4 +63,4 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 ## Contact
 Store: https://glowglps.com
 
-<!-- generated 2026-09-12T15:48:20.234Z by tools/sync-catalog.mjs from catalog.json -->
+<!-- generated 2026-09-17T14:32:57.374Z by tools/sync-catalog.mjs from catalog.json -->
