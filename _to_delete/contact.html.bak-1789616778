@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/premium.css">
 <script>document.documentElement.className+=" glp-js"</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"ContactPage","name":"Contact Glow Lab Protocols","url":"https://glowlabprotocols.com/contact.html","mainEntity":{"@type":"Organization","name":"Glow Lab Protocols","url":"https://glowlabprotocols.com","contactPoint":[{"@type":"ContactPoint","contactType":"customer support","email":"courtney@glowwithheather.com","availableLanguage":["English","Spanish"]},{"@type":"ContactPoint","contactType":"sales","email":"jonahglowwithheather@gmail.com","availableLanguage":["English"]}]}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ContactPage","name":"Contact Glow Lab Protocols","url":"https://glowlabprotocols.com/contact.html","mainEntity":{"@type":"Organization","name":"Glow Lab Protocols","url":"https://glowlabprotocols.com","contactPoint":[{"@type":"ContactPoint","contactType":"customer support","email":"courtney@glowwithheather.com","availableLanguage":["English","Spanish"]},{"@type":"ContactPoint","contactType":"sales","email":"jonah@glowwithheather.com","availableLanguage":["English"]}]}}</script>
 </head><body>
 
 <div class="p-bar">Research use only &mdash; not for human consumption</div>
@@ -87,7 +87,7 @@
       <div class="p-card reveal">
         <div class="p-person__role">Business &amp; Web</div>
         <div class="p-person__name">Jonah</div>
-        <a class="p-person__mail" href="mailto:jonahglowwithheather@gmail.com">jonahglowwithheather@gmail.com</a>
+        <a class="p-person__mail" href="mailto:jonah@glowwithheather.com">jonah@glowwithheather.com</a>
         <p class="p-small" style="margin-bottom:16px">Start here for anything that is not about an existing order.</p>
         <ul class="p-person__list">
           <li>Wholesale, bulk and salon accounts</li>
