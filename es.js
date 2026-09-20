@@ -89,7 +89,7 @@ window.GLP_ES = {
   "Clear sterile liquid, 10 mL vial": "Líquido estéril transparente, vial de 10 mL",
   "Clear sterile liquid, 10 mL vial": "Líquido estéril transparente, vial de 10 mL",
   "Refrigerate 2–8 °C": "Refrigerar 2–8 °C",
-  "Water for injection + 0.9% benzyl alcohol": "Agua para inyección + alcohol bencílico al 0,9 %",
+  "Sterile water + 0.9% benzyl alcohol": "Agua estéril + alcohol bencílico al 0,9 %",
   "Room temperature; keep sealed & sterile": "Temperatura ambiente; mantener sellado y estéril",
   "Lyophilized powder": "Polvo liofilizado",
   "Blue lyophilized powder": "Polvo liofilizado azul",
@@ -140,11 +140,11 @@ window.GLP_ES = {
   },
   "mots-c": {
    "t": "Péptido de origen mitocondrial",
-   "d": "Un péptido de 16 aminoácidos codificado en el gen del ARNr 12S mitocondrial. La investigación preclínica ha caracterizado a MOTS-c como regulador de la homeostasis metabólica, y en la literatura se le describe con frecuencia como un mimético del ejercicio. Estudios in vitro y en modelos animales indican que, en condiciones de estrés metabólico, modula la señalización de AMPK y la vía antioxidante Nrf2, con efectos observados sobre el metabolismo de la glucosa y la sensibilidad a la insulina en el músculo esquelético.",
+   "d": "Un péptido de 16 aminoácidos codificado en el gen del ARNr 12S mitocondrial. Estudios in vitro y en modelos animales indican que modula la señalización de AMPK y la vía antioxidante Nrf2 en células de músculo esquelético.",
    "b": [
-    "Sensibilidad a la insulina y homeostasis de la glucosa examinadas en modelos animales (Lee et al., Cell Metabolism 2015)",
-    "Efectos miméticos del ejercicio reportados en ratones envejecidos (Reynolds et al., Nat Commun 2021)",
-    "Examinado en investigación preclínica sobre obesidad y deterioro metabólico asociado a la edad"
+    "Señalización de AMPK examinada en modelos celulares y animales (Lee et al., Cell Metabolism 2015)",
+    "Codificado en el gen del ARNr 12S mitocondrial",
+    "Modulación de la vía antioxidante Nrf2 reportada en investigación preclínica"
    ]
   },
   "nad": {
@@ -153,42 +153,41 @@ window.GLP_ES = {
    "b": [
     "Caracterizada como coenzima en el metabolismo energético mitocondrial y celular",
     "Estudiada como sustrato en la señalización de sirtuinas y PARP y en la reparación del ADN",
-    "Examinada en investigación preclínica sobre el descenso del NAD+ asociado a la edad",
-    "Farmacocinética caracterizada en la literatura publicada (Grant et al., 2019)"
+    "Disponibilidad de NAD+ examinada en sistemas in vitro y en modelos animales"
    ]
   },
   "ghk-cu": {
    "t": "Tripéptido de cobre",
-   "d": "El complejo de cobre(II) del tripéptido glicil-L-histidil-L-lisina, un fragmento de origen plasmático cuya concentración disminuye con la edad. Su mecanismo de acción se ha investigado in vitro, donde actúa como transportador de cobre y modula vías génicas asociadas con la reparación tisular, la formación de matriz extracelular y la respuesta antioxidante. Los estudios en cultivo de fibroblastos describen un aumento en la síntesis de colágeno, elastina y factores de crecimiento asociados.",
+   "d": "El complejo de cobre(II) del tripéptido glicil-L-histidil-L-lisina, un fragmento de origen plasmático cuya concentración disminuye con la edad. Su mecanismo de acción se ha investigado in vitro, donde actúa como transportador de cobre y modula vías génicas asociadas con la formación de matriz extracelular y la respuesta antioxidante. Los estudios en cultivo de fibroblastos describen un aumento en la síntesis de colágeno, elastina y factores de crecimiento asociados.",
    "b": [
     "Síntesis de colágeno y matriz extracelular examinada en cultivo de fibroblastos",
-    "Contracción de heridas, angiogénesis y granulación reportadas en modelos animales",
+    "Angiogénesis y señalización de la matriz extracelular examinadas en modelos animales",
     "Efectos antiinflamatorios y sobre la expresión de genes antioxidantes observados in vitro"
    ]
   },
   "tirz-10": {
    "t": "Agonista dual de los receptores GIP / GLP-1",
-   "d": "Un péptido sintético de 39 aminoácidos caracterizado como agonista dual de los receptores GIP y GLP-1. Su modificación lipídica prolonga la vida media circulante hasta aproximadamente cinco días. Los investigadores han examinado este mecanismo incretina dual en relación con la sensibilidad a la insulina y la regulación del balance energético, tanto en modelos preclínicos como en la literatura clínica publicada.",
+   "d": "Un péptido sintético de 39 aminoácidos caracterizado como agonista dual de los receptores GIP y GLP-1. Su farmacología de receptores se ha caracterizado in vitro y en modelos preclínicos.",
    "b": [
-    "Criterios glucémicos examinados en la literatura de ensayos de diabetes tipo 2 (SURPASS)",
-    "Criterios de peso corporal reportados en la literatura de ensayos de obesidad (SURMOUNT-1, NEJM 2022)",
-    "Cambios en la sensibilidad a la insulina y la adiponectina descritos en la literatura"
+    "Caracterizado como agonista dual de los receptores GIP y GLP-1",
+    "Unión y señalización de receptores caracterizadas in vitro",
+    "Identidad y pureza indicadas en el certificado de análisis"
    ]
   },
   "reta": {
    "t": "Agonista triple de los receptores GLP-1 / GIP / glucagón",
-   "d": "Un péptido sintético lipidado caracterizado como agonista triple de los receptores GLP-1, GIP y glucagón. Los investigadores han examinado la adición del agonismo del receptor de glucagón en relación con el gasto energético y la movilización de lípidos hepáticos, junto con los mecanismos mediados por incretinas.",
+   "d": "Un péptido sintético lipidado caracterizado como agonista triple de los receptores GLP-1, GIP y glucagón. Su farmacología de receptores se ha caracterizado in vitro y en modelos preclínicos.",
    "b": [
-    "Criterios de peso corporal reportados en la literatura de ensayos de obesidad de fase 2 (NEJM 2023)",
-    "Criterios glucémicos examinados en investigación sobre diabetes tipo 2",
-    "Efectos sobre los lípidos hepáticos y el gasto energético descritos en la literatura"
+    "Caracterizado como agonista triple de los receptores GLP-1, GIP y glucagón",
+    "Señalización de receptores caracterizada in vitro",
+    "Identidad y pureza indicadas en el certificado de análisis"
    ]
   },
   "kpv": {
    "t": "Fragmento C-terminal de alfa-MSH",
-   "d": "Un tripéptido sintético (lisina-prolina-valina) correspondiente a la secuencia C-terminal de la hormona estimulante de melanocitos alfa. La investigación preclínica ha caracterizado actividad antiinflamatoria e inmunomoduladora, con trabajos publicados concentrados en modelos gastrointestinales, dermatológicos y de reparación tisular. Cada vial se fabrica con una pureza superior al 99 % y se analiza por terceros para verificar su identidad.",
+   "d": "Un tripéptido sintético (lisina-prolina-valina) correspondiente a la secuencia C-terminal de la hormona estimulante de melanocitos alfa. La investigación preclínica ha caracterizado actividad antiinflamatoria e inmunomoduladora, con trabajos publicados concentrados en modelos gastrointestinales y dermatológicos. Cada vial se fabrica con una pureza superior al 99 % y se analiza por terceros para verificar su identidad.",
    "b": [
-    "Reducción de la inflamación intestinal reportada en modelos murinos de colitis (Dalmasso et al., 2008)",
+    "Señalización inflamatoria examinada en modelos murinos (Dalmasso et al., 2008)",
     "Actividad antiinflamatoria atribuida a la modulación de NF-kB y MAPK in vitro",
     "Examinado en investigación preclínica dermatológica y de inflamación inmunomediada"
    ]
@@ -207,22 +206,22 @@ window.GLP_ES = {
    "d": "El tripéptido endógeno gamma-glutamil-cisteinil-glicina, caracterizado en la literatura como el principal antioxidante intracelular. Su grupo tiol de cisteína reduce las especies reactivas de oxígeno y participa en reacciones de conjugación de fase II, alternando entre las formas reducida (GSH) y oxidada (GSSG). La proporción GSH/GSSG se utiliza ampliamente en investigación de laboratorio como marcador del estado redox celular.",
    "b": [
     "Caracterizado como tampón redox intracelular y cofactor de conjugación de fase II",
-    "Examinado en la literatura publicada sobre la enfermedad de Parkinson (Sechi 1996; Hauser 2009)",
-    "Investigado en modelos de detoxificación hepática y dermatológicos"
+    "Relación GSH/GSSG utilizada como marcador de laboratorio del estado redox celular",
+    "Investigado en investigación in vitro de redox y conjugación"
    ]
   },
   "dsip": {
    "t": "Péptido inductor del sueño delta",
    "d": "Un nonapéptido (Trp-Ala-Gli-Gli-Asp-Ala-Ser-Gli-Glu) aislado originalmente en asociación con la actividad del sueño de ondas delta. Los investigadores han examinado su relación con la arquitectura del sueño, las respuestas del eje hipotálamo-hipófisis-suprarrenal y la señalización neuroendocrina. No se ha establecido un receptor único para este péptido en la literatura publicada.",
    "b": [
-    "Arquitectura del sueño examinada en investigación preclínica y clínica publicada",
-    "Efectos moduladores del estrés y neuroprotectores reportados en modelos animales",
-    "Investigado en modelos neuroendocrinos, de nocicepción y de abstinencia"
+    "Arquitectura del sueño examinada en investigación preclínica",
+    "Señalización del eje HHS y neuroendocrina examinada en modelos animales",
+    "Investigado en modelos de investigación neuroendocrina"
    ]
   },
   "thymosin-alpha-1": {
    "t": "Péptido inmunomodulador",
-   "d": "Un péptido de 28 aminoácidos caracterizado en la investigación inmunológica como modulador de la función de los linfocitos T y de la señalización inmunitaria innata. Se ha investigado en modelos de infección, inmunología y adyuvantes de vacunas, con mecanismos descritos que involucran la señalización de receptores tipo Toll y la maduración de timocitos.",
+   "d": "Un péptido de 28 aminoácidos caracterizado en la investigación inmunológica como modulador de la función de los linfocitos T y de la señalización inmunitaria innata. Se ha investigado en modelos de investigación inmunológica, con mecanismos descritos que involucran la señalización de receptores tipo Toll y la maduración de timocitos.",
    "b": [
     "Actividad de los linfocitos T y señalización inmunitaria examinadas en investigación preclínica",
     "Investigado en modelos de inmunología y defensa del huésped"
@@ -238,9 +237,9 @@ window.GLP_ES = {
   },
   "klow-blend": {
    "t": "Mezcla de investigación multipéptido",
-   "d": "Una mezcla de investigación que contiene GHK-Cu, BPC-157, TB-500 y KPV. Cada constituyente se ha examinado de forma independiente en investigación preclínica relativa a la reparación tisular, la angiogénesis y la señalización inflamatoria. Las concentraciones de cada componente figuran en el certificado de análisis.",
+   "d": "Una mezcla de investigación que contiene GHK-Cu, BPC-157, TB-500 y KPV. Cada constituyente se ha examinado de forma independiente en investigación preclínica relativa a la remodelación de la matriz extracelular, la angiogénesis y la señalización inflamatoria. Las concentraciones de cada componente figuran en el certificado de análisis.",
    "b": [
-    "Combina cuatro péptidos examinados en investigación de reparación tisular",
+    "Combina cuatro péptidos examinados en investigación preclínica",
     "Constituyentes investigados en investigación preclínica de remodelación e inflamación"
    ]
   },
@@ -262,25 +261,25 @@ window.GLP_ES = {
   },
   "ss-31": {
    "t": "Tetrapéptido dirigido a la mitocondria",
-   "d": "Un tetrapéptido dirigido a la mitocondria, identificado también en la literatura como elamipretida. Su mecanismo de acción se ha caracterizado como una asociación selectiva con la cardiolipina en la membrana mitocondrial interna, y se ha investigado in vitro y en modelos animales en relación con la respiración mitocondrial y el estrés oxidativo.",
+   "d": "Un tetrapéptido dirigido a la mitocondria, identificado también en la literatura como elamipretida. Su mecanismo de acción se ha caracterizado como una asociación selectiva con la cardiolipina en la membrana mitocondrial interna.",
    "b": [
     "Unión a cardiolipina y asociación con la membrana mitocondrial caracterizadas in vitro",
-    "Respiración mitocondrial y estrés oxidativo examinados en modelos animales"
+    "Localización en la membrana mitocondrial interna descrita en la literatura"
    ]
   },
   "pt-141": {
    "t": "Agonista del receptor de melanocortina",
-   "d": "Un péptido sintético agonista del receptor de melanocortina, identificado también en la literatura como bremelanotida. Los investigadores han examinado su actividad sobre los receptores MC3R y MC4R y la señalización resultante en el sistema nervioso central en modelos preclínicos.",
+   "d": "Un péptido sintético agonista del receptor de melanocortina, identificado también en la literatura como bremelanotida. Los investigadores han examinado su actividad sobre los receptores MC3R y MC4R en modelos preclínicos.",
    "b": [
     "Caracterizado como agonista del receptor de melanocortina",
-    "Señalización del sistema nervioso central examinada en modelos preclínicos"
+    "Actividad sobre los receptores MC3R y MC4R examinada en modelos preclínicos"
    ]
   },
   "selank": {
    "t": "Heptapéptido análogo de la tuftsina",
-   "d": "Un heptapéptido sintético análogo del inmunopéptido tuftsina. La investigación preclínica ha examinado sus efectos sobre la señalización GABAérgica y monoaminérgica, la expresión del BDNF y la conducta relacionada con la ansiedad en modelos de roedores.",
+   "d": "Un heptapéptido sintético análogo del inmunopéptido tuftsina. La investigación preclínica ha examinado sus efectos sobre la señalización GABAérgica y monoaminérgica, la expresión del BDNF y la conducta en modelos de roedores.",
    "b": [
-    "Conducta relacionada con la ansiedad examinada en modelos de roedores",
+    "Criterios conductuales examinados en modelos de roedores",
     "Expresión del BDNF y señalización de neuropéptidos investigadas en investigación preclínica"
    ]
   },
@@ -288,16 +287,16 @@ window.GLP_ES = {
    "t": "Pentadecapéptido de origen gástrico",
    "d": "Un pentadecapéptido sintético derivado de una secuencia identificada en el jugo gástrico humano. La investigación preclínica ha examinado sus efectos sobre la angiogénesis, el sistema del óxido nítrico y la señalización de factores de crecimiento, con trabajos publicados concentrados en modelos gastrointestinales, tendinosos y vasculares.",
    "b": [
-    "Vías de angiogénesis y reparación tisular examinadas en modelos animales",
+    "Vías de angiogénesis y factores de crecimiento examinadas en modelos animales",
     "Investigado en modelos de investigación gastrointestinal y tendinosa",
     "Interacción con el sistema del óxido nítrico descrita en la literatura preclínica"
    ]
   },
   "protocol-01": {
    "t": "Sérum GHK-Cu + SNAP-8 para rostro, cuello y escote",
-   "d": "Un sérum sin aclarado que combina GHK-Cu (tripéptido de cobre, estudiado para el soporte del colágeno y la matriz extracelular) con SNAP-8 (acetil octapéptido-3, estudiado para suavizar el aspecto de las líneas de expresión). Formulado para rostro, cuello y escote.",
+   "d": "Un sérum sin aclarado que combina GHK-Cu (tripéptido de cobre) con SNAP-8 (acetil octapéptido-3, estudiado para suavizar el aspecto de las líneas de expresión). Formulado para rostro, cuello y escote.",
    "b": [
-    "GHK-Cu: síntesis de colágeno y matriz extracelular y remodelación de la piel",
+    "GHK-Cu: para una piel de aspecto más liso y firme",
     "SNAP-8: reduce la apariencia de las líneas de expresión",
     "Formulado para la piel delicada del rostro, cuello y escote"
    ],
@@ -305,11 +304,11 @@ window.GLP_ES = {
   },
   "protocol-02": {
    "t": "Sérum GHK-Cu Copper Renewal",
-   "d": "Un sérum de péptido de cobre con un solo activo, construido en torno al GHK-Cu, planteado como un tratamiento de renovación con cobre que apoya la señalización del colágeno, la elastina y el acondicionamiento antioxidante de la piel.",
+   "d": "Un sérum de péptido de cobre con un solo activo, construido en torno al GHK-Cu, planteado como una fórmula de renovación con cobre para una piel de aspecto más liso y luminoso.",
    "b": [
-    "Soporte de colágeno, elastina y matriz extracelular",
-    "Firmeza, tono y acondicionamiento de la barrera cutánea",
-    "Señalización antioxidante y de reparación de la piel"
+    "Favorece el aspecto de una piel más lisa",
+    "Ayuda a que la piel luzca más firme y uniforme",
+    "Sérum ligero de uso diario"
    ],
    "pr": "Aplica unas gotas sobre el rostro y el cuello limpios una o dos veces al día; da toquecitos. Haz una prueba en una zona pequeña primero. Evita usar simultáneamente activos ácidos fuertes. Solo para uso externo."
   },
@@ -317,7 +316,7 @@ window.GLP_ES = {
    "t": "GHK-Cu + SNAP-8 + cafeína + pantenol",
    "d": "Un sérum específico para el contorno de ojos que combina GHK-Cu, SNAP-8, cafeína y pantenol en una fórmula ligera con aplicador roll-on. Diseñado para hidratar y refrescar la delicada zona de los ojos mientras favorece un aspecto más liso y descansado.",
    "b": [
-    "El GHK-Cu contribuye a la investigación sobre acondicionamiento de la piel y señalización del colágeno",
+    "El GHK-Cu ayuda a que el contorno de ojos luzca más liso",
     "El SNAP-8 se estudia por suavizar el aspecto de las líneas de expresión",
     "La cafeína y el pantenol ayudan a refrescar, hidratar y acondicionar el contorno de ojos"
    ],
@@ -345,10 +344,10 @@ window.GLP_ES = {
   },
   "cu-hair-01": {
    "t": "Sérum de GHK-Cu para cuero cabelludo y cabello",
-   "d": "Cu-Hair 01 es nuestro sérum base de péptido de cobre para el cuero cabelludo. Se aplica con gotero directamente sobre el cuero cabelludo y la línea del cabello; esta fórmula de un solo activo con GHK-Cu acondiciona el cuero cabelludo y favorece un entorno folicular saludable. Es la capa base de uso diario, ideal para quien empieza una rutina con péptidos de cobre.",
+   "d": "Cu-Hair 01 es nuestro sérum base de péptido de cobre para el cuero cabelludo. Se aplica con gotero directamente sobre el cuero cabelludo y la línea del cabello; esta fórmula de un solo activo con GHK-Cu acondiciona el cuero cabelludo y favorece el aspecto de un cabello más abundante. Es la capa base de uso diario, ideal para quien empieza una rutina con péptidos de cobre.",
    "b": [
-    "Acondicionamiento perifolicular y de la matriz dérmica",
-    "Señalización de factores de crecimiento para el microentorno del cuero cabelludo",
+    "Acondiciona el cuero cabelludo y la línea del cabello",
+    "Favorece el aspecto de un cabello más abundante y saludable",
     "Sérum con gotero sin aclarado para uso localizado"
    ],
    "pr": "Separa el cabello y aplica las gotas directamente sobre el cuero cabelludo una vez al día; masajea suavemente y deja actuar. Haz una prueba en una zona pequeña primero. Solo para uso externo."
