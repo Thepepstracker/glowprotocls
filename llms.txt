@@ -63,4 +63,4 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 ## Contact
 Store: https://glowglps.com
 
-<!-- generated 2026-09-20T07:25:44.722Z by tools/sync-catalog.mjs from catalog.json -->
+<!-- generated 2026-09-20T08:14:27.158Z by tools/sync-catalog.mjs from catalog.json -->
