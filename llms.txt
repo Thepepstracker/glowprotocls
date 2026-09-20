@@ -16,7 +16,7 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 - GLP-3R — 10 mg $30.00 (was $44.99) / 20 mg $82.00
 - KPV — 10 mg — $33.99
 - Adamax — 5 mg $48.00 / 10 mg $58.99
-- Glutathione — 750 mg $37.33 / 1500 mg $59.00
+- Glutathione — 750 mg $37.99 / 1500 mg $59.00
 - DSIP — 5 mg — $32.00
 - Thymosin Alpha-1 — 5 mg — $42.00
 - TB-500 — 10 mg — $49.00
@@ -41,7 +41,7 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 - Glow Eyes Luxe with KPV — 0.34 fl oz / 10 mL — $64.99
 - Rose Recovery Mist — 60 mL — $19.00
 - Cu-Hair 01 — 30 mL — $42.00
-- Cu-Hair 02 — 15 mL — $55.00
+- Cu-Hair 02 — 30 mL — $55.00
 
 ## Research guides
 - BPC-157 Research Guide: https://glowglps.com/bpc-157-research-guide.html
@@ -63,4 +63,4 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 ## Contact
 Store: https://glowglps.com
 
-<!-- generated 2026-09-17T14:32:57.374Z by tools/sync-catalog.mjs from catalog.json -->
+<!-- generated 2026-09-20T07:25:44.722Z by tools/sync-catalog.mjs from catalog.json -->

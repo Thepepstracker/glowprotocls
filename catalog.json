@@ -140,14 +140,14 @@
     },
     "glutathione": {
       "name": "Glutathione",
-      "regular": 37.33,
+      "regular": 37.99,
       "pct": null,
       "fixed": null,
       "badge": null,
       "sizes": [
         {
           "s": "750 mg",
-          "regular": 37.33,
+          "regular": 37.99,
           "fixed": null,
           "pct": 0
         },
