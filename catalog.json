@@ -33,7 +33,27 @@
       "regular": 9.99,
       "pct": null,
       "fixed": null,
-      "badge": null
+      "badge": null,
+      "sizes": [
+        {
+          "s": "10 mL",
+          "regular": 9.99,
+          "pct": null,
+          "fixed": null
+        },
+        {
+          "s": "3 mL",
+          "regular": 4.99,
+          "pct": null,
+          "fixed": null
+        },
+        {
+          "s": "20 mL",
+          "regular": 17.99,
+          "pct": null,
+          "fixed": null
+        }
+      ]
     },
     "mots-c": {
       "name": "MOTS-C",
