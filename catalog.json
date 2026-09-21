@@ -93,14 +93,14 @@
       "name": "GLP-3R",
       "regular": 44.99,
       "pct": null,
-      "fixed": 30.0,
-      "badge": "Pep of the Week",
+      "fixed": null,
+      "badge": null,
       "sizes": [
         {
           "s": "10 mg",
           "regular": 44.99,
           "pct": null,
-          "fixed": 30.0
+          "fixed": null
         },
         {
           "s": "20 mg",
@@ -114,8 +114,8 @@
       "name": "KPV",
       "regular": 33.99,
       "pct": null,
-      "fixed": null,
-      "badge": null
+      "fixed": 25.0,
+      "badge": "Pep of the Week"
     },
     "adamax": {
       "name": "Adamax",

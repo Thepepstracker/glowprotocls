@@ -13,8 +13,8 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 - NAD+ — 500 mg — $25.00 (was $49.99)
 - GHK-Cu — 100 mg — $37.99
 - GLP-2T — 10 mg $41.99 / 15 mg $68.00 / 20 mg $78.00 / 30 mg $99.00
-- GLP-3R — 10 mg $30.00 (was $44.99) / 20 mg $82.00
-- KPV — 10 mg — $33.99
+- GLP-3R — 10 mg $44.99 / 20 mg $82.00
+- KPV — 10 mg — $25.00 (was $33.99)
 - Adamax — 5 mg $48.00 / 10 mg $58.99
 - Glutathione — 750 mg $37.99 / 1500 mg $59.00
 - DSIP — 5 mg — $32.00
@@ -63,4 +63,4 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 ## Contact
 Store: https://glowglps.com
 
-<!-- generated 2026-09-20T08:14:27.158Z by tools/sync-catalog.mjs from catalog.json -->
+<!-- generated 2026-09-21T05:23:23.025Z by tools/sync-catalog.mjs from catalog.json -->
