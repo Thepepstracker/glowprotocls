@@ -75,7 +75,7 @@ const B = Object.keys(cat.bundles || {}).map((wc) => {
   const b = cat.bundles[wc];
   const rows = bundles[wc] || [];
   return { img: b.img, name: b.name, sub: b.sub, wc: b.wc ?? Number(wc),
-           sizes: rows.map((z) => [z.s, z.now, z.was]) };
+           sizes: rows.map((z, j) => [z.s, z.now, z.was, ((b.sizes || [])[j] || {}).v || null]) }; /* 4th = store variation id; without it a sized bundle goes to the cart with no size and checkout fails */
 });
 const bRe = /var B=\[[\s\S]*?\];\n/;
 if (!bRe.test(html)) die('bundle table "var B=[...]" not found in index.html');

@@ -425,19 +425,23 @@
       "sizes": [
         {
           "s": "10 mg",
-          "regular": 125
+          "regular": 125,
+          "v": 739
         },
         {
           "s": "15 mg",
-          "regular": 151
+          "regular": 151,
+          "v": 740
         },
         {
           "s": "20 mg",
-          "regular": 162
+          "regular": 162,
+          "v": 741
         },
         {
           "s": "30 mg",
-          "regular": 183
+          "regular": 183,
+          "v": 742
         }
       ],
       "img": "bundle-metabolic-reset.jpg",
@@ -450,11 +454,13 @@
       "sizes": [
         {
           "s": "10 mg",
-          "regular": 128
+          "regular": 128,
+          "v": 743
         },
         {
           "s": "20 mg",
-          "regular": 165
+          "regular": 165,
+          "v": 744
         }
       ],
       "img": "bundle-metabolic-reset-2.jpg",
