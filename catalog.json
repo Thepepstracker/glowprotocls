@@ -395,6 +395,27 @@
       "badge": null,
       "fixed": null,
       "pct": null
+    },
+    "magnet-your-story-isnt-over": {
+      "name": "Your Story Isn’t Over",
+      "regular": 4.99,
+      "pct": null,
+      "fixed": null,
+      "badge": null
+    },
+    "magnet-pep-ho-for-life": {
+      "name": "Pep Ho For Life",
+      "regular": 4.99,
+      "pct": null,
+      "fixed": null,
+      "badge": null
+    },
+    "magnet-ready-for-a-glow-up": {
+      "name": "Ready for a Glow Up?",
+      "regular": 4.99,
+      "pct": null,
+      "fixed": null,
+      "badge": null
     }
   },
   "bundles": {

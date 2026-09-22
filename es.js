@@ -28,7 +28,7 @@ window.GLP_ES = {
   "Priority Shipping: $15.00": "Envío prioritario: $15.00",
   "Fast · Secure · Discreet · Free over $250": "Rápido · Seguro · Discreto · Gratis en pedidos +$250",
   "Skincare & Topicals": "Cuidado de la piel y tópicos",
-  "Glow Topicals": "Tópicos Glow",
+  "Glow Topicals": "Tópicos Glow", "Magnets": "Imanes", "Glow Lab Merch": "Productos Glow Lab", "Magnet": "Imán", "Fridge magnet": "Imán para refrigerador",
   "Science Driven. Quality Focused. Research Powered.": "Impulsados por la ciencia. Enfocados en la calidad. Respaldados por la investigación.",
   "Glow Lab Protocols is dedicated to advancing scientific research by delivering premium-grade peptides with unmatched quality and transparency.": "Glow Lab Protocols se dedica a impulsar la investigación científica ofreciendo péptidos de grado premium con una calidad y transparencia inigualables.",
   "Premium Quality": "Calidad premium",
