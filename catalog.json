@@ -230,10 +230,24 @@
     },
     "5-amino-1mq": {
       "name": "5-Amino-1MQ",
-      "regular": 36,
+      "regular": 64.99,
       "pct": null,
       "fixed": null,
-      "badge": null
+      "badge": null,
+      "sizes": [
+        {
+          "s": "50 mg",
+          "regular": 64.99,
+          "pct": null,
+          "fixed": null
+        },
+        {
+          "s": "5 mg",
+          "regular": 36,
+          "pct": null,
+          "fixed": null
+        }
+      ]
     },
     "ss-31": {
       "name": "GLP-31",

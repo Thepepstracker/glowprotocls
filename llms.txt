@@ -22,7 +22,7 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 - TB-500 — 10 mg — $49.00
 - KLOW — 80 mg — $86.99
 - AICAR — 50 mg $52.00 / 100 mg $82.00
-- 5-Amino-1MQ — 5 mg — $36.00
+- 5-Amino-1MQ — 50 mg $64.99 / 5 mg $36.00
 - GLP-31 — 10 mg — $42.99
 - PT-141 — 10 mg — $32.99
 - Selank — 10 mg — $32.99
@@ -63,4 +63,4 @@ Shipping is $15.00 flat within the United States and free on orders over $250.00
 ## Contact
 Store: https://glowglps.com
 
-<!-- generated 2026-09-21T19:28:42.328Z by tools/sync-catalog.mjs from catalog.json -->
+<!-- generated 2026-09-22T03:30:17.500Z by tools/sync-catalog.mjs from catalog.json -->
