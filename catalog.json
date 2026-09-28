@@ -1,7 +1,7 @@
 {
   "_readme": "SINGLE SOURCE OF TRUTH for every price on glowglps.com. Edit here (or in the Price Desk at /price-desk.html) and the storefront, the checkout total, the card charge and the parent cover catalogue all follow. Never edit prices inside index.html.",
   "version": 1,
-  "updated": "2026-09-16T02:31:26Z",
+  "updated": "2026-09-28T21:32:14Z",
   "currency": "USD",
   "shipping": {
     "flat": 15.0,
@@ -134,7 +134,7 @@
       "name": "KPV",
       "regular": 33.99,
       "pct": null,
-      "fixed": 25.0,
+      "fixed": null,
       "badge": "Pep of the Week"
     },
     "adamax": {
