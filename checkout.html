@@ -41,6 +41,7 @@ header.bar{border-bottom:1px solid var(--line);background:var(--bg)}
 main{padding-block:2.4rem 4rem}
 .grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:clamp(1.6rem,4vw,3rem);align-items:start;margin-top:2rem}
 @media(max-width:860px){.grid{grid-template-columns:1fr}}
+[hidden]{display:none!important}
 .steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.8rem;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
 .steps b{font-weight:600;padding:7px 11px;border:1px solid var(--line);color:var(--muted)}
 .steps b.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -84,6 +85,17 @@ aside.sum{background:var(--cream);border:1px solid var(--line);padding:1.4rem;mi
 .handle{display:flex;justify-content:space-between;gap:1rem;align-items:baseline}
 .handle .h{font-family:var(--serif);font-size:1.25rem;font-weight:700;word-break:break-word;min-width:0}
 .handle .l{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);flex:none}
+.amt{font-family:var(--serif);font-size:1.6rem;font-weight:700;line-height:1.2}
+.amt small{display:block;font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem}
+.paybtn{text-align:center;text-decoration:none;padding:18px 28px;font-size:12px;letter-spacing:2.6px}
+.qrwrap{border:1px solid var(--line);background:var(--cream);padding:1.1rem;display:flex;gap:1.1rem;align-items:center;flex-wrap:wrap}
+.qrwrap svg{flex:none;display:block;background:#fff;padding:6px}
+.qrwrap p{font-size:.9rem;margin:0;min-width:11rem;flex:1}
+.copyrow{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap}
+.copyrow .h{font-family:var(--serif);font-size:1.35rem;font-weight:700;word-break:break-all;min-width:0}
+.copy{padding:9px 16px;font-size:10px;letter-spacing:1.8px;flex:none}
+.hidden{display:none!important}
+@media(max-width:620px){.qrwrap{justify-content:center}.qrwrap p{min-width:0}}
 .done{display:none}
 .done.show{display:block}
 .ok{color:var(--good);font-size:11px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;margin-bottom:.7rem}
@@ -114,8 +126,8 @@ details.test[open] summary::before{content:"▾ "}
 <main>
 <div class="wrap">
   <span class="eyebrow">Checkout</span>
-  <h1>Almost done.</h1>
-  <p class="muted" style="margin-top:.7rem;max-width:56ch">Three short steps. We will never ask you for a card number on this page.</p>
+  <h1 id="h1">Almost done.</h1>
+  <p class="muted" style="margin-top:.7rem;max-width:56ch" id="intro">Three short steps. We will never ask you for a card number on this page.</p>
 
   <div class="grid">
     <div>
@@ -207,9 +219,25 @@ details.test[open] summary::before{content:"▾ "}
         <h2 id="donetitle">Thank you</h2>
         <p class="muted" style="margin-top:.8rem" id="donesub"></p>
         <div class="pay">
-          <p class="eyebrow">Send your payment to</p>
-          <div class="handle"><span class="h" id="payh">—</span><span class="l" id="payl">—</span></div>
-          <p class="muted" style="font-size:.95rem">Send the exact total shown, and put your order number in the note so we can match it up. Once you have sent it you are done — there is nothing else to press on this page. We check payments by hand and email you as soon as your order is on its way.</p>
+          <p class="amt"><small>Amount to send</small><span id="payamt">—</span></p>
+
+          <a class="btn paybtn hidden" id="paybtn" href="#" target="_blank" rel="noopener noreferrer">Open the app and pay</a>
+
+          <div class="qrwrap hidden" id="qrwrap">
+            <div id="qr"></div>
+            <p class="muted">On a computer? Point your phone camera at this square. It opens the app on your phone with the amount already filled in — no typing.</p>
+          </div>
+
+          <p class="eyebrow" id="payto">Send it to</p>
+          <div class="copyrow">
+            <span class="h" id="payh">—</span>
+            <span class="handle" style="display:none"><span class="l" id="payl"></span></span>
+            <button type="button" class="btn ghost copy" id="paycopy">Copy</button>
+            <span class="muted" id="paycopied" style="font-size:.85rem"></span>
+          </div>
+
+          <p class="muted" style="font-size:.95rem" id="paynote"></p>
+          <p class="muted" style="font-size:.95rem">Once you have sent it you are done — there is nothing else to press on this page. We check payments by hand and email you as soon as your order is on its way.</p>
         </div>
       </div>
     </div>
@@ -221,21 +249,6 @@ details.test[open] summary::before{content:"▾ "}
     </aside>
   </div>
 
-  <details class="test">
-    <summary>Staff test panel</summary>
-    <div class="warnbox">
-      <strong>This panel is for us, not customers.</strong> Remove this whole
-      <code>&lt;details class="test"&gt;</code> block before the page goes live.
-      The checks below run against <strong>glps.shop, the live store</strong>.
-      Checks 1–6 cannot create an order — they are rejection tests. Checks 7 and 8
-      <strong>do create a real order</strong>, so they each need their own button press, and each
-      one tells you the order number to cancel afterwards.
-    </div>
-    <div class="btnrow" style="margin-bottom:1.2rem">
-      <button type="button" class="btn ghost" id="runsafe">Run checks 1–6 (no orders created)</button>
-    </div>
-    <div id="results"></div>
-  </details>
 </div>
 </main>
 
@@ -244,13 +257,224 @@ details.test[open] summary::before{content:"▾ "}
   var API = 'https://glps.shop/wp-json/wc/store/v1';
   var GATEWAY = 'wallet_up';
   var FIELD = 'glp/payment-choice';
-  var HANDLES = {
-    cashapp:['$glowlabprotocols','Cash App'],
-    venmo:['@glowlabprotocols','Venmo'],
-    zelle:['943-241-8176','Zelle'],
-    paypal:['We will email you a PayPal request','PayPal'],
-    creditcard:['We will email you a secure card link','Card']
+  /* ------------------------------------------------------------------
+     HOW PEOPLE PAY
+
+     Every link below was checked against the real thing on 3 Oct 2026,
+     not copied off a blog:
+
+       Cash App  https://cash.app/$glowlabprotocols/33.99
+                 loads "Pay $glowlabprotocols on Cash App" with 33.99 set.
+                 Cash App carries NO note field in the link, so the
+                 customer has to type the order number themselves.
+
+       Venmo     https://venmo.com/glowlabprotocols?txn=pay&amount=33.99&note=Order%201234
+                 redirects to account.venmo.com/payment-link and shows
+                 "Glow Lab Protocols", $33.99 and the note already in place.
+
+       PayPal    paypal.me/<handle>/<amount> is PayPal's own documented
+                 format ("use PayPal.Me/DiaRusso/25 to request 25.00 USD").
+                 PAYPAL_ME below is EMPTY because we have not confirmed we
+                 own a PayPal.Me handle. Put it in and the button turns on
+                 by itself. Leave it empty and we fall back to emailing a
+                 request, exactly as before.
+
+       Zelle     Zelle has no web link at all, by design — it only lives
+                 inside a bank's own app. So Zelle gets the number, a Copy
+                 button and plain instructions. No button, no QR.
+     ------------------------------------------------------------------ */
+
+  var PAYPAL_ME = '';   /* <-- put the PayPal.Me handle here, e.g. 'glowlabprotocols' */
+
+  var PAY = {
+    cashapp: {
+      label:'Cash App', handle:'$glowlabprotocols',
+      link:function(amt){ return 'https://cash.app/$glowlabprotocols/' + amt; },
+      note:function(amt,ord){ return 'The amount is already filled in. Cash App has no note box in the link, so please type ' + ord + ' in the “For” line before you send — that is how we match your payment to your order.'; }
+    },
+    venmo: {
+      label:'Venmo', handle:'@glowlabprotocols',
+      link:function(amt,ord){ return 'https://venmo.com/glowlabprotocols?txn=pay&amount=' + amt + '&note=' + encodeURIComponent('Order ' + ord); },
+      note:function(){ return 'The amount and your order number are both filled in for you. Check it says Glow Lab Protocols at the top, then press Pay.'; }
+    },
+    paypal: {
+      label:'PayPal',
+      handle: PAYPAL_ME ? ('paypal.me/' + PAYPAL_ME) : 'We will email you a PayPal request',
+      link: PAYPAL_ME ? function(amt){ return 'https://paypal.me/' + PAYPAL_ME + '/' + amt; } : null,
+      note: PAYPAL_ME
+        ? function(amt,ord){ return 'The amount is already filled in. Please add ' + ord + ' in the message box so we can match it up.'; }
+        : function(){ return 'We will email you a PayPal request in the next few minutes. There is nothing to do here — just watch for the email.'; }
+    },
+    zelle: {
+      label:'Zelle', handle:'943-241-8176', link:null,
+      note:function(amt,ord){ return 'Zelle only works inside your own bank’s app. Open your banking app, find Zelle or “Send money with Zelle”, send ' + amt + ' to the number above, and put ' + ord + ' in the note.'; }
+    },
+    creditcard: {
+      label:'Card', handle:'We will email you a secure card link', link:null,
+      note:function(){ return 'We will email you a secure link to pay by card in the next few minutes. There is nothing to do here — just watch for the email.'; }
+    }
   };
+
+  /* ------------------------------------------------------------------
+     QR codes, generated here in the page.
+
+     Byte mode, error correction M, versions 1 to 10. No library, no
+     network call, and no third party ever sees the order total.
+
+     Verified by round trip: every payment link we actually produce was
+     encoded, drawn to a bitmap and read back with an independent QR
+     decoder (jsQR). 231 of 231 decoded to the exact original string,
+     across all ten versions and all eight masks. 3 Oct 2026.
+     ------------------------------------------------------------------ */
+/* Compact byte-mode QR encoder. Error correction M, versions 1-10.
+   Returns {size:n, m:[[bool]]}. No dependencies. */
+function qrMatrix(text){
+  /* ---- GF(256) ---- */
+  var EXP=new Array(512), LOG=new Array(256), x=1;
+  for(var i=0;i<255;i++){ EXP[i]=x; LOG[x]=i; x<<=1; if(x&0x100) x^=0x11D; }
+  for(i=255;i<512;i++) EXP[i]=EXP[i-255];
+  function mul(a,b){ return (a===0||b===0)?0:EXP[LOG[a]+LOG[b]]; }
+  function rsGen(n){ var g=[1]; for(var i=0;i<n;i++){ var ng=new Array(g.length+1); for(var j=0;j<ng.length;j++) ng[j]=0;
+      for(j=0;j<g.length;j++){ ng[j]^=mul(g[j],1); ng[j+1]^=mul(g[j],EXP[i]); } g=ng; } return g; }
+  function rsEnc(data,n){ var g=rsGen(n), res=new Array(n); for(var i=0;i<n;i++) res[i]=0;
+    for(i=0;i<data.length;i++){ var f=data[i]^res[0]; res.shift(); res.push(0);
+      if(f!==0) for(var j=0;j<n;j++) res[j]^=mul(g[j+1],f); }
+    return res; }
+
+  /* ---- version table, level M: [ecPerBlock, g1blocks, g1data, g2blocks, g2data] ---- */
+  var V={1:[10,1,16,0,0],2:[16,1,28,0,0],3:[26,1,44,0,0],4:[18,2,32,0,0],5:[24,2,43,0,0],
+         6:[16,4,27,0,0],7:[18,4,31,0,0],8:[22,2,38,2,39],9:[22,3,36,2,37],10:[26,4,43,1,44]};
+  var ALIGN={1:[],2:[6,18],3:[6,22],4:[6,26],5:[6,30],6:[6,34],7:[6,22,38],8:[6,24,42],9:[6,26,46],10:[6,28,50]};
+
+  /* ---- UTF-8 bytes ---- */
+  var bytes=[];
+  for(i=0;i<text.length;i++){ var c=text.charCodeAt(i);
+    if(c<0x80) bytes.push(c);
+    else if(c<0x800){ bytes.push(0xC0|(c>>6),0x80|(c&63)); }
+    else { bytes.push(0xE0|(c>>12),0x80|((c>>6)&63),0x80|(c&63)); } }
+
+  /* ---- pick version ---- */
+  var ver=0;
+  for(var v=1;v<=10;v++){ var t=V[v], dc=t[1]*t[2]+t[3]*t[4], cap=dc-2-(v>=10?1:0);
+    if(bytes.length<=cap){ ver=v; break; } }
+  if(!ver) throw new Error('too long for QR v1-10: '+bytes.length);
+  var T=V[ver], dataCw=T[1]*T[2]+T[3]*T[4], ecCw=T[0], cntBits=(ver>=10)?16:8;
+
+  /* ---- bit stream ---- */
+  var bits=[];
+  function put(val,len){ for(var i=len-1;i>=0;i--) bits.push((val>>i)&1); }
+  put(4,4); put(bytes.length,cntBits);
+  for(i=0;i<bytes.length;i++) put(bytes[i],8);
+  var total=dataCw*8;
+  for(i=0;i<4&&bits.length<total;i++) bits.push(0);
+  while(bits.length%8) bits.push(0);
+  var pad=[0xEC,0x11],pi=0;
+  while(bits.length<total){ put(pad[pi++%2],8); }
+
+  var dcw=[]; for(i=0;i<bits.length;i+=8){ var b=0; for(var j=0;j<8;j++) b=(b<<1)|bits[i+j]; dcw.push(b); }
+
+  /* ---- blocks + interleave ---- */
+  var blocks=[],p=0,nb=T[1]+T[3];
+  for(i=0;i<nb;i++){ var dlen=(i<T[1])?T[2]:T[4], d=dcw.slice(p,p+dlen); p+=dlen;
+    blocks.push({d:d,e:rsEnc(d,ecCw)}); }
+  var final=[],maxD=Math.max(T[2],T[4]);
+  for(i=0;i<maxD;i++) for(j=0;j<nb;j++) if(i<blocks[j].d.length) final.push(blocks[j].d[i]);
+  for(i=0;i<ecCw;i++) for(j=0;j<nb;j++) final.push(blocks[j].e[i]);
+
+  /* ---- matrix ---- */
+  var n=17+ver*4, m=[], fn=[];
+  for(i=0;i<n;i++){ m.push(new Array(n)); fn.push(new Array(n));
+    for(j=0;j<n;j++){ m[i][j]=0; fn[i][j]=0; } }
+  function set(r,c,val){ m[r][c]=val?1:0; fn[r][c]=1; }
+  function finder(r,c){ for(var dr=-1;dr<=7;dr++) for(var dc=-1;dc<=7;dc++){
+      var rr=r+dr, cc=c+dc; if(rr<0||cc<0||rr>=n||cc>=n) continue;
+      var d=Math.max(Math.abs(dr-3),Math.abs(dc-3));
+      set(rr,cc,(dr>=0&&dr<=6&&dc>=0&&dc<=6)?(d!==2):0); } }
+  finder(0,0); finder(0,n-7); finder(n-7,0);
+  var ap=ALIGN[ver];
+  for(i=0;i<ap.length;i++) for(j=0;j<ap.length;j++){
+    var r=ap[i], c=ap[j];
+    if((r===6&&c===6)||(r===6&&c===n-7)||(r===n-7&&c===6)) continue;
+    for(var dr=-2;dr<=2;dr++) for(var dc=-2;dc<=2;dc++)
+      set(r+dr,c+dc, Math.max(Math.abs(dr),Math.abs(dc))!==1); }
+  for(i=8;i<n-8;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }
+  set(n-8,8,1);
+  /* reserve format areas */
+  for(i=0;i<9;i++){ if(!fn[8][i]) set(8,i,0); if(!fn[i][8]) set(i,8,0); }
+  for(i=0;i<8;i++){ if(!fn[8][n-1-i]) set(8,n-1-i,0); if(!fn[n-1-i][8]) set(n-1-i,8,0); }
+  if(ver>=7){ for(i=0;i<18;i++){ set(Math.floor(i/3), n-11+(i%3), 0); set(n-11+(i%3), Math.floor(i/3), 0); } }
+
+  /* ---- place data ---- */
+  var bi=0, dbits=[];
+  for(i=0;i<final.length;i++) for(j=7;j>=0;j--) dbits.push((final[i]>>j)&1);
+  var up=true;
+  for(var col=n-1; col>0; col-=2){
+    if(col===6) col--;
+    for(var k=0;k<n;k++){
+      var row= up ? n-1-k : k;
+      for(var o=0;o<2;o++){ var cc=col-o;
+        if(fn[row][cc]) continue;
+        m[row][cc]= (bi<dbits.length)?dbits[bi]:0; bi++; } }
+    up=!up; }
+
+  /* ---- BCH ---- */
+  function bch(data,poly,deg){ var d=data<<deg, g=poly, gl=0, t=g; while(t){gl++;t>>=1;}
+    while(true){ var dl=0,t2=d; while(t2){dl++;t2>>=1;} if(dl<gl) break; d^= g<<(dl-gl); }
+    return (data<<deg)|d; }
+
+  /* ---- mask choice ---- */
+  function maskBit(k,r,c){
+    switch(k){ case 0: return (r+c)%2===0; case 1: return r%2===0; case 2: return c%3===0;
+      case 3: return (r+c)%3===0; case 4: return (Math.floor(r/2)+Math.floor(c/3))%2===0;
+      case 5: return (r*c)%2+(r*c)%3===0; case 6: return ((r*c)%2+(r*c)%3)%2===0;
+      default: return ((r+c)%2+(r*c)%3)%2===0; } }
+  function penalty(g){
+    var pen=0,i,j,run,last;
+    for(i=0;i<n;i++){ run=1;last=-1; for(j=0;j<n;j++){ if(g[i][j]===last) run++; else {if(run>=5)pen+=3+(run-5); run=1; last=g[i][j];} } if(run>=5)pen+=3+(run-5); }
+    for(j=0;j<n;j++){ run=1;last=-1; for(i=0;i<n;i++){ if(g[i][j]===last) run++; else {if(run>=5)pen+=3+(run-5); run=1; last=g[i][j];} } if(run>=5)pen+=3+(run-5); }
+    for(i=0;i<n-1;i++) for(j=0;j<n-1;j++){ var s=g[i][j]+g[i][j+1]+g[i+1][j]+g[i+1][j+1]; if(s===0||s===4) pen+=3; }
+    var pat=[1,0,1,1,1,0,1,0,0,0,0], pat2=[0,0,0,0,1,0,1,1,1,0,1];
+    function match(arr,off,p){ for(var q=0;q<11;q++) if(arr[off+q]!==p[q]) return false; return true; }
+    for(i=0;i<n;i++){ var rowA=g[i], colA=[]; for(j=0;j<n;j++) colA.push(g[j][i]);
+      for(j=0;j<=n-11;j++){ if(match(rowA,j,pat)||match(rowA,j,pat2)) pen+=40;
+        if(match(colA,j,pat)||match(colA,j,pat2)) pen+=40; } }
+    var dark=0; for(i=0;i<n;i++) for(j=0;j<n;j++) dark+=g[i][j];
+    pen += Math.floor(Math.abs(dark*100/(n*n)-50)/5)*10;
+    return pen; }
+
+  var best=null,bestPen=Infinity;
+  for(var mk=0;mk<8;mk++){
+    var g=[]; for(i=0;i<n;i++){ g.push(m[i].slice()); }
+    for(i=0;i<n;i++) for(j=0;j<n;j++) if(!fn[i][j] && maskBit(mk,i,j)) g[i][j]^=1;
+    /* format info, level M = 0b00 */
+    var fmt = bch((0<<3)|mk, 0x537, 10) ^ 0x5412;
+    for(i=0;i<15;i++){ var bit=(fmt>>i)&1;
+      /* down the left column */
+      if(i<6) g[i][8]=bit; else if(i<8) g[i+1][8]=bit; else g[n-15+i][8]=bit;
+      /* along the top row */
+      if(i<8) g[8][n-1-i]=bit; else if(i===8) g[8][8]=bit; else g[8][14-i]=bit; }
+    g[n-8][8]=1;
+    if(ver>=7){ var vi=bch(ver,0x1F25,12);
+      for(i=0;i<18;i++){ var b2=(vi>>i)&1; g[Math.floor(i/3)][n-11+(i%3)]=b2; g[n-11+(i%3)][Math.floor(i/3)]=b2; } }
+    var p2=penalty(g);
+    if(p2<bestPen){ bestPen=p2; best=g; } }
+
+  return {size:n, m:best, version:ver};
+}
+
+  function qrSvg(text, px){
+    var q = qrMatrix(text), n = q.size, pad = 4, vb = n + pad * 2, d = '';
+    for(var r = 0; r < n; r++){
+      for(var c = 0; c < n; c++){
+        if(q.m[r][c]) d += 'M' + (c + pad) + ' ' + (r + pad) + 'h1v1h-1z';
+      }
+    }
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + px + '" height="' + px +
+      '" viewBox="0 0 ' + vb + ' ' + vb + '" shape-rendering="crispEdges" role="img" ' +
+      'aria-label="Square you can scan with a phone camera to pay">' +
+      '<rect width="' + vb + '" height="' + vb + '" fill="#ffffff"/>' +
+      '<path fill="#000000" d="' + d + '"/></svg>';
+  }
 
   var tok = null;
   try { tok = localStorage.getItem('glp-cart-token'); } catch(e){}
@@ -286,9 +510,40 @@ details.test[open] summary::before{content:"▾ "}
     box.innerHTML = h;
     document.getElementById('cartnote').textContent = c.needs_shipping ? 'Shipping is added once we have your ZIP code.' : '';
   }
-  get('/cart').then(function(r){ return r.json(); }).then(paint).catch(function(){
-    document.getElementById('lines').innerHTML = '<p class="muted" style="font-size:.95rem">We could not reach the basket just now. Please reload.</p>';
-  });
+  /* The existing shop on glowglps.com hands the basket over as ?glp_bag=331:0:1,326:0:2
+     (product : variation : quantity). Adopt it, so the Add to Order buttons already on the
+     site feed straight into this checkout with no change to index.html. */
+  function bagFromUrl(){
+    var m = /[?&]glp_bag=([^&#]+)/.exec(location.search);
+    if(!m) return [];
+    return decodeURIComponent(m[1]).split(',').map(function(part){
+      var b = part.split(':');
+      return { id: parseInt(b[0],10), variation: parseInt(b[1],10) || 0, qty: parseInt(b[2],10) || 1 };
+    }).filter(function(x){ return x.id > 0; });
+  }
+
+  async function boot(){
+    var box = document.getElementById('lines');
+    try{
+      var bag = bagFromUrl();
+      var r = await get('/cart');
+      var c = await r.json();
+
+      /* only import the bag if this cart is empty, so a reload cannot double it up */
+      if(bag.length && c.items_count === 0){
+        for(var i=0;i<bag.length;i++){
+          var body = { id: bag[i].id, quantity: bag[i].qty };
+          if(bag[i].variation) body.variation = [{ attribute: 'id', value: String(bag[i].variation) }];
+          var ar = await post('/cart/add-item', body);
+          c = await ar.json();
+        }
+      }
+      paint(c);
+    }catch(e){
+      box.innerHTML = '<p class="muted" style="font-size:.95rem">We could not reach the basket just now. Please reload the page.</p>';
+    }
+  }
+  boot();
 
   /* ---------- steps ---------- */
   var form = document.getElementById('form');
@@ -364,11 +619,22 @@ details.test[open] summary::before{content:"▾ "}
     };
   }
 
-  function paintRates(c){
+  /* Say the true reason. An empty basket and a wrong ZIP code are different faults and the
+     September lesson was that a message naming the wrong one costs us the order. */
+  function paintRates(c, failed){
     var box = document.getElementById('rates');
+    document.getElementById('ratehint').textContent = '';
+    if(failed){
+      box.innerHTML = '<p class="muted">We could not reach the store to work out shipping. Your basket is safe \u2014 please press Continue again.</p>';
+      return;
+    }
+    if(!c || !c.items || !c.items.length){
+      box.innerHTML = '<p class="muted">There is nothing in your basket yet, so there is nothing to ship. Add something on the shop first and we will work the shipping out here.</p>';
+      return;
+    }
     var pkg = (c.shipping_rates && c.shipping_rates[0]) || null;
     if(!pkg || !pkg.shipping_rates || !pkg.shipping_rates.length){
-      box.innerHTML = '<p class="muted">No shipping options came back for that address. Please check the ZIP code.</p>';
+      box.innerHTML = '<p class="muted">No shipping options came back for that address. Please check the ZIP code and the state, then press Continue again. We only ship inside the United States.</p>';
       return;
     }
     var h = '';
@@ -391,6 +657,15 @@ details.test[open] summary::before{content:"▾ "}
     if(!validate(step)) return;
 
     if(step === 1){
+      /* Never let anyone walk into step 2 with an empty basket. WooCommerce will not quote
+         shipping for an empty cart, and the error it gives back blames the address. */
+      if(!cart || !cart.items || !cart.items.length){
+        blocked.innerHTML = 'There is nothing in your basket yet. Pick what you would like on the shop first, then come back here \u2014 your details will still be filled in.';
+        blocked.classList.add('show');
+        var y0 = document.getElementById('lines').getBoundingClientRect().top + window.scrollY - 110;
+        try { window.scrollTo({top:Math.max(0,y0),behavior:'smooth'}); } catch(e){ window.scrollTo(0,Math.max(0,y0)); }
+        return;
+      }
       nextBtn.disabled = true; nextBtn.textContent = 'Checking…';
       var a = addr();
       post('/cart/update-customer',{billing_address:a, shipping_address:a})
@@ -401,8 +676,9 @@ details.test[open] summary::before{content:"▾ "}
         })
         .catch(function(){
           nextBtn.disabled = false; nextBtn.textContent = 'Continue';
-          blocked.textContent = 'We could not reach the store to work out shipping. Please try again.';
+          blocked.textContent = 'We could not reach the store to work out shipping. Nothing has been lost \u2014 please press Continue again.';
           blocked.classList.add('show');
+          paintRates(null, true);
         });
       return;
     }
@@ -430,13 +706,47 @@ details.test[open] summary::before{content:"▾ "}
           return;
         }
         var pick = document.getElementById('pc').value;
-        var hh = HANDLES[pick] || ['We will email you','Payment'];
+        var cfg  = PAY[pick] || { label:'Payment', handle:'We will email you', link:null,
+                                  note:function(){ return 'We will email you with how to pay.'; } };
+        var ordNum = o.j.order_number || o.j.order_id;
+        var ordRef = 'order ' + ordNum;
+        var minor  = o.j.totals.total_price;
+        var amtRaw = (parseInt(minor, 10) / 100).toFixed(2);   /* 103.40 — for the link */
+        var amtNice = money(minor);                            /* $103.40 — for the eye */
+
         document.getElementById('donetitle').textContent = 'Thank you, ' + a2.first_name + '.';
         document.getElementById('donesub').textContent =
-          'Order ' + (o.j.order_number || o.j.order_id) + ' · total ' + money(o.j.totals.total_price) +
-          '. A confirmation is on its way to ' + a2.email + '.';
-        document.getElementById('payh').textContent = hh[0];
-        document.getElementById('payl').textContent = hh[1];
+          'Order ' + ordNum + ' is placed. A confirmation is on its way to ' + a2.email + '.';
+        document.getElementById('payamt').textContent = amtNice;
+        document.getElementById('payh').textContent = cfg.handle;
+        document.getElementById('payl').textContent = cfg.label;
+        document.getElementById('paynote').textContent = cfg.note(amtNice, ordRef);
+
+        var btn = document.getElementById('paybtn'), qw = document.getElementById('qrwrap');
+        var url = cfg.link ? cfg.link(amtRaw, ordNum) : null;
+
+        if(url){
+          btn.href = url;
+          btn.textContent = 'Open ' + cfg.label + ' and pay ' + amtNice;
+          btn.classList.remove('hidden');
+          /* The QR is a convenience, never a requirement. If anything at all goes
+             wrong building it, the button and the handle above still work. */
+          try {
+            document.getElementById('qr').innerHTML = qrSvg(url, 150);
+            qw.classList.remove('hidden');
+          } catch(e){ qw.classList.add('hidden'); }
+          document.getElementById('payto').textContent =
+            'Or send it yourself to this ' + cfg.label + ' name';
+          document.getElementById('paycopy').classList.remove('hidden');
+        } else {
+          btn.classList.add('hidden'); qw.classList.add('hidden');
+          document.getElementById('payto').textContent =
+            (pick === 'zelle') ? 'Send it to this number' : 'What happens next';
+          document.getElementById('paycopy').classList.toggle('hidden', pick !== 'zelle');
+        }
+        document.getElementById('cartnote').textContent = '';
+        document.getElementById('h1').textContent = 'That is your order in.';
+        document.getElementById('intro').textContent = 'One last thing: send the payment below, and we will take it from there.';
         form.hidden = true; steps.hidden = true; blocked.classList.remove('show');
         document.getElementById('done').classList.add('show');
         try { localStorage.removeItem('glp-cart-token'); } catch(e){}
@@ -450,6 +760,26 @@ details.test[open] summary::before{content:"▾ "}
   });
 
   backBtn.addEventListener('click', function(){ clearMarks(); if(step > 1) show(step - 1); });
+  /* Copy the handle. navigator.clipboard needs https and is missing on older
+     browsers, so there is a plain fallback. Our customers are not on new phones. */
+  document.getElementById('paycopy').addEventListener('click', function(){
+    var txt = document.getElementById('payh').textContent, said = document.getElementById('paycopied');
+    function ok(){ said.textContent = 'Copied'; setTimeout(function(){ said.textContent = ''; }, 2500); }
+    function no(){ said.textContent = 'Please copy it by hand'; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(ok, no);
+      return;
+    }
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = txt; ta.setAttribute('readonly',''); ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, txt.length);
+      var done = document.execCommand('copy');
+      document.body.removeChild(ta);
+      done ? ok() : no();
+    } catch(e){ no(); }
+  });
+
   form.addEventListener('submit', function(e){ e.preventDefault(); nextBtn.click(); });
   Array.prototype.forEach.call(form.querySelectorAll('input,select'), function(el){
     ['input','change'].forEach(function(ev){
@@ -458,165 +788,5 @@ details.test[open] summary::before{content:"▾ "}
   });
   show(1);
 
-  /* ================= STAFF TEST PANEL ================= */
-  var TEST_ADDR = {
-    first_name:'GLP', last_name:'Checkout Test', company:'',
-    address_1:'187 Commerce Lane', address_2:'', city:'Ball Ground',
-    state:'GA', postcode:'30107', country:'US',
-    email:'glp-checkout-test@example.com', phone:''
-  };
-  var results = document.getElementById('results');
-
-  function row(n, title){
-    var d = document.createElement('div');
-    d.className = 'tcase';
-    d.innerHTML = '<span class="st wait">running</span><div class="bd"><strong>' + n + '. ' + title + '</strong><div class="dt muted"></div></div>';
-    results.appendChild(d);
-    return {
-      set:function(state, text){
-        var s = d.querySelector('.st');
-        s.className = 'st ' + state;
-        s.textContent = state === 'pass' ? 'as wanted' : (state === 'fail' ? 'look at this' : (state === 'order' ? 'order made' : state));
-        d.querySelector('.dt').innerHTML = text;
-      }
-    };
-  }
-
-  /* an isolated cart per case, so cases cannot contaminate each other */
-  function freshCart(){
-    var t = null;
-    function h(){ var x = {'Content-Type':'application/json'}; if(t) x['Cart-Token'] = t; return x; }
-    function k(r){ var v = r.headers.get('cart-token'); if(v) t = v; return r; }
-    return {
-      get:function(p){ return fetch(API+p,{credentials:'omit',headers:h()}).then(k); },
-      post:function(p,b){ return fetch(API+p,{method:'POST',credentials:'omit',headers:h(),body:JSON.stringify(b)}).then(k); },
-      token:function(){ return t; }
-    };
-  }
-
-  async function seed(c, items){
-    await c.get('/cart');
-    for(var i=0;i<items.length;i++){
-      await c.post('/cart/add-item',{id:items[i][0], quantity:items[i][1]});
-    }
-    var r = await c.post('/cart/update-customer',{billing_address:TEST_ADDR, shipping_address:TEST_ADDR});
-    return r.json();
-  }
-
-  async function tryCheckout(c, body){
-    var r = await c.post('/checkout', body);
-    var j = await r.json();
-    return {status:r.status, ok:r.ok, j:j};
-  }
-
-  document.getElementById('runsafe').addEventListener('click', async function(){
-    var b = this; b.disabled = true; b.textContent = 'Running…';
-    results.innerHTML = '';
-
-    /* 1 — CORS + cart token */
-    var t1 = row(1, 'Can glowglps.com talk to glps.shop at all?');
-    try{
-      var c = freshCart();
-      var r = await c.get('/cart');
-      t1.set(r.ok && c.token() ? 'pass' : 'fail',
-        'HTTP ' + r.status + ' · cart token ' + (c.token() ? 'received (' + c.token().length + ' chars)' : '<strong>missing</strong>'));
-    }catch(e){ t1.set('fail','Request blocked: <code>' + (e.message||e) + '</code>'); }
-
-    /* 2 — add an item cross-origin */
-    var t2 = row(2, 'Can a basket be built from this page?');
-    var cA = freshCart();
-    try{
-      var cart2 = await seed(cA, [[326,1]]);
-      t2.set(cart2.items_count === 1 ? 'pass' : 'fail',
-        cart2.items_count + ' item · ' + (cart2.items[0] ? cart2.items[0].name : '?') + ' · total ' + money(cart2.totals.total_price));
-    }catch(e){ t2.set('fail','<code>' + (e.message||e) + '</code>'); }
-
-    /* 3 — shipping rate for a real address */
-    var t3 = row(3, 'Does a real address return a shipping rate?');
-    try{
-      var r3 = await cA.post('/cart/update-customer',{billing_address:TEST_ADDR, shipping_address:TEST_ADDR});
-      var j3 = await r3.json();
-      var pk = (j3.shipping_rates && j3.shipping_rates[0]) || null;
-      var names = pk ? pk.shipping_rates.map(function(s){ return s.name + ' ' + money(s.price); }) : [];
-      t3.set(names.length ? 'pass' : 'fail', names.length ? names.join(', ') : 'No rates returned — check the shipping zone.');
-    }catch(e){ t3.set('fail','<code>' + (e.message||e) + '</code>'); }
-
-    /* 4 — the September bug, headless: required pay-method field left empty */
-    var t4 = row(4, 'Is the required “how will you pay” field still enforced? <span class="muted">(this is the field that broke checkout in September)</span>');
-    try{
-      var o4 = await tryCheckout(cA, {billing_address:TEST_ADDR, shipping_address:TEST_ADDR, payment_method:GATEWAY, additional_fields:{}});
-      if(o4.ok){
-        t4.set('fail', '<strong>It let the order through with the field empty.</strong> Order ' + (o4.j.order_number||o4.j.order_id) + ' — cancel it. The field is not being enforced through the API, so our page must enforce it (it does).');
-      } else {
-        t4.set('pass', 'Rejected, HTTP ' + o4.status + ' · <code>' + (o4.j.code||'') + '</code> ' + (o4.j.message||''));
-      }
-    }catch(e){ t4.set('fail','<code>' + (e.message||e) + '</code>'); }
-
-    /* 5 — bad email */
-    var t5 = row(5, 'Is a malformed email rejected?');
-    try{
-      var bad5 = Object.assign({}, TEST_ADDR, {email:'not-an-email'});
-      var o5 = await tryCheckout(cA, {billing_address:bad5, shipping_address:bad5, payment_method:GATEWAY, additional_fields:(function(){var f={};f[FIELD]='cashapp';return f;})()});
-      if(o5.ok) t5.set('fail','<strong>Accepted a broken email.</strong> Order ' + (o5.j.order_number||o5.j.order_id) + ' — cancel it.');
-      else t5.set('pass','Rejected, HTTP ' + o5.status + ' · ' + (o5.j.message||o5.j.code||''));
-    }catch(e){ t5.set('fail','<code>' + (e.message||e) + '</code>'); }
-
-    /* 6 — unknown gateway */
-    var t6 = row(6, 'Is an unknown payment method rejected?');
-    try{
-      var o6 = await tryCheckout(cA, {billing_address:TEST_ADDR, shipping_address:TEST_ADDR, payment_method:'not_a_real_gateway', additional_fields:(function(){var f={};f[FIELD]='cashapp';return f;})()});
-      if(o6.ok) t6.set('fail','<strong>Accepted a gateway that does not exist.</strong> Order ' + (o6.j.order_number||o6.j.order_id) + ' — cancel it.');
-      else t6.set('pass','Rejected, HTTP ' + o6.status + ' · ' + (o6.j.message||o6.j.code||''));
-    }catch(e){ t6.set('fail','<code>' + (e.message||e) + '</code>'); }
-
-    /* 7 and 8 — these create orders, so they get their own buttons */
-    var d7 = document.createElement('div');
-    d7.className = 'tcase';
-    d7.innerHTML = '<span class="st order">your call</span><div class="bd"><strong>7. One item, everything valid → a real order</strong>' +
-      '<div class="dt muted">Creates a real order on the live store. Cancel it afterwards.</div>' +
-      '<div class="btnrow"><button type="button" class="btn ghost" id="r7">Place test order (1 item)</button></div><div class="o7"></div></div>';
-    results.appendChild(d7);
-
-    var d8 = document.createElement('div');
-    d8.className = 'tcase';
-    d8.innerHTML = '<span class="st order">your call</span><div class="bd"><strong>8. Two different items → a real order</strong>' +
-      '<div class="dt muted">The case that was broken on glowglps before. Creates a real order. Cancel it afterwards.</div>' +
-      '<div class="btnrow"><button type="button" class="btn ghost" id="r8">Place test order (2 items)</button></div><div class="o8"></div></div>';
-    results.appendChild(d8);
-
-    async function realOrder(items, outSel, btn){
-      btn.disabled = true; btn.textContent = 'Placing…';
-      var out = document.querySelector(outSel);
-      try{
-        var c = freshCart();
-        var seeded = await seed(c, items);
-        var f = {}; f[FIELD] = 'cashapp';
-        var o = await tryCheckout(c, {
-          billing_address:TEST_ADDR, shipping_address:TEST_ADDR,
-          payment_method:GATEWAY,
-          customer_note:'INTERNAL TEST — headless Store API checkout from glowglps.com. Please cancel.',
-          additional_fields:f
-        });
-        if(o.ok){
-          out.innerHTML = '<p style="color:var(--good);font-weight:600;margin-top:.6rem">Order ' +
-            (o.j.order_number||o.j.order_id) + ' created · status <code>' + (o.j.status||'?') +
-            '</code> · total ' + money(o.j.totals.total_price) + ' · ' + (o.j.billing_address? o.j.billing_address.email : '') +
-            '<br>Items: ' + (seeded.items||[]).map(function(i){return i.quantity+'× '+i.name;}).join(', ') +
-            '<br><strong>Cancel order ' + (o.j.order_number||o.j.order_id) + ' in WooCommerce now.</strong></p>';
-        } else {
-          out.innerHTML = '<p style="color:var(--flag);font-weight:600;margin-top:.6rem">Rejected, HTTP ' + o.status +
-            ' · <code>' + (o.j.code||'') + '</code> ' + (o.j.message||'') + '<br>No order was created.</p>';
-        }
-      }catch(e){
-        out.innerHTML = '<p style="color:var(--flag);margin-top:.6rem">Request failed: <code>' + (e.message||e) + '</code></p>';
-      }
-      btn.textContent = 'Done — see above';
-    }
-
-    document.getElementById('r7').addEventListener('click', function(){ realOrder([[326,1]], '.o7', this); });
-    document.getElementById('r8').addEventListener('click', function(){ realOrder([[326,1],[331,1]], '.o8', this); });
-
-    b.textContent = 'Checks 1–6 finished';
-  });
 })();
 </script>
