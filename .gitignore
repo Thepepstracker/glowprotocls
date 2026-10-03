@@ -1,2 +1,8 @@
 # Local-only files. Never deploy these.
 _to_delete/
+node_modules/
+.store-data/
+.env
+.env.*
+!.env.example
+*.log

@@ -19,6 +19,16 @@
   path = "/*"
 
 [[redirects]]
+  from = "/store-next/admin"
+  to = "/store-next/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/store-next/:affiliate"
+  to = "/store-next/index.html"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
@@ -31,3 +41,13 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow, noarchive"
     Cache-Control = "no-store"
+
+[[headers]]
+  for = "/store-next/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Cache-Control = "no-store"
+
+[functions."store-next"]
+  node_bundler = "esbuild"
+  external_node_modules = ["pg"]

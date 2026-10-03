@@ -1,0 +1,21 @@
+{
+  "name": "glow-protocols-store",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "store:dev": "node tools/store/dev.cjs",
+    "store:test": "node --test tests/store/*.test.cjs",
+    "store:seed": "node tools/store/seed.cjs",
+    "build": "node tools/sync-catalog.mjs",
+    "store:test-ui": "node tests/store/ui-check.cjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "linkedom": "^0.18.12"
+  }
+}
