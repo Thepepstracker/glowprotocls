@@ -1,0 +1,622 @@
+<title>Glow Checkout</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* glowglps.com's own system: white page, cream panels, warm hairlines, gold eyebrows,
+   Cormorant display over Inter, square ink buttons. One column, large type — our
+   customers are older and this screen is where we lose them. */
+:root{
+  --gold:#c9a24b;--ink:#1b1b1b;--muted:#6f6a61;--bg:#fff;--cream:#faf7f1;--line:#ece5d7;
+  --flag:#a3302a;--good:#2c6e4f;
+  --serif:"Cormorant Garamond",Georgia,serif;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --gold:#d8bd7e;--ink:#f3efe7;--muted:#a69f93;--bg:#141311;--cream:#1d1b18;--line:#332f28;
+    --flag:#e58b84;--good:#7fc3a1;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --gold:#d8bd7e;--ink:#f3efe7;--muted:#a69f93;--bg:#141311;--cream:#1d1b18;--line:#332f28;
+  --flag:#e58b84;--good:#7fc3a1;color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6}
+.wrap{max-width:960px;margin:0 auto;padding-inline:22px}
+h1,h2,h3{font-family:var(--serif);font-weight:700;margin:0;text-wrap:balance}
+h1{font-size:clamp(2.1rem,6vw,3rem);line-height:1.05}
+h2{font-size:1.5rem}
+h3{font-size:1.2rem;font-weight:600}
+p{margin:0}
+.eyebrow{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:3.2px;text-transform:uppercase;color:var(--gold);display:block}
+.muted{color:var(--muted)}
+header.bar{border-bottom:1px solid var(--line);background:var(--bg)}
+.bar-in{display:flex;align-items:center;gap:18px;min-height:72px}
+.logo{line-height:1.02;margin-right:auto}
+.logo b{display:block;font-family:var(--serif);font-size:1.3rem;font-weight:700;letter-spacing:.06em}
+.logo i{display:block;font-style:normal;font-size:9px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--gold)}
+.secure{font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted)}
+main{padding-block:2.4rem 4rem}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:clamp(1.6rem,4vw,3rem);align-items:start;margin-top:2rem}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.8rem;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase}
+.steps b{font-weight:600;padding:7px 11px;border:1px solid var(--line);color:var(--muted)}
+.steps b.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.steps b.done{color:var(--gold);border-color:var(--gold)}
+fieldset{border:0;margin:0;padding:0}
+legend{font-family:var(--serif);font-size:1.5rem;font-weight:700;margin-bottom:1.3rem;padding:0}
+label{display:block;font-size:12px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+label .opt{letter-spacing:normal;text-transform:none;font-weight:400}
+input[type=text],input[type=email],input[type=tel],select{
+  width:100%;font-family:var(--sans);font-size:1.05rem;color:var(--ink);background:var(--bg);
+  border:1px solid var(--ink);border-radius:0;padding:.72rem .8rem;
+}
+.field{margin-bottom:1.3rem;min-width:0}
+.field.bad input,.field.bad select{border-color:var(--flag);border-width:2px;background:color-mix(in srgb,var(--flag) 6%,var(--bg))}
+.hint{font-size:.85rem;color:var(--muted);margin-top:.35rem}
+.err{display:none;color:var(--flag);font-size:.9rem;font-weight:600;margin-top:.35rem}
+.field.bad .err{display:block}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:0 1rem}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
+.check{display:flex;gap:.7rem;align-items:flex-start;font-size:.97rem;line-height:1.5}
+.check input{margin-top:.3rem;flex:none;width:1.15rem;height:1.15rem;accent-color:var(--gold)}
+.rates{display:flex;flex-direction:column;gap:0}
+.rate{display:flex;gap:.7rem;align-items:center;padding:.9rem 0;border-top:1px solid var(--line);cursor:pointer}
+.rate:last-child{border-bottom:1px solid var(--line)}
+.rate input{flex:none;width:1.15rem;height:1.15rem;accent-color:var(--gold)}
+.rate .nm{flex:1;min-width:0}
+.rate .pr{font-variant-numeric:tabular-nums;font-weight:600}
+.btn{display:inline-block;font-family:var(--sans);font-size:11px;font-weight:600;letter-spacing:2.42px;text-transform:uppercase;cursor:pointer;background:var(--ink);color:var(--bg);border:1px solid var(--ink);border-radius:0;padding:16px 34px}
+.btn:hover{background:var(--gold);border-color:var(--gold);color:#1b1b1b}
+.btn[disabled]{opacity:.55;cursor:wait}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btnrow{display:flex;gap:12px;flex-wrap:wrap;margin-top:.5rem}
+.btn:focus-visible,input:focus-visible,select:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.blocked{display:none;border:1px solid var(--flag);background:color-mix(in srgb,var(--flag) 9%,var(--bg));color:var(--flag);padding:.85rem .9rem;font-weight:600;font-size:.97rem;margin-bottom:1.2rem}
+.blocked.show{display:block}
+aside.sum{background:var(--cream);border:1px solid var(--line);padding:1.4rem;min-width:0}
+.li{display:flex;justify-content:space-between;gap:1rem;padding-block:.55rem;border-bottom:1px solid var(--line);font-size:.97rem}
+.li span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.li.tot{border-bottom:0;border-top:2px solid var(--ink);margin-top:.6rem;padding-top:.8rem;font-size:1.15rem;font-weight:700;font-family:var(--serif)}
+.pay{border-top:1px solid var(--line);margin-top:1.3rem;padding-top:1.3rem;display:flex;flex-direction:column;gap:.9rem}
+.handle{display:flex;justify-content:space-between;gap:1rem;align-items:baseline}
+.handle .h{font-family:var(--serif);font-size:1.25rem;font-weight:700;word-break:break-word;min-width:0}
+.handle .l{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);flex:none}
+.done{display:none}
+.done.show{display:block}
+.ok{color:var(--good);font-size:11px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;margin-bottom:.7rem}
+details.test{margin-top:3rem;border-top:1px solid var(--line);padding-top:1.4rem}
+details.test summary{list-style:none;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;color:var(--muted)}
+details.test summary::-webkit-details-marker{display:none}
+details.test summary::before{content:"▸ ";color:var(--gold)}
+details.test[open] summary::before{content:"▾ "}
+.tcase{display:flex;gap:.8rem;align-items:flex-start;padding-block:.75rem;border-bottom:1px solid var(--line);font-size:.92rem}
+.tcase .st{font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;flex:none;min-width:8.5ch;padding-top:.15rem}
+.st.pass{color:var(--good)}
+.st.fail{color:var(--flag)}
+.st.wait{color:var(--muted)}
+.st.order{color:var(--gold)}
+.tcase .bd{min-width:0}
+.tcase .bd code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.86em;color:var(--muted);word-break:break-word}
+.warnbox{border:1px solid var(--gold);background:color-mix(in srgb,var(--gold) 10%,var(--bg));padding:1rem;margin-block:1.2rem;font-size:.93rem}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <div class="logo"><b>GLOW LAB</b><i>Protocols</i></div>
+    <span class="secure">Secure Checkout</span>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+  <span class="eyebrow">Checkout</span>
+  <h1>Almost done.</h1>
+  <p class="muted" style="margin-top:.7rem;max-width:56ch">Three short steps. We will never ask you for a card number on this page.</p>
+
+  <div class="grid">
+    <div>
+      <div class="steps" id="steps">
+        <b class="on" data-s="1">1 · Where to send it</b>
+        <b data-s="2">2 · How it ships</b>
+        <b data-s="3">3 · How you will pay</b>
+      </div>
+
+      <div id="blocked" class="blocked" role="alert"></div>
+
+      <form id="form" novalidate>
+
+        <fieldset class="stepbox" data-step="1">
+          <legend>Where should we send it?</legend>
+          <div class="two">
+            <div class="field"><label for="fn">First name</label><input type="text" id="fn" autocomplete="given-name" required><p class="err">We need a first name for the parcel.</p></div>
+            <div class="field"><label for="ln">Last name</label><input type="text" id="ln" autocomplete="family-name" required><p class="err">We need a last name for the parcel.</p></div>
+          </div>
+          <div class="field"><label for="em">Email</label><input type="email" id="em" autocomplete="email" required><p class="err">We need an email to send your order details and tracking.</p><p class="hint">This is where your order confirmation and tracking number go.</p></div>
+          <div class="field"><label for="ph">Phone <span class="opt">— optional</span></label><input type="tel" id="ph" autocomplete="tel"><p class="hint">Only if there is a problem with delivery.</p></div>
+          <div class="field"><label for="a1">Street address</label><input type="text" id="a1" autocomplete="address-line1" required><p class="err">We need a street address.</p></div>
+          <div class="field"><label for="a2">Apartment, suite, unit <span class="opt">— optional</span></label><input type="text" id="a2" autocomplete="address-line2"></div>
+          <div class="two">
+            <div class="field"><label for="ct">City</label><input type="text" id="ct" autocomplete="address-level2" required><p class="err">We need a city.</p></div>
+            <div class="field"><label for="st">State</label><input type="text" id="st" autocomplete="address-level1" maxlength="2" placeholder="GA" required><p class="err">We need a two-letter state, like GA.</p></div>
+          </div>
+          <div class="two">
+            <div class="field"><label for="zp">ZIP code</label><input type="text" id="zp" inputmode="numeric" autocomplete="postal-code" required><p class="err">We need a ZIP code.</p></div>
+            <div class="field"><label for="cn">Country</label><input type="text" id="cn" value="United States" readonly><p class="hint">We ship within the United States only.</p></div>
+          </div>
+        </fieldset>
+
+        <fieldset class="stepbox" data-step="2" hidden>
+          <legend>How it ships</legend>
+          <div class="rates" id="rates"><p class="muted">Working out shipping for your address…</p></div>
+          <p class="hint" id="ratehint"></p>
+        </fieldset>
+
+        <fieldset class="stepbox" data-step="3" hidden>
+          <legend>How will you pay?</legend>
+          <div class="field">
+            <label for="pc">Pick the one you will use</label>
+            <select id="pc" required>
+              <option value="">Choose how you will pay</option>
+              <option value="cashapp">Cash App</option>
+              <option value="venmo">Venmo</option>
+              <option value="zelle">Zelle</option>
+              <option value="paypal">PayPal</option>
+              <option value="creditcard">Credit or debit card</option>
+            </select>
+            <p class="err">Please pick one. You cannot place the order without it.</p>
+            <p class="hint">We will show you where to send it on the next screen. Nothing is taken from you automatically.</p>
+          </div>
+          <div class="field">
+            <label for="src">How did you hear about us? <span class="opt">— optional</span></label>
+            <select id="src">
+              <option value="">Prefer not to say</option>
+              <option>Heather's live</option>
+              <option>TikTok</option>
+              <option>Facebook</option>
+              <option>Instagram</option>
+              <option>A friend or family member told me</option>
+              <option>The Skool community</option>
+              <option>A library talk or an event</option>
+              <option>Google or another search engine</option>
+              <option>I've ordered before</option>
+              <option>Somewhere else</option>
+            </select>
+            <p class="hint">It genuinely decides where we spend our time.</p>
+          </div>
+          <div class="field">
+            <div class="check">
+              <input type="checkbox" id="ack" required>
+              <label for="ack" style="font-weight:400;margin:0;letter-spacing:normal;text-transform:none;font-size:.97rem;color:var(--ink)">I am 18 or older, and I understand these are research materials, not for human consumption.</label>
+            </div>
+            <p class="err">Please tick this box to place the order.</p>
+          </div>
+        </fieldset>
+
+        <div class="btnrow">
+          <button type="button" class="btn ghost" id="back" hidden>Back</button>
+          <button type="button" class="btn" id="next">Continue</button>
+        </div>
+      </form>
+
+      <div class="done" id="done">
+        <p class="ok">Order placed</p>
+        <h2 id="donetitle">Thank you</h2>
+        <p class="muted" style="margin-top:.8rem" id="donesub"></p>
+        <div class="pay">
+          <p class="eyebrow">Send your payment to</p>
+          <div class="handle"><span class="h" id="payh">—</span><span class="l" id="payl">—</span></div>
+          <p class="muted" style="font-size:.95rem">Send the exact total shown, and put your order number in the note so we can match it up. Once you have sent it you are done — there is nothing else to press on this page. We check payments by hand and email you as soon as your order is on its way.</p>
+        </div>
+      </div>
+    </div>
+
+    <aside class="sum" aria-live="polite">
+      <p class="eyebrow" style="margin-bottom:.9rem">Your order</p>
+      <div id="lines"><p class="muted" style="font-size:.95rem">Loading your basket…</p></div>
+      <p class="hint" id="cartnote" style="margin-top:1rem"></p>
+    </aside>
+  </div>
+
+  <details class="test">
+    <summary>Staff test panel</summary>
+    <div class="warnbox">
+      <strong>This panel is for us, not customers.</strong> Remove this whole
+      <code>&lt;details class="test"&gt;</code> block before the page goes live.
+      The checks below run against <strong>glps.shop, the live store</strong>.
+      Checks 1–6 cannot create an order — they are rejection tests. Checks 7 and 8
+      <strong>do create a real order</strong>, so they each need their own button press, and each
+      one tells you the order number to cancel afterwards.
+    </div>
+    <div class="btnrow" style="margin-bottom:1.2rem">
+      <button type="button" class="btn ghost" id="runsafe">Run checks 1–6 (no orders created)</button>
+    </div>
+    <div id="results"></div>
+  </details>
+</div>
+</main>
+
+<script>
+(function(){
+  var API = 'https://glps.shop/wp-json/wc/store/v1';
+  var GATEWAY = 'wallet_up';
+  var FIELD = 'glp/payment-choice';
+  var HANDLES = {
+    cashapp:['$glowlabprotocols','Cash App'],
+    venmo:['@glowlabprotocols','Venmo'],
+    zelle:['943-241-8176','Zelle'],
+    paypal:['We will email you a PayPal request','PayPal'],
+    creditcard:['We will email you a secure card link','Card']
+  };
+
+  var tok = null;
+  try { tok = localStorage.getItem('glp-cart-token'); } catch(e){}
+
+  function keep(r){
+    var t = r.headers.get('cart-token');
+    if(t){ tok = t; try { localStorage.setItem('glp-cart-token', t); } catch(e){} }
+    return r;
+  }
+  function H(){ var h = {'Content-Type':'application/json'}; if(tok) h['Cart-Token'] = tok; return h; }
+  function get(p){ return fetch(API+p,{credentials:'include',headers:H()}).then(keep); }
+  function post(p,b){ return fetch(API+p,{method:'POST',credentials:'include',headers:H(),body:JSON.stringify(b)}).then(keep); }
+  function money(minor){ return '$' + (parseInt(minor,10)/100).toFixed(2); }
+
+  /* ---------- order summary ---------- */
+  var cart = null;
+  function paint(c){
+    cart = c;
+    var box = document.getElementById('lines');
+    if(!c || !c.items || !c.items.length){
+      box.innerHTML = '<p class="muted" style="font-size:.95rem">Your basket is empty. Add something on the shop first.</p>';
+      document.getElementById('cartnote').textContent = '';
+      return;
+    }
+    var h = '';
+    c.items.forEach(function(i){
+      h += '<div class="li"><span>' + i.quantity + ' × ' + i.name + '</span><span>' + money(i.totals.line_total) + '</span></div>';
+    });
+    h += '<div class="li"><span>Subtotal</span><span>' + money(c.totals.total_items) + '</span></div>';
+    if(parseInt(c.totals.total_discount,10) > 0) h += '<div class="li"><span>Discount</span><span>−' + money(c.totals.total_discount) + '</span></div>';
+    h += '<div class="li"><span>Shipping</span><span>' + (parseInt(c.totals.total_shipping,10) ? money(c.totals.total_shipping) : 'Worked out next') + '</span></div>';
+    h += '<div class="li tot"><span>Total</span><span>' + money(c.totals.total_price) + '</span></div>';
+    box.innerHTML = h;
+    document.getElementById('cartnote').textContent = c.needs_shipping ? 'Shipping is added once we have your ZIP code.' : '';
+  }
+  get('/cart').then(function(r){ return r.json(); }).then(paint).catch(function(){
+    document.getElementById('lines').innerHTML = '<p class="muted" style="font-size:.95rem">We could not reach the basket just now. Please reload.</p>';
+  });
+
+  /* ---------- steps ---------- */
+  var form = document.getElementById('form');
+  var blocked = document.getElementById('blocked');
+  var nextBtn = document.getElementById('next');
+  var backBtn = document.getElementById('back');
+  var steps = document.getElementById('steps');
+  var step = 1, MAX = 3;
+
+  function boxOf(el){ return el.closest('.field'); }
+  function clearMarks(){
+    Array.prototype.forEach.call(form.querySelectorAll('.field.bad'), function(f){ f.classList.remove('bad'); });
+    blocked.classList.remove('show');
+  }
+
+  /* Never let the button look dead. This is the September lesson, built in from the start. */
+  function validate(s){
+    clearMarks();
+    var box = form.querySelector('.stepbox[data-step="'+s+'"]');
+    var bad = [];
+    Array.prototype.forEach.call(box.querySelectorAll('[required]'), function(el){
+      var empty = (el.type === 'checkbox') ? !el.checked : !String(el.value).trim();
+      var badEmail = (el.type === 'email') && !empty && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value);
+      if(empty || badEmail){ bad.push(el); var b = boxOf(el); if(b) b.classList.add('bad'); }
+    });
+    if(s === 2){
+      var picked = form.querySelector('input[name="rate"]:checked');
+      if(!picked && form.querySelector('input[name="rate"]')){
+        blocked.textContent = 'Please choose a shipping option above.';
+        blocked.classList.add('show');
+        return false;
+      }
+    }
+    if(!bad.length) return true;
+    blocked.textContent = bad.length === 1
+      ? 'One box above still needs filling in. We have moved you up to it.'
+      : bad.length + ' boxes above still need filling in. We have moved you up to the first one.';
+    blocked.classList.add('show');
+    var first = bad[0], b = boxOf(first) || first;
+    var y = b.getBoundingClientRect().top + window.scrollY - 110;
+    try { window.scrollTo({top:Math.max(0,y),behavior:'smooth'}); } catch(e){ window.scrollTo(0,Math.max(0,y)); }
+    try { first.focus({preventScroll:true}); } catch(e){ first.focus(); }
+    return false;
+  }
+
+  function show(s){
+    Array.prototype.forEach.call(form.querySelectorAll('.stepbox'), function(b){
+      b.hidden = (parseInt(b.dataset.step,10) !== s);
+    });
+    Array.prototype.forEach.call(steps.children, function(b){
+      var n = parseInt(b.dataset.s,10);
+      b.classList.toggle('on', n === s);
+      b.classList.toggle('done', n < s);
+    });
+    backBtn.hidden = (s === 1);
+    nextBtn.textContent = (s === MAX) ? 'Place my order' : 'Continue';
+    step = s;
+  }
+
+  function addr(){
+    return {
+      first_name: document.getElementById('fn').value.trim(),
+      last_name: document.getElementById('ln').value.trim(),
+      company: '',
+      address_1: document.getElementById('a1').value.trim(),
+      address_2: document.getElementById('a2').value.trim(),
+      city: document.getElementById('ct').value.trim(),
+      state: document.getElementById('st').value.trim().toUpperCase(),
+      postcode: document.getElementById('zp').value.trim(),
+      country: 'US',
+      email: document.getElementById('em').value.trim(),
+      phone: document.getElementById('ph').value.trim()
+    };
+  }
+
+  function paintRates(c){
+    var box = document.getElementById('rates');
+    var pkg = (c.shipping_rates && c.shipping_rates[0]) || null;
+    if(!pkg || !pkg.shipping_rates || !pkg.shipping_rates.length){
+      box.innerHTML = '<p class="muted">No shipping options came back for that address. Please check the ZIP code.</p>';
+      return;
+    }
+    var h = '';
+    pkg.shipping_rates.forEach(function(s, i){
+      h += '<label class="rate"><input type="radio" name="rate" value="' + s.rate_id + '" data-pkg="' + pkg.package_id + '"' +
+           ((s.selected || i === 0) ? ' checked' : '') + '>' +
+           '<span class="nm">' + s.name + '</span><span class="pr">' + money(s.price) + '</span></label>';
+    });
+    box.innerHTML = h;
+    document.getElementById('ratehint').textContent = 'Delivery is normally two business days once it leaves us.';
+    Array.prototype.forEach.call(box.querySelectorAll('input[name="rate"]'), function(r){
+      r.addEventListener('change', function(){
+        post('/cart/select-shipping-rate',{package_id:r.dataset.pkg, rate_id:r.value})
+          .then(function(x){ return x.json(); }).then(paint);
+      });
+    });
+  }
+
+  nextBtn.addEventListener('click', function(){
+    if(!validate(step)) return;
+
+    if(step === 1){
+      nextBtn.disabled = true; nextBtn.textContent = 'Checking…';
+      var a = addr();
+      post('/cart/update-customer',{billing_address:a, shipping_address:a})
+        .then(function(r){ return r.json(); })
+        .then(function(c){
+          paint(c); paintRates(c);
+          nextBtn.disabled = false; clearMarks(); show(2);
+        })
+        .catch(function(){
+          nextBtn.disabled = false; nextBtn.textContent = 'Continue';
+          blocked.textContent = 'We could not reach the store to work out shipping. Please try again.';
+          blocked.classList.add('show');
+        });
+      return;
+    }
+
+    if(step === 2){ clearMarks(); show(3); return; }
+
+    /* step 3 — place the order */
+    nextBtn.disabled = true; nextBtn.textContent = 'Placing your order…';
+    var a2 = addr();
+    var fields = {}; fields[FIELD] = document.getElementById('pc').value;
+    var srcVal = document.getElementById('src').value;
+    var note = srcVal ? ('Heard about us: ' + srcVal) : '';
+
+    post('/checkout',{
+      billing_address:a2, shipping_address:a2,
+      payment_method:GATEWAY,
+      customer_note:note,
+      additional_fields:fields
+    }).then(function(r){ return r.json().then(function(j){ return {r:r, j:j}; }); })
+      .then(function(o){
+        if(!o.r.ok){
+          nextBtn.disabled = false; nextBtn.textContent = 'Place my order';
+          blocked.textContent = (o.j && o.j.message) ? o.j.message : 'Something went wrong placing the order. Nothing has been charged. Please try again or email us.';
+          blocked.classList.add('show');
+          return;
+        }
+        var pick = document.getElementById('pc').value;
+        var hh = HANDLES[pick] || ['We will email you','Payment'];
+        document.getElementById('donetitle').textContent = 'Thank you, ' + a2.first_name + '.';
+        document.getElementById('donesub').textContent =
+          'Order ' + (o.j.order_number || o.j.order_id) + ' · total ' + money(o.j.totals.total_price) +
+          '. A confirmation is on its way to ' + a2.email + '.';
+        document.getElementById('payh').textContent = hh[0];
+        document.getElementById('payl').textContent = hh[1];
+        form.hidden = true; steps.hidden = true; blocked.classList.remove('show');
+        document.getElementById('done').classList.add('show');
+        try { localStorage.removeItem('glp-cart-token'); } catch(e){}
+        try { document.getElementById('done').scrollIntoView({behavior:'smooth',block:'center'}); } catch(e){}
+      })
+      .catch(function(){
+        nextBtn.disabled = false; nextBtn.textContent = 'Place my order';
+        blocked.textContent = 'We could not reach the store. Nothing has been charged. Please try again.';
+        blocked.classList.add('show');
+      });
+  });
+
+  backBtn.addEventListener('click', function(){ clearMarks(); if(step > 1) show(step - 1); });
+  form.addEventListener('submit', function(e){ e.preventDefault(); nextBtn.click(); });
+  Array.prototype.forEach.call(form.querySelectorAll('input,select'), function(el){
+    ['input','change'].forEach(function(ev){
+      el.addEventListener(ev, function(){ var b = boxOf(el); if(b) b.classList.remove('bad'); });
+    });
+  });
+  show(1);
+
+  /* ================= STAFF TEST PANEL ================= */
+  var TEST_ADDR = {
+    first_name:'GLP', last_name:'Checkout Test', company:'',
+    address_1:'187 Commerce Lane', address_2:'', city:'Ball Ground',
+    state:'GA', postcode:'30107', country:'US',
+    email:'glp-checkout-test@example.com', phone:''
+  };
+  var results = document.getElementById('results');
+
+  function row(n, title){
+    var d = document.createElement('div');
+    d.className = 'tcase';
+    d.innerHTML = '<span class="st wait">running</span><div class="bd"><strong>' + n + '. ' + title + '</strong><div class="dt muted"></div></div>';
+    results.appendChild(d);
+    return {
+      set:function(state, text){
+        var s = d.querySelector('.st');
+        s.className = 'st ' + state;
+        s.textContent = state === 'pass' ? 'as wanted' : (state === 'fail' ? 'look at this' : (state === 'order' ? 'order made' : state));
+        d.querySelector('.dt').innerHTML = text;
+      }
+    };
+  }
+
+  /* an isolated cart per case, so cases cannot contaminate each other */
+  function freshCart(){
+    var t = null;
+    function h(){ var x = {'Content-Type':'application/json'}; if(t) x['Cart-Token'] = t; return x; }
+    function k(r){ var v = r.headers.get('cart-token'); if(v) t = v; return r; }
+    return {
+      get:function(p){ return fetch(API+p,{credentials:'omit',headers:h()}).then(k); },
+      post:function(p,b){ return fetch(API+p,{method:'POST',credentials:'omit',headers:h(),body:JSON.stringify(b)}).then(k); },
+      token:function(){ return t; }
+    };
+  }
+
+  async function seed(c, items){
+    await c.get('/cart');
+    for(var i=0;i<items.length;i++){
+      await c.post('/cart/add-item',{id:items[i][0], quantity:items[i][1]});
+    }
+    var r = await c.post('/cart/update-customer',{billing_address:TEST_ADDR, shipping_address:TEST_ADDR});
+    return r.json();
+  }
+
+  async function tryCheckout(c, body){
+    var r = await c.post('/checkout', body);
+    var j = await r.json();
+    return {status:r.status, ok:r.ok, j:j};
+  }
+
+  document.getElementById('runsafe').addEventListener('click', async function(){
+    var b = this; b.disabled = true; b.textContent = 'Running…';
+    results.innerHTML = '';
+
+    /* 1 — CORS + cart token */
+    var t1 = row(1, 'Can glowglps.com talk to glps.shop at all?');
+    try{
+      var c = freshCart();
+      var r = await c.get('/cart');
+      t1.set(r.ok && c.token() ? 'pass' : 'fail',
+        'HTTP ' + r.status + ' · cart token ' + (c.token() ? 'received (' + c.token().length + ' chars)' : '<strong>missing</strong>'));
+    }catch(e){ t1.set('fail','Request blocked: <code>' + (e.message||e) + '</code>'); }
+
+    /* 2 — add an item cross-origin */
+    var t2 = row(2, 'Can a basket be built from this page?');
+    var cA = freshCart();
+    try{
+      var cart2 = await seed(cA, [[326,1]]);
+      t2.set(cart2.items_count === 1 ? 'pass' : 'fail',
+        cart2.items_count + ' item · ' + (cart2.items[0] ? cart2.items[0].name : '?') + ' · total ' + money(cart2.totals.total_price));
+    }catch(e){ t2.set('fail','<code>' + (e.message||e) + '</code>'); }
+
+    /* 3 — shipping rate for a real address */
+    var t3 = row(3, 'Does a real address return a shipping rate?');
+    try{
+      var r3 = await cA.post('/cart/update-customer',{billing_address:TEST_ADDR, shipping_address:TEST_ADDR});
+      var j3 = await r3.json();
+      var pk = (j3.shipping_rates && j3.shipping_rates[0]) || null;
+      var names = pk ? pk.shipping_rates.map(function(s){ return s.name + ' ' + money(s.price); }) : [];
+      t3.set(names.length ? 'pass' : 'fail', names.length ? names.join(', ') : 'No rates returned — check the shipping zone.');
+    }catch(e){ t3.set('fail','<code>' + (e.message||e) + '</code>'); }
+
+    /* 4 — the September bug, headless: required pay-method field left empty */
+    var t4 = row(4, 'Is the required “how will you pay” field still enforced? <span class="muted">(this is the field that broke checkout in September)</span>');
+    try{
+      var o4 = await tryCheckout(cA, {billing_address:TEST_ADDR, shipping_address:TEST_ADDR, payment_method:GATEWAY, additional_fields:{}});
+      if(o4.ok){
+        t4.set('fail', '<strong>It let the order through with the field empty.</strong> Order ' + (o4.j.order_number||o4.j.order_id) + ' — cancel it. The field is not being enforced through the API, so our page must enforce it (it does).');
+      } else {
+        t4.set('pass', 'Rejected, HTTP ' + o4.status + ' · <code>' + (o4.j.code||'') + '</code> ' + (o4.j.message||''));
+      }
+    }catch(e){ t4.set('fail','<code>' + (e.message||e) + '</code>'); }
+
+    /* 5 — bad email */
+    var t5 = row(5, 'Is a malformed email rejected?');
+    try{
+      var bad5 = Object.assign({}, TEST_ADDR, {email:'not-an-email'});
+      var o5 = await tryCheckout(cA, {billing_address:bad5, shipping_address:bad5, payment_method:GATEWAY, additional_fields:(function(){var f={};f[FIELD]='cashapp';return f;})()});
+      if(o5.ok) t5.set('fail','<strong>Accepted a broken email.</strong> Order ' + (o5.j.order_number||o5.j.order_id) + ' — cancel it.');
+      else t5.set('pass','Rejected, HTTP ' + o5.status + ' · ' + (o5.j.message||o5.j.code||''));
+    }catch(e){ t5.set('fail','<code>' + (e.message||e) + '</code>'); }
+
+    /* 6 — unknown gateway */
+    var t6 = row(6, 'Is an unknown payment method rejected?');
+    try{
+      var o6 = await tryCheckout(cA, {billing_address:TEST_ADDR, shipping_address:TEST_ADDR, payment_method:'not_a_real_gateway', additional_fields:(function(){var f={};f[FIELD]='cashapp';return f;})()});
+      if(o6.ok) t6.set('fail','<strong>Accepted a gateway that does not exist.</strong> Order ' + (o6.j.order_number||o6.j.order_id) + ' — cancel it.');
+      else t6.set('pass','Rejected, HTTP ' + o6.status + ' · ' + (o6.j.message||o6.j.code||''));
+    }catch(e){ t6.set('fail','<code>' + (e.message||e) + '</code>'); }
+
+    /* 7 and 8 — these create orders, so they get their own buttons */
+    var d7 = document.createElement('div');
+    d7.className = 'tcase';
+    d7.innerHTML = '<span class="st order">your call</span><div class="bd"><strong>7. One item, everything valid → a real order</strong>' +
+      '<div class="dt muted">Creates a real order on the live store. Cancel it afterwards.</div>' +
+      '<div class="btnrow"><button type="button" class="btn ghost" id="r7">Place test order (1 item)</button></div><div class="o7"></div></div>';
+    results.appendChild(d7);
+
+    var d8 = document.createElement('div');
+    d8.className = 'tcase';
+    d8.innerHTML = '<span class="st order">your call</span><div class="bd"><strong>8. Two different items → a real order</strong>' +
+      '<div class="dt muted">The case that was broken on glowglps before. Creates a real order. Cancel it afterwards.</div>' +
+      '<div class="btnrow"><button type="button" class="btn ghost" id="r8">Place test order (2 items)</button></div><div class="o8"></div></div>';
+    results.appendChild(d8);
+
+    async function realOrder(items, outSel, btn){
+      btn.disabled = true; btn.textContent = 'Placing…';
+      var out = document.querySelector(outSel);
+      try{
+        var c = freshCart();
+        var seeded = await seed(c, items);
+        var f = {}; f[FIELD] = 'cashapp';
+        var o = await tryCheckout(c, {
+          billing_address:TEST_ADDR, shipping_address:TEST_ADDR,
+          payment_method:GATEWAY,
+          customer_note:'INTERNAL TEST — headless Store API checkout from glowglps.com. Please cancel.',
+          additional_fields:f
+        });
+        if(o.ok){
+          out.innerHTML = '<p style="color:var(--good);font-weight:600;margin-top:.6rem">Order ' +
+            (o.j.order_number||o.j.order_id) + ' created · status <code>' + (o.j.status||'?') +
+            '</code> · total ' + money(o.j.totals.total_price) + ' · ' + (o.j.billing_address? o.j.billing_address.email : '') +
+            '<br>Items: ' + (seeded.items||[]).map(function(i){return i.quantity+'× '+i.name;}).join(', ') +
+            '<br><strong>Cancel order ' + (o.j.order_number||o.j.order_id) + ' in WooCommerce now.</strong></p>';
+        } else {
+          out.innerHTML = '<p style="color:var(--flag);font-weight:600;margin-top:.6rem">Rejected, HTTP ' + o.status +
+            ' · <code>' + (o.j.code||'') + '</code> ' + (o.j.message||'') + '<br>No order was created.</p>';
+        }
+      }catch(e){
+        out.innerHTML = '<p style="color:var(--flag);margin-top:.6rem">Request failed: <code>' + (e.message||e) + '</code></p>';
+      }
+      btn.textContent = 'Done — see above';
+    }
+
+    document.getElementById('r7').addEventListener('click', function(){ realOrder([[326,1]], '.o7', this); });
+    document.getElementById('r8').addEventListener('click', function(){ realOrder([[326,1],[331,1]], '.o8', this); });
+
+    b.textContent = 'Checks 1–6 finished';
+  });
+})();
+</script>
