@@ -1,7 +1,7 @@
 'use strict';
 const{test,before,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-store-test-'));process.env.STORE_LOCAL='1';process.env.STORE_SQLITE_PATH=path.join(tmp,'store.sqlite');process.env.STORE_ADMIN_PASSWORD='test-password-123';process.env.STORE_SESSION_SECRET='test-session-secret-at-least-thirty-two-characters';process.env.STORE_ORIGIN='http://127.0.0.1:8787';
-const{transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=require('../../tools/store/seed-data.cjs'),{handle}=require('../../netlify/functions/lib/store-core.cjs'),{handler}=require('../../netlify/functions/store-next.cjs');
+const{transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=require('../../tools/store/seed-data.cjs'),{handle}=require('../../netlify/functions/lib/store-core.cjs'),{handler}=require('../../netlify/functions/lib/store-handler.cjs');
 let cookie;const call=(p,b,h={})=>handle({path:p,method:b?'POST':'GET',headers:{'x-store-request':'1',...h},body:b||{}});const admin=(p,b)=>call(p,b,{cookie});
 const customer={name:'Test Customer',email:'demo@example.com',address:'1 Test Street',city:'Example',state:'GA',zip:'00000'};
 async function order(extra={}){return(await call('/orders',{items:[{id:1,quantity:1}],coupon:'',affiliate:'sarah',payment_method:'zelle',idempotency_key:crypto.randomUUID(),customer,...extra})).body}

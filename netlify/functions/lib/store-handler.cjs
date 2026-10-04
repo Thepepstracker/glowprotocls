@@ -1,5 +1,5 @@
 'use strict';
-const {handle}=require('./lib/store-core.cjs');
+const {handle}=require('./store-core.cjs');
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
 function parseBody(raw){try{return raw?JSON.parse(raw):{}}catch{throw Object.assign(new Error('Invalid JSON.'),{status:400})}}
 exports.handler=async event=>{
