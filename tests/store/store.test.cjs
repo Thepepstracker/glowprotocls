@@ -27,7 +27,7 @@ test('GoAffPro check authenticates, protects secrets and remains read-only',asyn
   global.fetch=async(url,opts)=>{requests++;assert.equal(opts.method,undefined);assert.match(url,/fields=id,name,ref_code,status/);assert.equal(opts.headers['x-goaffpro-access-token'],process.env.GOAFFPRO_ACCESS_TOKEN);return{ok:true,status:200,json:async()=>({affiliates:[{id:123,name:'Test Affiliate',ref_code:'test-ref',status:'approved',email:'private@example.com',login_token:'sensitive'}]})}};
   await assert.rejects(call('/admin/goaffpro/check',{}),/Sign in/);assert.equal(requests,0);
   await assert.rejects(call('/admin/goaffpro/check',{}, {cookie,origin:'https://evil.example'}),/Cross-origin/);assert.equal(requests,0);
-  const r=await admin('/admin/goaffpro/check',{});assert.equal(requests,1);assert.equal(r.body.verified,true);assert.equal(r.body.order_reporting,false);assert.deepEqual(Object.keys(r.body.affiliates[0]),['id','name','ref_code','status']);assert.equal(JSON.stringify(r).includes('unit-test-private-token'),false);
+  const r=await admin('/admin/goaffpro/check',{});assert.equal(requests,1);assert.equal(r.body.verified,true);assert.equal(r.body.order_reporting,true);assert.deepEqual(Object.keys(r.body.affiliates[0]),['id','name','ref_code','status']);assert.equal(JSON.stringify(r).includes('unit-test-private-token'),false);
   const d=await admin('/admin/data');assert.equal(d.body.goaffpro.verified,true);assert.equal(d.body.affiliates.some(a=>a.goaffpro_id==='123'),false);
   process.env.GOAFFPRO_ACCESS_TOKEN='changed-unit-test-token';assert.equal((await admin('/admin/data')).body.goaffpro.verified,false);
   global.fetch=async()=>({status:403,ok:false,json:async()=>({error:'private-token-secret'})});await assert.rejects(admin('/admin/goaffpro/check',{}),e=>e.status===502&&!e.message.includes('private-token-secret'));
@@ -67,5 +67,51 @@ test('private photo links isolate affiliates, expire, rotate and decode uploads'
  const second=(await admin('/admin/affiliate/photo-link',{slug:'photo-person'})).body;await assert.rejects(photoCall('/affiliate-profile/photo-person',null),e=>e.status===403);
  await photoCall('/affiliate-profile/photo-person/photo',{remove:true},second.token);await assert.rejects(call('/storefronts/photo-person/photo'),e=>e.status===404);
  await transaction(async st=>{const a=await st.get('affiliates','photo-person');a.photo_link_expires=1;await st.put('affiliates',a.slug,a)});await assert.rejects(photoCall('/affiliate-profile/photo-person',null,second.token),e=>e.status===403);
+});
+test('GoAffPro reporting sends correct dollar amounts once after verified live payment',async()=>{
+ const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;
+ const fixture=await order({coupon:'DEMO20'});await transaction(async s=>{const o=await s.get('orders',fixture.order.id);o.is_test=false;o.goaffpro_affiliate_id='202';await s.put('orders',o.id,o)});
+ let posts=0,remote=null,payload;
+ try{process.env.GOAFFPRO_ACCESS_TOKEN='report-test-token';global.fetch=async(url,opts)=>{
+  if(opts.method==='POST'){posts++;payload=JSON.parse(opts.body);remote={id:800,number:payload.order.number,affiliate_id:202,total:payload.order.total,subtotal:payload.order.subtotal,status:'approved'};return{ok:true,status:200,json:async()=>({result:{affiliate_id:202,commission:5.28}})}}
+  if(url.includes('/admin/orders'))return{ok:true,status:200,json:async()=>({orders:remote?[remote]:[]})};
+  return{ok:true,status:200,json:async()=>({affiliates:[{id:202,status:'approved',email:'affiliate@example.com'}]})};
+ };
+ const before=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(before.body.status,'blocked');assert.equal(posts,0);
+ const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});assert.equal(paid.body.goaffpro.status,'synced');assert.equal(posts,1);assert.equal(payload.affiliate_id,'202');assert.equal(payload.order.total,50.20);assert.equal(payload.order.subtotal,35.20);assert.equal(payload.order.discount,8.79);assert.equal(payload.order.shipping,15);assert.equal(payload.order.forceSDK,true);assert.equal(payload.order.commission,undefined);assert.equal(payload.order.line_items[0].discount,8.79);
+ const again=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(again.body.status,'synced');assert.equal(posts,1);
+ }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
+});
+test('GoAffPro suppresses test, legacy, unmapped and self-purchase sales',async()=>{
+ const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;let posts=0;
+ try{process.env.GOAFFPRO_ACCESS_TOKEN='suppression-test-token';global.fetch=async(url,opts)=>{if(opts.method==='POST')posts++;return{ok:true,status:200,json:async()=>url.includes('/admin/orders')?{orders:[]}:{affiliates:[{id:202,status:'approved',email:customer.email.toUpperCase()}]}}};
+ for(const mode of ['test','legacy','unmapped','self']){const fixture=await order();await transaction(async s=>{const o=await s.get('orders',fixture.order.id);o.is_test=mode==='test';if(mode==='legacy')delete o.is_test;o.goaffpro_affiliate_id=mode==='unmapped'?'':'202';await s.put('orders',o.id,o)});const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});if(mode==='self'){assert.equal(paid.body.goaffpro.status,'failed');assert.match(paid.body.goaffpro.message,/Self-purchase/)}else assert.ok(['blocked','test_only'].includes(paid.body.goaffpro.status));}
+ assert.equal(posts,0);
+ }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
+});
+test('an ambiguous GoAffPro send is reconciled without repeating the sale',async()=>{
+ const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;const fixture=await order();await transaction(async s=>{const o=await s.get('orders',fixture.order.id);o.is_test=false;o.goaffpro_affiliate_id='202';await s.put('orders',o.id,o)});let posts=0,visible=false,sent;
+ try{process.env.GOAFFPRO_ACCESS_TOKEN='ambiguity-test-token';global.fetch=async(url,opts)=>{if(opts.method==='POST'){posts++;sent=JSON.parse(opts.body);throw new Error('Socket timeout with private data that must not leak')};return{ok:true,status:200,json:async()=>url.includes('/admin/orders')?{orders:visible?[{id:801,number:sent.order.number,affiliate_id:202,total:sent.order.total,subtotal:sent.order.subtotal,status:'approved'}]:[]}:{affiliates:[{id:202,status:'approved',email:'other@example.com'}]}}};
+ const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});assert.equal(paid.body.goaffpro.status,'needs_review');assert.equal(JSON.stringify(paid).includes('private data'),false);
+ const retry=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(retry.body.status,'needs_review');assert.equal(posts,1);
+ visible=true;const reconciled=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(reconciled.body.status,'synced');assert.equal(posts,1);
+ }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
+});
+test('concurrent GoAffPro checks and pre-existing remote sales cannot create duplicate commissions',async()=>{
+ const product=(await admin('/admin/data')).body.products.find(p=>p.id===1);await admin('/admin/product',{...product,stock:10});
+ const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;const fixture=await order();await transaction(async s=>{const o=await s.get('orders',fixture.order.id);Object.assign(o,{is_test:false,goaffpro_affiliate_id:'202',status:'paid',paid:Math.floor(Date.now()/1000)});await s.put('orders',o.id,o)});let posts=0,remote=null;
+ try{process.env.GOAFFPRO_ACCESS_TOKEN='concurrency-test-token';global.fetch=async(url,opts)=>{await new Promise(r=>setTimeout(r,5));if(opts.method==='POST'){posts++;const p=JSON.parse(opts.body);remote={id:802,number:p.order.number,affiliate_id:202,total:p.order.total,subtotal:p.order.subtotal,status:'approved'};return{ok:true,status:200,json:async()=>({result:{affiliate_id:202}})}};return{ok:true,status:200,json:async()=>url.includes('/admin/orders')?{orders:remote?[remote]:[]}:{affiliates:[{id:202,status:'approved',email:'other@example.com'}]}}};
+ const both=await Promise.all([admin('/admin/goaffpro/report',{id:fixture.order.id}),admin('/admin/goaffpro/report',{id:fixture.order.id})]);assert.equal(posts,1);assert.ok(both.some(r=>r.body.status==='sending'));assert.ok(both.some(r=>r.body.status==='synced'));
+ const existing=await order();await transaction(async s=>{const o=await s.get('orders',existing.order.id);Object.assign(o,{is_test:false,goaffpro_affiliate_id:'202',status:'paid',paid:Math.floor(Date.now()/1000)});await s.put('orders',o.id,o);remote={id:803,number:o.id,affiliate_id:202,total:o.total/100,subtotal:o.subtotal/100,status:'approved'}});assert.equal((await admin('/admin/goaffpro/report',{id:existing.order.id})).body.status,'synced');assert.equal(posts,1);
+ }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
+});
+test('GoAffPro report blocks mismatched remote sales and can retry a definite permission rejection',async()=>{
+ const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;let posts=0,deny=true,remote=null;
+ async function fixture(){const f=await order();await transaction(async s=>{const o=await s.get('orders',f.order.id);Object.assign(o,{is_test:false,goaffpro_affiliate_id:'202',status:'paid',paid:Math.floor(Date.now()/1000)});await s.put('orders',o.id,o)});return f}
+ try{process.env.GOAFFPRO_ACCESS_TOKEN='permissions-test-token';const f=await fixture();global.fetch=async(url,opts)=>{if(opts.method==='POST'){posts++;if(deny)return{ok:false,status:403};const p=JSON.parse(opts.body);remote={id:805,number:p.order.number,affiliate_id:202,total:p.order.total,subtotal:p.order.subtotal,status:'approved'};return{ok:true,status:200,json:async()=>({result:{affiliate_id:202}})}}return{ok:true,status:200,json:async()=>url.includes('/admin/orders')?{orders:remote?[remote]:[]}:{affiliates:[{id:202,status:'approved',email:'other@example.com'}]}}};
+ const first=await admin('/admin/goaffpro/report',{id:f.order.id});assert.equal(first.body.status,'failed');assert.equal((await transaction(s=>s.get('outbox','goaffpro-'+f.order.id))).post_started,false);
+ deny=false;assert.equal((await admin('/admin/goaffpro/report',{id:f.order.id})).body.status,'synced');assert.equal(posts,2);
+ const conflict=await fixture();remote={id:806,number:conflict.order.id,affiliate_id:999,total:conflict.order.total/100,subtotal:conflict.order.subtotal/100,status:'approved'};assert.equal((await admin('/admin/goaffpro/report',{id:conflict.order.id})).body.status,'failed');assert.equal(posts,2);
+ }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
 });
 test('logout revokes the saved admin session',async()=>{await admin('/admin/logout',{});await assert.rejects(admin('/admin/data'),/Sign in/)});

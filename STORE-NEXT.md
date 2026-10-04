@@ -1,6 +1,6 @@
 # Glow GLP’s store replacement — development version 0.2
 
-The replacement is built separately at `/store-next/`. It does not change the live homepage, current checkout, WooCommerce stock script, or existing affiliate page. This preview is deployed on Netlify, while the main store checkout remains unchanged. Payments and external order reporting remain disabled.
+The replacement is built separately at `/store-next/`. It does not change the live homepage, current checkout, WooCommerce stock script, or existing affiliate page. This preview is deployed on Netlify, while the main store checkout remains unchanged. Payments remain disabled in the preview. Server-side reporting is ready for verified live orders; preview orders are never sent.
 
 ## Run locally
 
@@ -39,7 +39,7 @@ The existing build command regenerates current-site prices and metadata from `ca
 
 Actual payments are disabled, regardless of saved recipient links. Taxes are visibly unconfigured and zero for fictional test orders. Setting `settings.demo` to false disables order submission rather than allowing unvalidated live checkout.
 
-GoAffPro has no live conversion or cancellation synchronization yet. Affiliate cookies, affiliate coupon attribution, self-referral rules, commission overrides, full affiliate account sign-in, and external order reporting still need implementation and account testing. Approved affiliate profiles can now create named storefronts. Private links allow affiliates to upload their own photo.
+GoAffPro can report verified live orders through the server API. Cancellation/refund synchronization is not implemented yet. Affiliate cookies, affiliate coupon attribution, self-referral rules, commission overrides, full affiliate account sign-in, and account testing still needs to be completed before launch. Approved affiliate profiles can now create named storefronts. Private links allow affiliates to upload their own photo.
 
 ShipStation is not connected. The dry-run payload is a review aid; discount representation, parcel weights/dimensions, carriers/services, store IDs, account API version/permissions, retries, and verified tracking callbacks need implementation. No label purchase happens. Marking an order shipped locally does not yet mean it was dispatched by a carrier.
 
@@ -84,11 +84,11 @@ The 14 backend/migration checks and frontend DOM/HTTP checks passed. The latter 
 
 ## GoAffPro connection check
 
-The management Affiliates tab can verify the GoAffPro credential and preview the first 100 approved profiles (ID, name, referral code and status). The connection check is read-only. A separate Create approved storefronts action creates local named storefronts from approved GoAffPro profiles. It does not synchronize coupons, report orders, or pay commissions.
+The management Affiliates tab can verify the GoAffPro credential and preview the first 100 approved profiles (ID, name, referral code and status). The connection check is read-only. A separate Create approved storefronts action creates local named storefronts from approved GoAffPro profiles. The storefront importer does not synchronize coupons or report orders. Reporting is a separate server-side workflow; payouts are not automated.
 
 Create a restricted API key in GoAffPro Settings → Developer. `affiliate.profile.read` is used by this check; `sales.read` and `sales.write` are reserved for the upcoming paid-order integration. Save the private X-GOAFFPRO-ACCESS-TOKEN value as `GOAFFPRO_ACCESS_TOKEN` in Netlify's production Functions environment, preferably marked as a secret. Never commit the value or put it in browser code. Redeploy after adding it, then sign in at `/store-next/admin`, open Affiliates, and click Check GoAffPro connection.
 
-Connection verification is tied to a hash of the currently configured key. Replacing the key requires another check. The public token is not used in this phase. Paid-order reporting remains disabled; test orders must never be reported as genuine sales. Existing WooCommerce affiliate tracking remains separate until the eventual checkout cutover.
+Connection verification is tied to a hash of the currently configured key. Replacing the key requires another check. The public token is not used in this phase. Verified live-order reporting is implemented; test orders are never reported as genuine sales. Existing WooCommerce affiliate tracking remains separate until the eventual checkout cutover.
 
 
 ## Named storefronts and affiliate photos
@@ -100,3 +100,16 @@ Use **Copy store link** to share `/store-next/<slug>`. Editing an existing store
 Use **Photo upload link** to generate a private link for an affiliate at `/store-next/profile/<slug>#<token>`. Only the staff dashboard can issue these links. They expire after 30 days and issuing a new one immediately invalidates the previous one. Staff must share this link directly with the correct affiliate; the public storefront link and private photo link serve different purposes. The fragment token is removed from the address bar after opening and kept in that browser's session storage. The server stores only its hash and expiry.
 
 The private page can upload or remove only that affiliate's photo. It cannot edit products, prices, inventory, commissions or orders. Accepted still JPEG/PNG/WebP inputs are limited to 3 MB and 25 million pixels. Sharp decodes them, applies orientation, crops to 512×512, and encodes a new JPEG without retaining EXIF/location metadata or original bytes. Photos are stored separately from affiliate records and shown publicly only on active storefronts. Native sharp and its Linux x64 image libraries are packaged with the Netlify function. Link authorization, cross-site rejection, image decoding, metadata removal and ownership isolation are covered by local tests. Actual affiliate imports and photo uploads should be verified in the signed-in production dashboard after deployment.
+
+
+## Verified-order GoAffPro reporting
+
+The server calls the official `/v1/admin/orders` API after staff confirm payment, using the affiliate ID snapshotted on the order. Current checkout is still a demo: new orders are marked `is_test:true` by the server, and older records without an explicit `is_test:false` also remain excluded. A launch change must separately enable validated live checkout; there is no admin/browser option to turn a demo order into a real order.
+
+Before launch, use **Check order reporting permissions** in management → Affiliates. The private key needs `sales.read`, `sales.write`, `affiliate.profile.read`, and `affiliate.email.read`. The permission check reads order lookup and an approved affiliate's email without sending sales. The first eligible live sale still needs a real GoAffPro round-trip check to validate the write permission and the existing program's commission rules. The email scope is used only on the server to block exact email self-purchases and is never included in the public affiliate profile or the permissions-check response.
+
+The payload uses decimal USD amounts converted from integer cents, the product subtotal after discounts as the commission base, separate shipping/tax amounts, proportionally allocated line discounts, namespaced product IDs, and `forceSDK:true` to bypass WooCommerce platform enrichment. It does not supply a commission override. GoAffPro's rules determine the actual commission; local dashboard values are estimates. Storefront attribution is supported; affiliate cookies, coupon-only referrals and full refund/cancellation synchronization remain separate launch work.
+
+Paid order details show **GoAffPro reporting**, a dry-run payload preview, and a report/reconciliation button for live orders. A persistent outbox and a 90-second claim prevent concurrent sends. Reporting first checks for an existing sale with the same order number, amount, discounted subtotal and affiliate. Before POST, the outbox commits `post_started:true`. Any timeout, unexpected response, crash, or missing remote confirmation after this point requires read-only reconciliation; it never blindly repeats the POST. A definite HTTP 401/403 denial allows a retry after correcting the key. Conflicting existing sales require staff review. If a sale remains invisible after an ambiguous request, staff must resolve it with GoAffPro; the store deliberately has no force-resend button. Changing the API key after an uncertain send also requires review to avoid reconciling against a different account.
+
+Reporting failure never reverses saved payment verification. Failures are visible on the order and can be checked from its detail page. There is no scheduled retry worker yet, and no browser conversion script is installed, which avoids reporting an order both on the thank-you page and on payment verification. Tests use mocked GoAffPro responses and real local persistence; they cover successful reporting, amount conversion, discount allocation, test/legacy suppression, self-purchases, concurrent requests, pre-existing sales, uncertain sends/reconciliation, conflicts and definite credential rejections. No real sale or commission was created by these tests.
