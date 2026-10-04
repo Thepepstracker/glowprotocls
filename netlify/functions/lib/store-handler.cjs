@@ -10,5 +10,5 @@ exports.handler=async event=>{
   const result=await handle({path,method:event.httpMethod,headers:event.headers,body:parseBody(raw)});
   if(result.body?._binary)return{statusCode:200,headers:{...headers,...result.headers,'Content-Type':result.body._type},body:result.body._binary,isBase64Encoded:true};
   return{statusCode:result.status,headers:{...headers,...result.headers,'Content-Type':'application/json'},body:JSON.stringify(result.body)};
- }catch(e){if(!e.status)console.error('Store request failed',{name:e.name,code:e.code||null});return{statusCode:e.status||500,headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({error:e.status?e.message:'Store request failed. Please try again.'})}}
+ }catch(e){if(!e.status)console.error('Store request failed',{name:e.name,code:e.code||null,module:e.code==='MODULE_NOT_FOUND'?e.message.match(/^Cannot find module '([^']+)'/)?.[1]||null:null});return{statusCode:e.status||500,headers:{...headers,'Content-Type':'application/json'},body:JSON.stringify({error:e.status?e.message:'Store request failed. Please try again.'})}}
 };

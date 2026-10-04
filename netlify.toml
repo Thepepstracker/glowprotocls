@@ -50,4 +50,4 @@
 
 [functions."store-next"]
   node_bundler = "esbuild"
-  external_node_modules = ["pg", "@netlify/database"]
+  external_node_modules = ["pg"]
