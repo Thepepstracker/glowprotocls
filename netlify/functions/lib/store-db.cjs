@@ -7,8 +7,11 @@ function sqliteDb(){
  const db=new DatabaseSync(file);db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=10000; CREATE TABLE IF NOT EXISTS glow_store_records(kind TEXT NOT NULL, key TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(kind,key));');return db;
 }
 async function transaction(work){
- if(process.env.STORE_DATABASE_URL){
-  if(!pool){const {Pool}=require('pg');pool=new Pool({connectionString:process.env.STORE_DATABASE_URL,max:3,connectionTimeoutMillis:10000,idleTimeoutMillis:10000});}
+ if(process.env.STORE_DATABASE_URL || (!process.env.STORE_LOCAL && process.env.NETLIFY)){
+  if(!pool){
+   if(process.env.STORE_DATABASE_URL){const {Pool}=require('pg');pool=new Pool({connectionString:process.env.STORE_DATABASE_URL,max:3,connectionTimeoutMillis:10000,idleTimeoutMillis:10000});}
+   else{const {getDatabase}=require('@netlify/database');pool=getDatabase().pool;}
+  }
   const c=await pool.connect();
   try{await c.query('BEGIN');await c.query('SET LOCAL statement_timeout=15000');await c.query('SELECT pg_advisory_xact_lock(70619026)');
    const s=remoteStore(c);const result=await work(s);await c.query('COMMIT');return result;

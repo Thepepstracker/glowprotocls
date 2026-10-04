@@ -45,6 +45,12 @@ ShipStation is not connected. The dry-run payload is a review aid; discount repr
 
 Email confirmations, password reset, per-staff logins/roles, secure receipt image decoding, receipt object storage, refunds, returns/restocking, tax configuration, and daily expiry/background integration jobs remain to be built. The single-password admin is for development, not the final staff identity system.
 
+## Netlify Database setup
+
+Netlify Database can now be provisioned from Data & storage > Database. The store uses the official @netlify/database pool in Netlify Functions when STORE_DATABASE_URL is not supplied. Netlify applies netlify/database/migrations/0001_glow_store.sql before publishing. This migration creates the store table and imports 58 catalog entries with **zero stock**, preserves existing records, and creates no sample coupons or affiliates. Payments remain disabled pending launch work. No database credentials need to be copied into chat or GitHub.
+
+Configure STORE_ADMIN_PASSWORD (at least 12 characters), STORE_SESSION_SECRET (at least 32 random characters), and STORE_ORIGIN=https://glowglps.com in Netlify for Functions before deployment. Use the actual canonical origin if domain settings redirect elsewhere. Database creation alone does not deploy the store branch. Hosted connection and migration still require a real deploy verification.
+
 ## Hosted persistence preparation
 
 The function can use a private PostgreSQL database through server-only `STORE_DATABASE_URL`. Apply `tools/store/schema.sql`, then seed it with `STORE_DATABASE_URL` set and `npm run store:seed`. A subsequent seed run preserves existing data. PostgreSQL uses a single client per transaction with an advisory transaction lock to keep stock/coupon changes atomic. Local development uses SQLite with a serialized transaction queue.
@@ -74,4 +80,4 @@ See `tests/store/store.test.cjs`. PostgreSQL deployment, live external integrati
 
 ## Validation in this workspace
 
-The 13 backend integration tests and frontend DOM/HTTP checks passed. The latter exercise the catalog, cart/coupon calculation, checkout rendering, order confirmation, admin authentication, dollar-price display and management views against a running local API. They do not replace a visual browser review. Chromium could not be executed in this environment, so rendered desktop/mobile layout and image-loading checks remain unverified. The existing catalog build passed; generated changes were restored as described above.
+The 14 backend/migration checks and frontend DOM/HTTP checks passed. The latter exercise the catalog, cart/coupon calculation, checkout rendering, order confirmation, admin authentication, dollar-price display and management views against a running local API. They do not replace a visual browser review. Chromium could not be executed in this environment, so rendered desktop/mobile layout and image-loading checks remain unverified. The existing catalog build passed; generated changes were restored as described above.
