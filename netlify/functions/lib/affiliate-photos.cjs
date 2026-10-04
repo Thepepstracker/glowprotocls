@@ -19,6 +19,9 @@ async function encodePhoto(body){
  const formats={'image/jpeg':'jpeg','image/png':'png','image/webp':'webp'};
  if(!formats[body.mime]||typeof body.file!=='string'||body.file.length>4200000||!/^[A-Za-z0-9+/]+={0,2}$/.test(body.file))fail('Choose a JPEG, PNG, or WebP photo up to 3 MB.');
  const raw=Buffer.from(body.file,'base64');if(!raw.length||raw.length>3*1024*1024)fail('Choose a photo up to 3 MB.');
+ const signatures={'image/png':Buffer.from([137,80,78,71,13,10,26,10]),'image/jpeg':Buffer.from([255,216,255]),'image/webp':Buffer.from('RIFF')};
+ const signature=signatures[body.mime];
+ if(!raw.subarray(0,signature.length).equals(signature)||(body.mime==='image/webp'&&raw.subarray(8,12).toString()!=='WEBP'))fail('Choose a still JPEG, PNG, or WebP photo matching its file type.');
  const sharp=imageProcessor||(process.env.STORE_LOCAL?require('sharp'):null);if(!sharp)fail('Photo processing is not configured.',503);
  try{
   const image=sharp(raw,{limitInputPixels:25000000,failOn:'warning'}),metadata=await image.metadata();
