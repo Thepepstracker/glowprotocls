@@ -81,3 +81,11 @@ See `tests/store/store.test.cjs`. PostgreSQL deployment, live external integrati
 ## Validation in this workspace
 
 The 14 backend/migration checks and frontend DOM/HTTP checks passed. The latter exercise the catalog, cart/coupon calculation, checkout rendering, order confirmation, admin authentication, dollar-price display and management views against a running local API. They do not replace a visual browser review. Chromium could not be executed in this environment, so rendered desktop/mobile layout and image-loading checks remain unverified. The existing catalog build passed; generated changes were restored as described above.
+
+## GoAffPro connection check
+
+The management Affiliates tab can verify the GoAffPro credential and preview the first 100 approved profiles (ID, name, referral code and status). This is a read-only connection step: it does not create storefronts automatically, synchronize coupons, report orders, or pay commissions.
+
+Create a restricted API key in GoAffPro Settings → Developer. `affiliate.profile.read` is used by this check; `sales.read` and `sales.write` are reserved for the upcoming paid-order integration. Save the private X-GOAFFPRO-ACCESS-TOKEN value as `GOAFFPRO_ACCESS_TOKEN` in Netlify's production Functions environment, preferably marked as a secret. Never commit the value or put it in browser code. Redeploy after adding it, then sign in at `/store-next/admin`, open Affiliates, and click Check GoAffPro connection.
+
+Connection verification is tied to a hash of the currently configured key. Replacing the key requires another check. The public token is not used in this phase. Paid-order reporting remains disabled; test orders must never be reported as genuine sales. Existing WooCommerce affiliate tracking remains separate until the eventual checkout cutover.

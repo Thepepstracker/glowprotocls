@@ -1,5 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');const {transaction}=require('./store-db.cjs');
+const goaffpro=require('./goaffpro.cjs');
 const clock=()=>Math.floor(Date.now()/1000),hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const equal=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y)};
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
@@ -32,6 +33,13 @@ async function handle({path,method='GET',headers={},body={}}){
   if(h['sec-fetch-site']==='cross-site')fail('Cross-site request denied.',403);
   if(!body||typeof body!=='object'||Array.isArray(body))fail('Invalid request.');
  }
+ // Authenticate before the network request; keep external calls outside the database lock.
+ if(path==='/admin/goaffpro/check'&&method==='POST'){
+  await transaction(s=>session(s,h));
+  const checked=await goaffpro.checkConnection();
+  await transaction(async s=>{await session(s,h);await s.put('integrations','goaffpro',checked.record);await audit(s,'goaffpro_connection_checked')});
+  return{status:200,headers:{},body:{...goaffpro.status(checked.record),affiliates:checked.affiliates,limit:checked.limit}};
+ }
  const result=await transaction(async s=>{
   const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);await expire(s);
   if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active),affiliates:(await s.list('affiliates')).filter(a=>a.active).map(({slug,name,bio})=>({slug,name,bio})),settings};
@@ -63,7 +71,7 @@ async function handle({path,method='GET',headers={},body={}}){
   if(path.startsWith('/admin/')){
    const sessionId=await session(s,h);
    if(path==='/admin/logout'&&method==='POST'){await s.remove('sessions',sessionId);setCookie='glow_next_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+(process.env.STORE_LOCAL?'':'; Secure');return{ok:true}}
-   if(path==='/admin/data'&&method==='GET')return{products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,audit:(await s.get('audit','log')||[]).slice().reverse()};
+   if(path==='/admin/data'&&method==='GET')return{products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),audit:(await s.get('audit','log')||[]).slice().reverse()};
    const r=path.match(/^\/admin\/receipt\/([A-Z0-9-]+)$/);if(r&&method==='GET'){const o=await s.get('orders',r[1]);if(!o?.receipt)fail('Receipt not found.',404);return{_binary:o.receipt,_type:o.receipt_type}}
    if(path==='/admin/product'&&method==='POST'){
     const all=await s.list('products'),id=body.id?int(body.id,1):Math.max(0,...all.map(p=>p.id))+1;const old=body.id?await s.get('products',id):{};if(!old)fail('Product not found.',404);
@@ -85,7 +93,7 @@ async function handle({path,method='GET',headers={},body={}}){
     else if(target==='shipped'&&o.status==='paid'){o.status='shipped';o.tracking=text(body.tracking||'',150,false);await audit(s,'shipped',o.id)}
     else fail('This status change is not allowed.',409);await s.put('orders',o.id,o);return{ok:true};
    }
-   if(path==='/admin/integrations'&&method==='GET')return{outbox:await s.list('outbox'),shipstation:{connected:false},goaffpro:{connected:false}};
+   if(path==='/admin/integrations'&&method==='GET')return{outbox:await s.list('outbox'),shipstation:{connected:false},goaffpro:goaffpro.status(await s.get('integrations','goaffpro'))};
    if(path==='/admin/shipment-preview'&&method==='POST'){const o=await s.get('orders',body.id);if(!o||!['paid','shipped'].includes(o.status))fail('Verify payment before preparing a shipment.',409);return{dry_run:true,provider:'shipstation',payload:shipmentPayload(o),note:'Not sent. Shipping services, package weights, discounts, account configuration and tracking callbacks need validation.'}}
    fail('Endpoint not found.',404);
   }

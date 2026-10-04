@@ -2,7 +2,7 @@
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
 process.env.STORE_LOCAL='1';process.env.STORE_ADMIN_PASSWORD=process.env.STORE_ADMIN_PASSWORD||crypto.randomBytes(12).toString('hex');process.env.STORE_SESSION_SECRET=process.env.STORE_SESSION_SECRET||crypto.randomBytes(32).toString('hex');
 const port=Number(process.env.PORT||8787);process.env.STORE_ORIGIN=`http://127.0.0.1:${port}`;
-const root=path.resolve(__dirname,'../..'),{transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=require('./seed-data.cjs'),{handler}=require('../../netlify/functions/store-next.cjs');
+const root=path.resolve(__dirname,'../..'),{transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=require('./seed-data.cjs'),{handler}=require('../../netlify/functions/lib/store-handler.cjs');
 const content={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp'};
 transaction(seed).then(()=>{
 const server=http.createServer(async(req,res)=>{

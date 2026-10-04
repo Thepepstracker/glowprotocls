@@ -18,4 +18,21 @@ test('coupon use limits and monetary editing',async()=>{await admin('/admin/coup
 test('cross-site protection, upload checks and URL allowlist',async()=>{await assert.rejects(handle({path:'/admin/login',method:'POST',headers:{},body:{password:'test'}}),/protection header/);await assert.rejects(call('/admin/login',{password:'test'},{origin:'https://evil.example'}),/Cross-origin/);await assert.rejects(admin('/admin/settings',{shipping_cents:1500,payment_links:{paypal:'https://evil.example'}}),/official HTTPS/);const o=await order();await assert.rejects(call('/orders/'+o.order.id+'/receipt',{reference:'fake',mime:'image/png',file:Buffer.from('<script>x</script>').toString('base64')},{'x-order-token':o.token}),/invalid/)});
 test('Netlify function adapter returns protected receipts and JSON errors',async()=>{const result=await handler({httpMethod:'GET',queryStringParameters:{route:'/admin/data'},headers:{},body:''});assert.equal(result.statusCode,401);const malformed=await handler({httpMethod:'POST',queryStringParameters:{route:'/quote'},headers:{'x-store-request':'1'},body:'{bad'});assert.equal(malformed.statusCode,400)});
 test('wrong password attempts are persisted and rate limited',async()=>{const h={'x-forwarded-for':'test-login-ip'};for(let i=0;i<5;i++)assert.equal((await call('/admin/login',{password:'incorrect'},h)).status,401);assert.equal((await call('/admin/login',{password:'incorrect'},h)).status,429)});
+test('GoAffPro check authenticates, protects secrets and remains read-only',async()=>{
+ const originalFetch=global.fetch;const oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;let requests=0;
+ try{
+  delete process.env.GOAFFPRO_ACCESS_TOKEN;
+  await assert.rejects(admin('/admin/goaffpro/check',{}),/GOAFFPRO_ACCESS_TOKEN/);
+  process.env.GOAFFPRO_ACCESS_TOKEN='unit-test-private-token';
+  global.fetch=async(url,opts)=>{requests++;assert.equal(opts.method,undefined);assert.match(url,/fields=id,name,ref_code,status/);assert.equal(opts.headers['x-goaffpro-access-token'],process.env.GOAFFPRO_ACCESS_TOKEN);return{ok:true,status:200,json:async()=>({affiliates:[{id:123,name:'Test Affiliate',ref_code:'test-ref',status:'approved',email:'private@example.com',login_token:'sensitive'}]})}};
+  await assert.rejects(call('/admin/goaffpro/check',{}),/Sign in/);assert.equal(requests,0);
+  await assert.rejects(call('/admin/goaffpro/check',{}, {cookie,origin:'https://evil.example'}),/Cross-origin/);assert.equal(requests,0);
+  const r=await admin('/admin/goaffpro/check',{});assert.equal(requests,1);assert.equal(r.body.verified,true);assert.equal(r.body.order_reporting,false);assert.deepEqual(Object.keys(r.body.affiliates[0]),['id','name','ref_code','status']);assert.equal(JSON.stringify(r).includes('unit-test-private-token'),false);
+  const d=await admin('/admin/data');assert.equal(d.body.goaffpro.verified,true);assert.equal(d.body.affiliates.some(a=>a.goaffpro_id==='123'),false);
+  process.env.GOAFFPRO_ACCESS_TOKEN='changed-unit-test-token';assert.equal((await admin('/admin/data')).body.goaffpro.verified,false);
+  global.fetch=async()=>({status:403,ok:false,json:async()=>({error:'private-token-secret'})});await assert.rejects(admin('/admin/goaffpro/check',{}),e=>e.status===502&&!e.message.includes('private-token-secret'));
+  global.fetch=async()=>({status:200,ok:true,json:async()=>({error:'bad response'})});await assert.rejects(admin('/admin/goaffpro/check',{}),/unexpected/);
+  global.fetch=async()=>{throw new Error('private-token-secret')};await assert.rejects(admin('/admin/goaffpro/check',{}),e=>e.status===502&&!e.message.includes('private-token-secret'));
+ }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
+});
 test('logout revokes the saved admin session',async()=>{await admin('/admin/logout',{});await assert.rejects(admin('/admin/data'),/Sign in/)});
