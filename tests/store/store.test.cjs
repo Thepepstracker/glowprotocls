@@ -115,6 +115,22 @@ test('GoAffPro report blocks mismatched remote sales and can retry a definite pe
  const conflict=await fixture();remote={id:806,number:conflict.order.id,affiliate_id:999,total:conflict.order.total/100,subtotal:conflict.order.subtotal/100,status:'approved'};assert.equal((await admin('/admin/goaffpro/report',{id:conflict.order.id})).body.status,'failed');assert.equal(posts,2);
  }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
 });
+test('affiliate coupons credit their server-assigned owner and snapshot GoAffPro identity',async()=>{
+ await admin('/admin/affiliate',{slug:'coupon-owner',name:'Coupon Owner',bio:'',goaffpro_id:'coupon-id-901',commission_bps:1500,active:1});
+ const coupon={code:'OWNER20',kind:'percent',value:20,max_uses:100,affiliate:'coupon-owner'};
+ await assert.rejects(call('/admin/coupon',coupon),e=>e.status===401);
+ await assert.rejects(admin('/admin/coupon',{...coupon,affiliate:'unknown'}),/active affiliate/);
+ await admin('/admin/coupon',coupon);
+ for(const incoming of ['', 'sarah','bogus']){const q=(await call('/quote',{items:[{id:1,quantity:1}],coupon:'owner20',affiliate:incoming,total:1,affiliate_name:'Fake'})).body;assert.equal(q.discount,879);assert.equal(q.affiliate,'coupon-owner');assert.equal(q.affiliate_source,'coupon');assert.equal(q.affiliate_name,'Coupon Owner');assert.equal(q.commission,528)}
+ const placed=await order({affiliate:'sarah',coupon:'OWNER20'});assert.equal(placed.order.affiliate,'coupon-owner');assert.equal((await transaction(s=>s.get('orders',placed.order.id))).goaffpro_affiliate_id,'coupon-id-901');
+ await admin('/admin/coupon',{code:'OWNER20',kind:'percent',value:15});assert.equal((await admin('/admin/data')).body.coupons.find(c=>c.code==='OWNER20').affiliate,'coupon-owner');
+ await admin('/admin/coupon',{...coupon,affiliate:''});assert.equal((await call('/quote',{items:[{id:1,quantity:1}],coupon:'OWNER20',affiliate:'sarah'})).body.affiliate,'sarah');assert.equal((await transaction(s=>s.get('orders',placed.order.id))).goaffpro_affiliate_id,'coupon-id-901');
+ await admin('/admin/status',{id:placed.order.id,status:'canceled'});
+ await admin('/admin/coupon',coupon);await admin('/admin/affiliate',{slug:'coupon-owner',name:'Coupon Owner',bio:'',goaffpro_id:'coupon-id-901',commission_bps:1500,active:0});
+ await assert.rejects(call('/quote',{items:[{id:1,quantity:1}],coupon:'OWNER20'}),/affiliate coupon is unavailable/);
+ await assert.rejects(admin('/admin/coupon',coupon),/active affiliate/);
+ await admin('/admin/coupon',{...coupon,active:0});await assert.rejects(call('/quote',{items:[{id:1,quantity:1}],coupon:'OWNER20'}),/unavailable/);
+});
 test('logout revokes the saved admin session',async()=>{await admin('/admin/logout',{});await assert.rejects(admin('/admin/data'),/Sign in/)});
 
 test('legacy referral codes resolve unique active storefronts without exposing IDs',async()=>{
