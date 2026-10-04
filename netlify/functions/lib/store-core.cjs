@@ -3,6 +3,7 @@ const crypto=require('node:crypto');const {transaction}=require('./store-db.cjs'
 const goaffpro=require('./goaffpro.cjs');
 const {validSlug,createStorefronts}=require('./storefronts.cjs');
 const photos=require('./affiliate-photos.cjs');
+const receipts=require('./payment-receipts.cjs');
 const reporting=require('./goaffpro-orders.cjs');
 const accounts=require('./customer-accounts.cjs');
 const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
@@ -62,6 +63,12 @@ async function handle({path,method='GET',headers={},body={}}){
   await transaction(async s=>{await photos.authorize(s,photoUpload[1],h['x-profile-token']);if(image)await s.put('affiliate_photos',photoUpload[1],image);else await s.remove('affiliate_photos',photoUpload[1]);await audit(s,'affiliate_photo_updated')});
   return{status:200,headers:{},body:{ok:true,photo_url:image?photoUrl(photoUpload[1]):null}};
  }
+ let receiptImage;
+ const receiptUpload=path.match(/^\/orders\/([A-Z0-9-]+)\/receipt$/);
+ if(receiptUpload&&method==='POST'){
+  await transaction(async s=>{await expire(s);const o=await orderAuth(s,receiptUpload[1],h);if(!['awaiting_payment','payment_submitted'].includes(o.status))fail('This order no longer accepts receipts.',409)});
+  text(body.reference||'',100);receiptImage=await receipts.encodeReceipt(body);
+ }
  const result=await transaction(async s=>{
   const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);await expire(s);
   if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active),settings};
@@ -75,10 +82,13 @@ async function handle({path,method='GET',headers={},body={}}){
   if(path==='/account'&&method==='GET')return accounts.accountData(s,await accounts.session(s,h,true));
   if(path==='/account/logout'&&method==='POST'){const token=(h.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('glow_next_customer='))?.slice(19);if(token)await s.remove('customer_sessions',accounts.hash(token));setCookie=accounts.cookie('',0);return{ok:true}}
   if(path==='/orders'&&method==='POST'){
-   if(settings.demo!==true&&!(settings.demo===false&&process.env.STORE_LIVE_CHECKOUT_ENABLED==='1'))fail('Live checkout remains disabled pending tax, payment and integration validation.',503);
+   if(settings.demo!==true&&!(settings.demo===false&&settings.checkout_enabled===true&&settings.tax_mode==='none'))fail('Live checkout is disabled. Enable it in dashboard Settings after saving inventory and payment recipients.',503);
    const key=text(body.idempotency_key||'',100);if(await s.get('idempotency',key))fail('This order was already submitted. Use your saved confirmation.',409);
    const a=await accounts.session(s,h),q=await quote(s,body,h),customer={};for(const k of ['name','email','address','city','state','zip'])customer[k]=text(body.customer?.[k]||'',k==='address'?500:150);
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))fail('Enter a valid email address.');
+   customer.state=customer.state.toUpperCase();
+   if(!/^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|AS|GU|MP|PR|VI|AA|AE|AP)$/.test(customer.state))fail('Enter a valid two-letter US state or territory code.');
+   if(!/^\d{5}(-\d{4})?$/.test(customer.zip))fail('Enter a five-digit ZIP code, optionally followed by four digits.');
    if(a&&accounts.email(customer.email)!==a.email)fail('Use your account email for this order.');
    const payment=text(body.payment_method||'',20);if(!['venmo','paypal','cashapp','zelle'].includes(payment))fail('Choose a payment method.');if(settings.demo===false&&!settings.payment_links[payment])fail('This payment method is not available.');
    const id='GLP-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');const o={id,created:clock(),expires:clock()+86400,status:'awaiting_payment',customer,...q,payment_method:payment,token_hash:hash(token),idempotency_key:key,request_hash:hash(JSON.stringify(body)),receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:q.affiliate?'awaiting_payment':'not_applicable'};
@@ -89,9 +99,7 @@ async function handle({path,method='GET',headers={},body={}}){
   }
   const m=path.match(/^\/orders\/([A-Z0-9-]+)(\/receipt)?$/);if(m){const o=await orderAuth(s,m[1],h);if(method==='GET'&&!m[2])return publicOrder(o);if(method==='POST'&&m[2]){
    if(!['awaiting_payment','payment_submitted'].includes(o.status))fail('This order no longer accepts receipts.',409);
-   const reference=text(body.reference||'',100),type=body.mime;const signatures={'image/png':Buffer.from([137,80,78,71,13,10,26,10]),'image/jpeg':Buffer.from([255,216,255]),'image/webp':Buffer.from('RIFF')};
-   if(!signatures[type]||typeof body.file!=='string'||body.file.length>4200000||!/^[A-Za-z0-9+/]*={0,2}$/.test(body.file))fail('Choose a PNG, JPEG, or WebP screenshot up to 3 MB.');const raw=Buffer.from(body.file,'base64');if(!raw.length||raw.length>3*1024*1024||!raw.subarray(0,signatures[type].length).equals(signatures[type])||(type==='image/webp'&&raw.subarray(8,12).toString()!=='WEBP'))fail('Screenshot format is invalid.');
-   o.receipt=raw.toString('base64');o.receipt_type=type;o.payment_reference=reference;o.status='payment_submitted';await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
+   const reference=text(body.reference||'',100);o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
   }fail('Endpoint not found.',404)}
   if(path==='/admin/login'&&method==='POST'){
    if(!process.env.STORE_ADMIN_PASSWORD||process.env.STORE_ADMIN_PASSWORD.length<12)fail('Admin password is not configured.',503);
@@ -122,8 +130,17 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/affiliate'&&method==='POST'){
     const slug=text(body.slug||'',60).toLowerCase();if(!validSlug(slug))fail('Choose a unique lowercase store link.');const old=await s.get('affiliates',slug),goaffproId=text(body.goaffpro_id||'',100,false);if(goaffproId&&(await s.list('affiliates')).some(a=>a.slug!==slug&&a.goaffpro_id===goaffproId))fail('This GoAffPro affiliate already has a storefront. Edit that storefront instead.',409);const a={...old,slug,name:text(body.name||'',150),bio:text(body.bio||'',500,false),goaffpro_id:goaffproId,commission_bps:int(body.commission_bps??1500,0,10000),active:int(body.active??1,0,1)};await s.put('affiliates',slug,a);await audit(s,'affiliate_saved');return{ok:true};
    }
+   if(path==='/admin/checkout-settings'&&method==='POST'){
+    if(!['preview','live'].includes(body.mode)||body.tax_mode!=='none')fail('Choose preview or live checkout and confirm no sales tax.');
+    if(body.mode==='live'){
+     if(!Object.values(settings.payment_links||{}).some(Boolean))fail('Save at least one payment recipient before enabling live checkout.',409);
+     if(!(await s.list('products')).some(p=>p.active&&p.stock>0))fail('Add stock to at least one active product before enabling live checkout.',409);
+    }
+    settings.demo=body.mode==='preview';settings.checkout_enabled=body.mode==='live';settings.tax_mode='none';settings.tax_note='Sales tax is not charged.';
+    await s.put('settings','main',settings);await audit(s,body.mode==='live'?'live_checkout_enabled':'preview_checkout_enabled');return{ok:true};
+   }
    if(path==='/admin/settings'&&method==='POST'){
-    settings.shipping_cents=int(body.shipping_cents);settings.free_shipping_cents=int(body.free_shipping_cents??settings.free_shipping_cents);settings.payment_links=validateLinks(body.payment_links);await s.put('settings','main',settings);await audit(s,'settings_saved');return{ok:true};
+    settings.shipping_cents=int(body.shipping_cents);settings.free_shipping_cents=int(body.free_shipping_cents??settings.free_shipping_cents);settings.payment_links=validateLinks(body.payment_links);if(settings.checkout_enabled&&!Object.values(settings.payment_links).some(Boolean))fail('Keep at least one payment recipient while live checkout is enabled.');await s.put('settings','main',settings);await audit(s,'settings_saved');return{ok:true};
    }
    if(path==='/admin/status'&&method==='POST'){
     const o=await s.get('orders',body.id);if(!o)fail('Order not found.',404);const target=body.status;

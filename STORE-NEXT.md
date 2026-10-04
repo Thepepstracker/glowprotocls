@@ -37,13 +37,13 @@ The existing build command regenerates current-site prices and metadata from `ca
 
 ## What is deliberately disconnected
 
-Actual payments are disabled, regardless of saved recipient links. Taxes are visibly unconfigured and zero for fictional test orders. Setting `settings.demo` to false disables order submission rather than allowing unvalidated live checkout.
+Checkout starts in preview mode. Dashboard Settings now provides an authenticated preview/live switch. Live activation requires at least one saved payment recipient, an active in-stock product, and explicit confirmation that no sales tax is charged, matching the owner’s current checkout. Existing test orders stay test orders when the mode changes. Live checkout shows only configured payment methods; screenshots require actual image decoding and staff payment verification.
 
 GoAffPro can report verified live orders through the server API. Cancellation/refund synchronization is not implemented yet. Affiliate cookies, affiliate coupon attribution, self-referral rules, commission overrides, full affiliate account sign-in, and account testing still needs to be completed before launch. Approved affiliate profiles can now create named storefronts. Private links allow affiliates to upload their own photo.
 
 ShipStation is not connected. The dry-run payload is a review aid; discount representation, parcel weights/dimensions, carriers/services, store IDs, account API version/permissions, retries, and verified tracking callbacks need implementation. No label purchase happens. Marking an order shipped locally does not yet mean it was dispatched by a carrier.
 
-Email confirmations, password reset, per-staff logins/roles, secure receipt image decoding, receipt object storage, refunds, returns/restocking, tax configuration, and daily expiry/background integration jobs remain to be built. The single-password admin is for development, not the final staff identity system.
+Automatic email confirmations, per-staff logins/roles, receipt object storage, refunds, returns/restocking, automated tax calculation, and daily expiry/background integration jobs remain to be built. Password reset uses private staff-issued links; screenshots are decoded, re-encoded without metadata, and stored privately in the database. The single-password admin is for development, not the final staff identity system.
 
 ## Netlify Database setup
 
@@ -104,7 +104,7 @@ The private page can upload or remove only that affiliate's photo. It cannot edi
 
 ## Verified-order GoAffPro reporting
 
-The server calls the official `/v1/admin/orders` API after staff confirm payment, using the affiliate ID snapshotted on the order. Current checkout is still a demo: new orders are marked `is_test:true` by the server, and older records without an explicit `is_test:false` also remain excluded. A launch change must separately enable validated live checkout; there is no admin/browser option to turn a demo order into a real order.
+The server calls the official `/v1/admin/orders` API after staff confirm payment, using the affiliate ID snapshotted on the order. Current checkout is still a demo: new orders are marked `is_test:true` by the server, and older records without an explicit `is_test:false` also remain excluded. Staff can enable live checkout in Settings after the readiness checks pass; existing demo orders cannot be converted into real orders.
 
 Before launch, use **Check order reporting permissions** in management → Affiliates. The private key needs `sales.read`, `sales.write`, `affiliate.profile.read`, and `affiliate.email.read`. The permission check reads order lookup and an approved affiliate's email without sending sales. The first eligible live sale still needs a real GoAffPro round-trip check to validate the write permission and the existing program's commission rules. The email scope is used only on the server to block exact email self-purchases and is never included in the public affiliate profile or the permissions-check response.
 
@@ -124,4 +124,8 @@ Reporting failure never reverses saved payment verification. Failures are visibl
 - Dashboard → Customers accepts the saved migration JSON containing `customers` with `email`, `source_name`, integer `points`, and `redeem_points` (integer or null). Preview first, then import. Repeated identical imports never credit twice; conflicting prior balances stop the transaction. Imported unheld rows create pending accounts; matching balances become available after email setup. Historical redeemed points are preserved as history, never subtracted again. `gmail.coml` is held for manual email review. Similar but distinct addresses remain separate. A missing historical redeemed amount is preserved as null. Verify the WP Swings Points column represents the available balance before importing.
 - The migration JSON contains customer information: **never commit it to GitHub, embed it in public assets or add it to a Netlify migration**. Upload it through the authenticated admin form. This feature does not import any customers automatically from the source code.
 - Staff can enter signed point adjustments with a required reason; each adjustment is recorded in the append-only ledger. A negative correction may leave a debt; availability is clamped at zero and future earnings offset it. Refunds, cancellation after paid, and GoAffPro commission reversals still require separate staff handling; there is no automatic refund processor.
-- Live ordering remains disabled: production launch additionally requires `settings.demo=false` and `STORE_LIVE_CHECKOUT_ENABLED=1`. Neither is enabled by this change. Tax and other launch configuration must be completed separately.
+- Live ordering requires server-owned `settings.demo=false`, `settings.checkout_enabled=true` and `settings.tax_mode=none`, saved through the authenticated Checkout mode form. The old environment-only activation flag is no longer required. This code deployment does not change the production mode or inventory. GoAffPro’s first eligible live report, manual account-email delivery and manual shipment handling remain operational requirements.
+
+## Dashboard and checkout completion
+
+Business metrics exclude test and legacy orders without explicit `is_test:false`. Orders can be searched by number, name, email or affiliate, and filtered by status and live/test type. US state/territory and ZIP syntax are validated before inventory reservation; this is not carrier address verification. Receipt processing preserves the complete screenshot without cropping, caps dimensions and removes embedded metadata. Staff must still verify funds in the receiving account.
