@@ -67,3 +67,7 @@
   node_bundler = "esbuild"
   external_node_modules = ["pg", "sharp"]
   included_files = ["node_modules/@img/sharp-linux-x64/**", "node_modules/@img/sharp-libvips-linux-x64/**"]
+
+[functions."store-email-worker"]
+  node_bundler = "esbuild"
+  external_node_modules = ["pg"]

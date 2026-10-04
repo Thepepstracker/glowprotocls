@@ -13,7 +13,7 @@ npm run store:dev
 
 Open the printed store URL and `/store-next/admin`. The terminal prints a random local admin password. Keep the process running while testing. Stop with Ctrl+C. On your own computer, you may set `STORE_ADMIN_PASSWORD` to a password of at least 12 characters before starting; generated credentials are not stored in the repository.
 
-Local data is stored in `.store-data/store.sqlite`. This folder is ignored by Git. Do not use real customer details in this development build. Order confirmations retain their private access token in the current browser session. Order recovery links and email are not implemented yet.
+Local data is stored in `.store-data/store.sqlite`. This folder is ignored by Git. Do not use real customer details in this development build. Order confirmations retain their private access token in the current browser session. Live confirmation emails now include a private fragment-based order recovery link after the Resend connection is configured.
 
 ## Working features
 
@@ -43,7 +43,7 @@ GoAffPro can report verified live orders through the server API. Cancellation/re
 
 ShipStation is not connected. The dry-run payload is a review aid; discount representation, parcel weights/dimensions, carriers/services, store IDs, account API version/permissions, retries, and verified tracking callbacks need implementation. No label purchase happens. Marking an order shipped locally does not yet mean it was dispatched by a carrier.
 
-Automatic email confirmations, per-staff logins/roles, receipt object storage, refunds, returns/restocking, automated tax calculation, and daily expiry/background integration jobs remain to be built. Password reset uses private staff-issued links; screenshots are decoded, re-encoded without metadata, and stored privately in the database. The single-password admin is for development, not the final staff identity system.
+Automatic confirmations and account emails are built behind explicit Resend configuration. Per-staff logins/roles, receipt object storage, refunds, returns/restocking, automated tax calculation and daily expiry/background shipping/affiliate jobs remain to be built. Password reset uses private staff-issued links; screenshots are decoded, re-encoded without metadata, and stored privately in the database. The single-password admin is for development, not the final staff identity system.
 
 ## Netlify Database setup
 
@@ -118,7 +118,7 @@ Reporting failure never reverses saved payment verification. Failures are visibl
 ## Customer accounts and rewards
 
 - `/store-next/account` provides account setup requests, sign-in, point balance, ledger and associated orders. `/store-next/account-setup#<customer-id>.<token>` lets the email recipient choose a password. Account setup links are private, single-use, rotated when reissued, and expire after 24 hours. Customer passwords use salted asynchronous scrypt; hashes never leave the backend. Customer cookies are HttpOnly, SameSite=Strict, Secure in production, revocable, and expire after seven days. A password reset invalidates every earlier session.
-- Automatic customer email delivery is **not configured**. Under Dashboard → Customers, staff create a setup/reset link and send it only to the email shown, using the trusted business email channel. Do not send a link to a requester at an unrelated address. The recipient sets the password through the private link; the storefront does not reveal unverified balances.
+- Automatic customer email delivery requires the server configuration described below; it remains off until connected. Under Dashboard → Customers, staff create a setup/reset link and send it only to the email shown, using the trusted business email channel. Do not send a link to a requester at an unrelated address. The recipient sets the password through the private link; the storefront does not reveal unverified balances.
 - Rewards use whole points: one point per whole dollar of the product subtotal after all discounts, excluding tax and shipping. Each point redeems for five cents; single-point increments are allowed. Points stack with one coupon, never expire, and have no active membership tiers. Fractional earning dollars are rounded down per order. Confirm these rounding/increment choices against the old program before live launch.
 - On order submission, redemption is reserved atomically with stock and coupon usage. Cancellation/expiration releases the hold; uploaded receipts remain pending staff review. Verified payment settles redemption and awards earnings exactly once. Test and legacy orders never earn or spend real rewards. Discounts reduce the affiliate commission basis and shipping-threshold subtotal. Balances and money are calculated on the server.
 - Dashboard → Customers accepts the saved migration JSON containing `customers` with `email`, `source_name`, integer `points`, and `redeem_points` (integer or null). Preview first, then import. Repeated identical imports never credit twice; conflicting prior balances stop the transaction. Imported unheld rows create pending accounts; matching balances become available after email setup. Historical redeemed points are preserved as history, never subtracted again. `gmail.coml` is held for manual email review. Similar but distinct addresses remain separate. A missing historical redeemed amount is preserved as null. Verify the WP Swings Points column represents the available balance before importing.
@@ -129,3 +129,23 @@ Reporting failure never reverses saved payment verification. Failures are visibl
 ## Dashboard and checkout completion
 
 Business metrics exclude test and legacy orders without explicit `is_test:false`. Orders can be searched by number, name, email or affiliate, and filtered by status and live/test type. US state/territory and ZIP syntax are validated before inventory reservation; this is not carrier address verification. Receipt processing preserves the complete screenshot without cropping, caps dimensions and removes embedded metadata. Staff must still verify funds in the receiving account.
+
+
+## Automatic transactional email connection
+
+The Resend adapter sends live order confirmations, payment verification, shipment/tracking and cancellation updates, account setup and password resets. It never sends test-order emails or automatically emails the existing imported customer roster. New account requests send a private setup link only to the canonical requested address; existing verified accounts use the generic password reset flow. Held email typos are excluded. IP/address limits and a five-minute setup cooldown limit repeated requests. Public responses reveal neither account existence nor private tokens.
+
+Verify the sending domain in Resend with its exact DNS records. Add these production Functions environment variables in Netlify and redeploy:
+
+- `RESEND_API_KEY`: private Resend key with sending permission for the verified domain.
+- `STORE_EMAIL_FROM=support@glowglps.com`: bare sender address, chosen by the owner.
+- `STORE_EMAIL_REPLY_TO=support@glowglps.com`: mailbox staff can read. Domain verification does not create a mailbox.
+- `STORE_EMAIL_ENABLED=1`: explicit activation. Leaving it unset keeps automatic email off.
+
+The existing `STORE_ORIGIN=https://glowglps.com` and `STORE_SESSION_SECRET` are required. Do not paste the API key into chat or commit it. Dashboard → Emails shows configuration, a user-requested connection test, recent sending activity and retry controls. Provider acceptance is not inbox delivery; verify a connection test in the receiving inbox and check bounces/delivery in Resend. Delivery webhooks are not implemented.
+
+Email jobs are committed atomically with each order/status change. Provider calls run outside the database lock; a failed email does not undo the saved order/payment/rewards. Auth/order link content is encrypted with AES-256-GCM using a key derived from the server session secret, never exposed by admin log responses. Accepted/expired/canceled payloads are removed. Changing the session secret can render queued payloads unreadable; affected messages require review.
+
+The Netlify scheduled `store-email-worker` processes at most four due jobs every five minutes on the published production deploy. Pending requests have a sixty-second lease and bounded exponential backoff. Resend idempotency keys keep uncertain retries identical; automatic retry stops before the provider’s 24-hour deduplication window ends. A changed API credential after an uncertain attempt requires review against the original provider account. A definite HTTP rejection requires staff to fix settings and explicitly retry, producing a fresh key for the known-rejected request. Superseded or expired account setup links are canceled before sending. Provider IDs and safe error summaries are visible only in the authenticated dashboard.
+
+Confirmation emails contain the total and a private `/store-next/<affiliate>#order=<id>.<token>` link, rather than an invoice or embedded third-party payment link. The browser removes the fragment and restores the existing private confirmation flow. Existing active order/customer settings, inventory and rewards migration records are not changed by this deployment.

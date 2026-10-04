@@ -1,0 +1,54 @@
+'use strict';
+const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs');
+const now=()=>Math.floor(Date.now()/1000),hash=v=>crypto.createHash('sha256').update(String(v)).digest('hex');
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n/100);
+function address(v){return typeof v==='string'&&v.length<=150&&/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(v)&&!/[\r\n]/.test(v)}
+function configuration(){
+ const from=(process.env.STORE_EMAIL_FROM||'').trim(),reply=(process.env.STORE_EMAIL_REPLY_TO||from).trim();let origin='';
+ try{const u=new URL(process.env.STORE_ORIGIN);if(!u.username&&!u.password&&(u.protocol==='https:'||(process.env.STORE_LOCAL&&u.protocol==='http:')))origin=u.origin}catch{}
+ return{enabled:process.env.STORE_EMAIL_ENABLED==='1',key:process.env.RESEND_API_KEY||'',from,reply,origin,ready:process.env.STORE_EMAIL_ENABLED==='1'&&!!process.env.RESEND_API_KEY&&address(from)&&address(reply)&&!!origin&&(process.env.STORE_SESSION_SECRET||'').length>=32};
+}
+function status(){const c=configuration();return{provider:'Resend',enabled:c.enabled,configured:c.ready,from:c.from||'support@glowglps.com',reply_to:c.reply||c.from||'support@glowglps.com',message:c.ready?'Configured. Send a connection test and check the receiving inbox. Provider acceptance is not proof of inbox delivery.':'Waiting for sender-domain verification and server email settings.'}}
+function key(){return crypto.createHash('sha256').update('glow-email-v1:'+process.env.STORE_SESSION_SECRET).digest()}
+function seal(value){const iv=crypto.randomBytes(12),c=crypto.createCipheriv('aes-256-gcm',key(),iv),data=Buffer.concat([c.update(JSON.stringify(value),'utf8'),c.final()]);return{iv:iv.toString('base64'),tag:c.getAuthTag().toString('base64'),data:data.toString('base64')}}
+function open(v){const c=crypto.createDecipheriv('aes-256-gcm',key(),Buffer.from(v.iv,'base64'));c.setAuthTag(Buffer.from(v.tag,'base64'));return JSON.parse(Buffer.concat([c.update(Buffer.from(v.data,'base64')),c.final()]).toString())}
+function template(title,paragraphs,url,label){const text=[title,...paragraphs,...(url?[label+': '+url]:[]),'Glow Lab'].join('\n\n');return{text,html:`<!doctype html><html><body style="margin:0;background:#f6f3ec;color:#1b1b1b;font-family:Arial,sans-serif"><div style="max-width:600px;margin:24px auto;background:#fff;padding:32px;border-top:4px solid #c9a24b"><p style="letter-spacing:3px;font-size:12px">GLOW LAB</p><h1 style="font-family:Georgia,serif">${esc(title)}</h1>${paragraphs.map(p=>`<p style="line-height:1.6">${esc(p)}</p>`).join('')}${url?`<p><a href="${esc(url)}" style="display:inline-block;padding:14px 20px;background:#1b1b1b;color:white;text-decoration:none">${esc(label)}</a></p><p style="font-size:12px;overflow-wrap:anywhere">${esc(url)}</p>`:''}<p style="font-size:12px;color:#666">Glow Lab · Reply to this email for help.</p></div></body></html>`}}
+async function enqueue(s,{id,kind,to,related_id,subject,content,expires=now()+86400,setup_hash}){
+ const cfg=configuration();if(!cfg.ready)return null;if(await s.get('email_outbox',id))return id;
+ const payload={from:`Glow Lab <${cfg.from}>`,reply_to:cfg.reply,to:[to],subject,...content};
+ await s.put('email_outbox',id,{id,kind,to,related_id,status:'pending',attempts:0,created:now(),expires,next_attempt:now(),setup_hash,payload:seal(payload)});return id;
+}
+async function queueSetup(s,link,reset=false){const url=configuration().origin+'/store-next/account-setup#'+link.customer_id+'.'+link.token;return enqueue(s,{id:'setup-'+hash(link.token),kind:reset?'password_reset':'account_setup',to:link.email,related_id:link.customer_id,setup_hash:hash(link.token),expires:link.expires,subject:reset?'Reset your Glow Lab password':'Set up your Glow Lab account',content:template(reset?'Choose a new password.':'Your Glow Lab account is ready to set up.',[reset?'We received a request to reset your password.':'Choose your password to access your orders and rewards.','This private link expires after 24 hours and works once. Do not share it.','If you did not request this email, you can ignore it.'],url,reset?'Reset password':'Set up account')})}
+async function queueOrder(s,o,token){if(o.is_test!==false)return null;const url=configuration().origin+'/store-next/'+(o.affiliate||'')+'#order='+o.id+'.'+token;return enqueue(s,{id:'order-confirmation-'+o.id,kind:'order_confirmation',to:o.customer.email,related_id:o.id,expires:o.expires,subject:'Glow Lab order '+o.id+' · '+money(o.total),content:template('Your order is saved.',['Order: '+o.id,'Total to pay: '+money(o.total),'Payment method: '+({venmo:'Venmo',paypal:'PayPal',cashapp:'Cash App',zelle:'Zelle'}[o.payment_method]||o.payment_method),'Open your private order page for payment instructions and screenshot upload. Your order is awaiting payment; this email does not confirm funds received.','Stock is reserved for 24 hours until you submit your payment screenshot. Keep this private link.'],url,'View order and payment instructions')})}
+async function queueUpdate(s,o){if(o.is_test!==false)return null;const paragraphs={paid:['Your payment has been verified. Your order is being prepared.',...(o.points_earned?['Rewards earned: '+o.points_earned+' points.']:[])],shipped:['Your order has been marked shipped by the store.',o.tracking?'Tracking number: '+o.tracking:'Contact the store for tracking details.'],canceled:['Your order has been canceled. Reserved stock and rewards points have been released.','If you already sent payment, reply to this email so staff can review it.']}[o.status];if(!paragraphs)return null;return enqueue(s,{id:'order-'+o.status+'-'+o.id,kind:'order_'+o.status,to:o.customer.email,related_id:o.id,subject:'Glow Lab '+o.id+' · '+o.status,content:template('Order '+o.id,[...paragraphs,'Order total: '+money(o.total)],null,null)})}
+function publicJob(j){return{id:j.id,kind:j.kind,to:j.to,related_id:j.related_id,status:j.status,attempts:j.attempts,created:j.created,accepted_at:j.accepted_at,message:j.message||'',provider_id:j.provider_id||null}}
+async function dispatch(id){
+ const cfg=configuration();if(!cfg.ready)return{status:'not_configured'};
+ const claimed=await transaction(async s=>{
+  const j=await s.get('email_outbox',id);if(!j)return null;
+  if(['accepted','expired','canceled','needs_review','rejected'].includes(j.status)||j.lease_until>now())return null;
+  if(j.expires<=now()){j.status='expired';delete j.payload;await s.put('email_outbox',id,j);return null}
+  if(j.first_attempt&&j.first_attempt+23*3600<=now()){j.status='needs_review';j.message='Provider retry window ended. Check Resend before sending another email.';await s.put('email_outbox',id,j);return null}
+  if(j.setup_hash){const a=await s.get('customers',j.related_id);if(!a?.setup||a.setup.token_hash!==j.setup_hash||a.setup.expires<=now()){j.status='canceled';delete j.payload;await s.put('email_outbox',id,j);return null}}
+  const fingerprint=hash(cfg.key);if(j.key_fingerprint&&j.key_fingerprint!==fingerprint){j.status='needs_review';j.message='Email credentials changed after a send attempt. Check the original Resend account.';await s.put('email_outbox',id,j);return null}
+  let payload;try{payload=open(j.payload)}catch{j.status='needs_review';j.message='Email content could not be decrypted. Check the store session secret.';await s.put('email_outbox',id,j);return null}
+  j.status='sending';j.first_attempt||=now();j.key_fingerprint=fingerprint;j.attempts++;j.lease_until=now()+60;j.lease=crypto.randomBytes(16).toString('hex');await s.put('email_outbox',id,j);return{job:j,payload};
+ });
+ if(!claimed)return{status:'unchanged'};
+ let state='retry',message='Email service response is uncertain. A retry will use the same idempotency key.',providerId=null;
+ try{
+  const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+cfg.key,'Content-Type':'application/json','Idempotency-Key':claimed.job.send_key||id},body:JSON.stringify(claimed.payload),signal:AbortSignal.timeout(8000)});
+  if(r.ok){const x=await r.json();if(typeof x.id==='string'&&x.id.length<200){state='accepted';providerId=x.id;message='Accepted by Resend. Check delivery in Resend or the recipient inbox.'}}
+  else if([400,401,403,404,422].includes(r.status)){state='rejected';message='Resend rejected the message (HTTP '+r.status+'). Check API permissions, verified domain and sender settings.'}
+  else if(r.status===409){state='needs_review';message='Resend idempotency conflict. Check provider logs before sending again.'}
+  else message='Temporary email service error (HTTP '+r.status+'). A retry is queued.';
+ }catch{}
+ await transaction(async s=>{const j=await s.get('email_outbox',id);if(j?.lease!==claimed.job.lease)return;j.status=state;j.message=message;j.provider_id=providerId;j.lease_until=0;j.next_attempt=now()+Math.min(3600,60*2**Math.min(j.attempts,6));if(state==='accepted'){j.accepted_at=now();delete j.payload}await s.put('email_outbox',id,j)});
+ return{status:state,message};
+}
+async function dispatchPending(limit=4){if(!configuration().ready)return{status:'not_configured',processed:0};const ids=await transaction(async s=>(await s.list('email_outbox')).filter(j=>['pending','retry','sending'].includes(j.status)&&(j.next_attempt||0)<=now()&&(!j.lease_until||j.lease_until<=now())).sort((a,b)=>a.created-b.created).slice(0,limit).map(j=>j.id));for(const id of ids)await dispatch(id);return{processed:ids.length}}
+async function prepareRetry(s,j){const cfg=configuration();if(!cfg.ready)throw Object.assign(new Error('Connect email settings first.'),{status:503});const payload=open(j.payload);payload.from=`Glow Lab <${cfg.from}>`;payload.reply_to=cfg.reply;j.payload=seal(payload);j.status='pending';j.retry_generation=(j.retry_generation||0)+1;j.send_key=j.id+'-retry-'+j.retry_generation;delete j.key_fingerprint;delete j.first_attempt;await s.put('email_outbox',j.id,j)}
+async function safeDispatch(id){if(!id)return;try{return await dispatch(id)}catch{return{status:'retry',message:'Order/account saved. Email sending needs another attempt.'}}}
+async function adminData(s){return{...status(),jobs:(await s.list('email_outbox')).sort((a,b)=>b.created-a.created).slice(0,100).map(publicJob)}}
+module.exports={configuration,status,template,enqueue,queueSetup,queueOrder,queueUpdate,dispatch,dispatchPending,safeDispatch,prepareRetry,adminData,publicJob};
