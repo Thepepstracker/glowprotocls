@@ -1,6 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
-const reserved=new Set(['admin','api','shop','store-next']);
+const reserved=new Set(['admin','account','account-setup','api','shop','store-next']);
 function validSlug(slug){return typeof slug==='string'&&slug.length<=60&&/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)&&!reserved.has(slug)}
 function nameSlug(name){return name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,45).replace(/-$/,'')||'affiliate'}
 async function createStorefronts(store,profiles){

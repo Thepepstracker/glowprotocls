@@ -19,6 +19,16 @@
   path = "/*"
 
 [[redirects]]
+  from = "/store-next/account"
+  to = "/store-next/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/store-next/account-setup"
+  to = "/store-next/index.html"
+  status = 200
+
+[[redirects]]
   from = "/store-next/profile/:affiliate"
   to = "/store-next/index.html"
   status = 200
