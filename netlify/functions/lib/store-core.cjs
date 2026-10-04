@@ -1,7 +1,7 @@
 'use strict';
 const crypto=require('node:crypto');const {transaction}=require('./store-db.cjs');
 const goaffpro=require('./goaffpro.cjs');
-const {validSlug,createStorefronts}=require('./storefronts.cjs');
+const {validSlug,createStorefronts,resolveReferral}=require('./storefronts.cjs');
 const photos=require('./affiliate-photos.cjs');
 const receipts=require('./payment-receipts.cjs');
 const reporting=require('./goaffpro-orders.cjs');
@@ -77,6 +77,8 @@ async function handle({path,method='GET',headers={},body={}}){
  const result=await transaction(async s=>{
   const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);await expire(s);
   if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active),settings:{...settings,email_enabled:emails.configuration().ready}};
+  const referral=path.match(/^\/referrals\/([^/]+)$/);
+  if(referral&&method==='GET'){let code;try{code=decodeURIComponent(referral[1])}catch{fail('Affiliate referral is unavailable.',404)}const a=await resolveReferral(s,code);if(!a)fail('Affiliate referral is unavailable.',404);return{slug:a.slug,name:a.name,bio:a.bio,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
   const storefront=path.match(/^\/storefronts\/([a-z0-9-]+)$/);
   if(storefront&&method==='GET'){const a=validSlug(storefront[1])?await s.get('affiliates',storefront[1]):null;if(!a?.active)fail('Affiliate storefront is unavailable.',404);return{slug:a.slug,name:a.name,bio:a.bio,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
   const publicPhoto=path.match(/^\/storefronts\/([a-z0-9-]+)\/photo$/);

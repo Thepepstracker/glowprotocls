@@ -1,0 +1,6 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../../store-next/referral.js'),'utf8');
+function capture(search,data){vm.runInNewContext(source,{URLSearchParams,location:{search},sessionStorage:{getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)}})}
+test('homepage referral survives navigation and a new incoming referral replaces the prior storefront',()=>{const data=new Map([['glow_customer_store','prior']]);capture('?ref=MixedCaseRef',data);assert.equal(data.get('glow_referral'),'MixedCaseRef');assert.equal(data.has('glow_customer_store'),false);capture('',data);assert.equal(data.get('glow_referral'),'MixedCaseRef');capture('?ref=next',data);assert.equal(data.get('glow_referral'),'next');capture('?ref=',data);assert.equal(data.has('glow_referral'),false);capture('?ref=%20bad',data);assert.equal(data.has('glow_referral'),false)});
+test('unavailable browser storage does not break homepage',()=>{assert.doesNotThrow(()=>vm.runInNewContext(source,{URLSearchParams,location:{search:'?ref=abc'},sessionStorage:{removeItem:()=>{throw Error('disabled')}}}))});

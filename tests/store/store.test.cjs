@@ -116,3 +116,15 @@ test('GoAffPro report blocks mismatched remote sales and can retry a definite pe
  }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
 });
 test('logout revokes the saved admin session',async()=>{await admin('/admin/logout',{});await assert.rejects(admin('/admin/data'),/Sign in/)});
+
+test('legacy referral codes resolve unique active storefronts without exposing IDs',async()=>{
+ await transaction(async s=>{await s.put('affiliates','referral-test',{slug:'referral-test',name:'Referral Test',bio:'Welcome',goaffpro_id:'999',goaffpro_ref_code:'MixedCaseRef',commission_bps:1500,active:1})});
+ const profile=(await call('/referrals/MixedCaseRef')).body;
+ assert.deepEqual(Object.keys(profile),['slug','name','bio','photo_url']);assert.equal(profile.slug,'referral-test');
+ assert.equal((await call('/quote',{items:[{id:1,quantity:1}],affiliate:profile.slug})).body.affiliate,'referral-test');
+ for(const code of ['mixedcaseref','unknown','%20','%E0%A4%A'])await assert.rejects(call('/referrals/'+code),e=>e.status===404);
+ await transaction(async s=>{const a=await s.get('affiliates','referral-test');await s.put('affiliates',a.slug,{...a,active:0})});
+ await assert.rejects(call('/referrals/MixedCaseRef'),e=>e.status===404);
+ await transaction(async s=>{const a=await s.get('affiliates','referral-test');await s.put('affiliates',a.slug,{...a,active:1});await s.put('affiliates','duplicate-referral',{...a,slug:'duplicate-referral',active:0})});
+ await assert.rejects(call('/referrals/MixedCaseRef'),e=>e.status===404);
+});

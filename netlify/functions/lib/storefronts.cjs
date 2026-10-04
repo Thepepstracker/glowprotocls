@@ -21,4 +21,11 @@ async function createStorefronts(store,profiles){
  }
  return result;
 }
-module.exports={validSlug,createStorefronts};
+// Exact referral codes preserve GoAffPro's mixed-case identifiers. Ambiguous
+// assignments fail closed, including duplicates on disabled storefronts.
+async function resolveReferral(store,code){
+ if(typeof code!=='string'||!code||code.length>200||/[\x00-\x20\x7f]/.test(code))return null;
+ const matches=(await store.list('affiliates')).filter(a=>a.goaffpro_ref_code===code);
+ return matches.length===1&&matches[0].active?matches[0]:null;
+}
+module.exports={validSlug,createStorefronts,resolveReferral};
