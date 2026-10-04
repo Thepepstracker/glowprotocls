@@ -7,7 +7,7 @@ function sqliteDb(){
  const db=new DatabaseSync(file);db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=10000; CREATE TABLE IF NOT EXISTS glow_store_records(kind TEXT NOT NULL, key TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(kind,key));');return db;
 }
 async function transaction(work){
- if(process.env.STORE_DATABASE_URL || (!process.env.STORE_LOCAL && process.env.NETLIFY)){
+ if(process.env.STORE_DATABASE_URL || !process.env.STORE_LOCAL){
   if(!pool){
    if(process.env.STORE_DATABASE_URL){const {Pool}=require('pg');pool=new Pool({connectionString:process.env.STORE_DATABASE_URL,max:3,connectionTimeoutMillis:10000,idleTimeoutMillis:10000});}
    else{const {getDatabase}=require('@netlify/database');pool=getDatabase().pool;}
