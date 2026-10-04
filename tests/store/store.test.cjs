@@ -35,4 +35,37 @@ test('GoAffPro check authenticates, protects secrets and remains read-only',asyn
   global.fetch=async()=>{throw new Error('private-token-secret')};await assert.rejects(admin('/admin/goaffpro/check',{}),e=>e.status===502&&!e.message.includes('private-token-secret'));
  }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
 });
+test('storefront imports preserve edits, avoid slug collisions and retain attribution',async()=>{
+ const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;
+ const profiles=[{id:'201',name:'Jane Smith',ref_code:'jane201',status:'approved'},{id:'202',name:'Jane Smith',ref_code:'jane202',status:'approved'},{id:'203',name:'Admin',ref_code:'x',status:'approved'},{id:'204',name:'Rejected Person',status:'rejected'},{id:'205',name:'',status:'approved'},{id:'206',name:'Zoé López',status:'approved'}];
+ try{
+  process.env.GOAFFPRO_ACCESS_TOKEN='storefront-import-test';global.fetch=async(url)=>{assert.match(url,/offset=100/);return{ok:true,status:200,json:async()=>({affiliates:profiles})}};
+  await assert.rejects(call('/admin/goaffpro/storefronts',{offset:100}),/Sign in/);
+  const first=(await admin('/admin/goaffpro/storefronts',{offset:100})).body;assert.equal(first.imported.created,4);assert.equal(first.imported.skipped,2);
+  const data=(await admin('/admin/data')).body;const jane=data.affiliates.find(a=>a.goaffpro_id==='201'),other=data.affiliates.find(a=>a.goaffpro_id==='202');assert.equal(jane.slug,'jane-smith');assert.notEqual(jane.slug,other.slug);assert.notEqual(data.affiliates.find(a=>a.goaffpro_id==='203').slug,'admin');assert.equal(data.affiliates.find(a=>a.goaffpro_id==='206').slug,'zoe-lopez');
+  await admin('/admin/affiliate',{...jane,name:'Jane’s Custom Name',bio:'My introduction',commission_bps:1000,active:0});
+  const second=(await admin('/admin/goaffpro/storefronts',{offset:100})).body;assert.equal(second.imported.created,0);assert.equal(second.imported.existing,4);
+  const stored=(await admin('/admin/data')).body.affiliates.find(a=>a.slug===jane.slug);assert.equal(stored.name,'Jane’s Custom Name');assert.equal(stored.bio,'My introduction');assert.equal(stored.active,0);assert.equal(stored.commission_bps,1000);
+  await assert.rejects(call('/storefronts/'+jane.slug),e=>e.status===404);await assert.rejects(admin('/admin/affiliate',{...jane,slug:'duplicate-jane'}),e=>e.status===409);
+  const publicProfile=(await call('/storefronts/'+other.slug)).body;assert.deepEqual(Object.keys(publicProfile),['slug','name','bio','photo_url']);assert.equal((await call('/catalog')).body.affiliates,undefined);
+  const placed=await order({affiliate:other.slug});assert.equal(placed.order.affiliate,other.slug);assert.equal(placed.order.goaffpro_affiliate_id,undefined);assert.equal((await transaction(st=>st.get('orders',placed.order.id))).goaffpro_affiliate_id,'202');
+ }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
+});
+test('private photo links isolate affiliates, expire, rotate and decode uploads',async()=>{
+ const sharp=require('sharp');await admin('/admin/affiliate',{slug:'photo-person',name:'Photo Person',goaffpro_id:'901',commission_bps:1500,active:1});
+ const link=(await admin('/admin/affiliate/photo-link',{slug:'photo-person'})).body;
+ const photoCall=(p,b,token=link.token)=>call(p,b,{'x-profile-token':token});
+ await assert.rejects(call('/admin/affiliate/photo-link',{slug:'photo-person'}),/Sign in/);
+ await assert.rejects(photoCall('/affiliate-profile/sarah',null),e=>e.status===403);
+ await assert.rejects(photoCall('/affiliate-profile/photo-person',null,'wrong'),e=>e.status===403);
+ const raw=await sharp({create:{width:80,height:120,channels:3,background:'#c4a46f'}}).png().toBuffer();
+ await assert.rejects(photoCall('/affiliate-profile/photo-person/photo',{mime:'image/png',file:raw.subarray(0,12).toString('base64')}),/could not be read/);
+ await assert.rejects(photoCall('/affiliate-profile/photo-person/photo',{mime:'image/jpeg',file:raw.toString('base64')}),/still JPEG/);
+ await photoCall('/affiliate-profile/photo-person/photo',{mime:'image/png',file:raw.toString('base64')});
+ const profile=(await photoCall('/affiliate-profile/photo-person',null)).body;assert.ok(profile.photo_url);assert.equal(JSON.stringify(profile).includes(link.token),false);
+ const image=(await call('/storefronts/photo-person/photo')).body;assert.equal(image._type,'image/jpeg');const meta=await sharp(Buffer.from(image._binary,'base64')).metadata();assert.equal(meta.width,512);assert.equal(meta.height,512);assert.equal(meta.exif,undefined);
+ const second=(await admin('/admin/affiliate/photo-link',{slug:'photo-person'})).body;await assert.rejects(photoCall('/affiliate-profile/photo-person',null),e=>e.status===403);
+ await photoCall('/affiliate-profile/photo-person/photo',{remove:true},second.token);await assert.rejects(call('/storefronts/photo-person/photo'),e=>e.status===404);
+ await transaction(async st=>{const a=await st.get('affiliates','photo-person');a.photo_link_expires=1;await st.put('affiliates',a.slug,a)});await assert.rejects(photoCall('/affiliate-profile/photo-person',null,second.token),e=>e.status===403);
+});
 test('logout revokes the saved admin session',async()=>{await admin('/admin/logout',{});await assert.rejects(admin('/admin/data'),/Sign in/)});

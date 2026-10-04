@@ -1,6 +1,9 @@
 'use strict';
 const crypto=require('node:crypto');const {transaction}=require('./store-db.cjs');
 const goaffpro=require('./goaffpro.cjs');
+const {validSlug,createStorefronts}=require('./storefronts.cjs');
+const photos=require('./affiliate-photos.cjs');
+const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
 const clock=()=>Math.floor(Date.now()/1000),hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const equal=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y)};
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
@@ -9,7 +12,7 @@ const int=(v,min=0,max=10000000)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fai
 function signingKey(){if(!process.env.STORE_SESSION_SECRET||process.env.STORE_SESSION_SECRET.length<32)fail('Admin sessions are not configured.',503);return process.env.STORE_SESSION_SECRET}
 function sign(value){return crypto.createHmac('sha256',signingKey()).update(value).digest('base64url')}
 async function session(store,headers){const cookie=(headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('glow_next_admin='));const token=cookie?.slice('glow_next_admin='.length)||'',parts=token.split('.');if(parts.length!==3||Number(parts[0])<=clock()||!equal(sign(parts[0]+'.'+parts[1]),parts[2]))fail('Sign in to the management dashboard.',401);const record=await store.get('sessions',parts[1]);if(!record||record.expires<=clock())fail('Sign in to the management dashboard.',401);return parts[1]}
-const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
+const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
 async function audit(s,action,id=''){const log=await s.get('audit','log')||[];log.push({created:clock(),action,order_id:id});await s.put('audit','log',log.slice(-250))}
 async function release(s,o,status){for(const line of o.items){const p=await s.get('products',line.id);p.stock+=line.quantity;await s.put('products',p.id,p)}if(o.coupon){const c=await s.get('coupons',o.coupon);if(c){c.used=Math.max(0,c.used-1);await s.put('coupons',c.code,c)}}o.status=status;await s.put('orders',o.id,o);await audit(s,status,o.id)}
 async function expire(s){for(const o of await s.list('orders'))if(o.status==='awaiting_payment'&&o.expires<=clock())await release(s,o,'expired')}
@@ -34,15 +37,28 @@ async function handle({path,method='GET',headers={},body={}}){
   if(!body||typeof body!=='object'||Array.isArray(body))fail('Invalid request.');
  }
  // Authenticate before the network request; keep external calls outside the database lock.
- if(path==='/admin/goaffpro/check'&&method==='POST'){
+ if(['/admin/goaffpro/check','/admin/goaffpro/storefronts'].includes(path)&&method==='POST'){
   await transaction(s=>session(s,h));
-  const checked=await goaffpro.checkConnection();
-  await transaction(async s=>{await session(s,h);await s.put('integrations','goaffpro',checked.record);await audit(s,'goaffpro_connection_checked')});
-  return{status:200,headers:{},body:{...goaffpro.status(checked.record),affiliates:checked.affiliates,limit:checked.limit}};
+  const checked=await goaffpro.checkConnection(int(body.offset??0,0,100000));
+  const imported=await transaction(async s=>{await session(s,h);await s.put('integrations','goaffpro',checked.record);const imported=path.endsWith('/storefronts')?await createStorefronts(s,checked.affiliates):null;await audit(s,imported?'goaffpro_storefronts_created':'goaffpro_connection_checked');return imported});
+  return{status:200,headers:{},body:{...goaffpro.status(checked.record),affiliates:checked.affiliates,limit:checked.limit,offset:checked.offset,has_more:checked.has_more,...(imported?{imported}:{})}};
+ }
+ const photoUpload=path.match(/^\/affiliate-profile\/([a-z0-9-]+)\/photo$/);
+ if(photoUpload&&method==='POST'){
+  await transaction(s=>photos.authorize(s,photoUpload[1],h['x-profile-token']));
+  const image=body.remove===true?null:await photos.encodePhoto(body);
+  await transaction(async s=>{await photos.authorize(s,photoUpload[1],h['x-profile-token']);if(image)await s.put('affiliate_photos',photoUpload[1],image);else await s.remove('affiliate_photos',photoUpload[1]);await audit(s,'affiliate_photo_updated')});
+  return{status:200,headers:{},body:{ok:true,photo_url:image?photoUrl(photoUpload[1]):null}};
  }
  const result=await transaction(async s=>{
   const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);await expire(s);
-  if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active),affiliates:(await s.list('affiliates')).filter(a=>a.active).map(({slug,name,bio})=>({slug,name,bio})),settings};
+  if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active),settings};
+  const storefront=path.match(/^\/storefronts\/([a-z0-9-]+)$/);
+  if(storefront&&method==='GET'){const a=validSlug(storefront[1])?await s.get('affiliates',storefront[1]):null;if(!a?.active)fail('Affiliate storefront is unavailable.',404);return{slug:a.slug,name:a.name,bio:a.bio,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
+  const publicPhoto=path.match(/^\/storefronts\/([a-z0-9-]+)\/photo$/);
+  if(publicPhoto&&method==='GET'){const a=await s.get('affiliates',publicPhoto[1]),image=await s.get('affiliate_photos',publicPhoto[1]);if(!a?.active||!image)fail('Photo not found.',404);return{_binary:image.data,_type:'image/jpeg'}}
+  const profile=path.match(/^\/affiliate-profile\/([a-z0-9-]+)$/);
+  if(profile&&method==='GET'){const a=await photos.authorize(s,profile[1],h['x-profile-token']);return{slug:a.slug,name:a.name,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
   if(path==='/quote'&&method==='POST')return quote(s,body);
   if(path==='/orders'&&method==='POST'){
    if(settings.demo!==true)fail('Live checkout remains disabled pending tax, payment and integration validation.',503);
@@ -51,6 +67,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))fail('Enter a valid email address.');
    const payment=text(body.payment_method||'',20);if(!['venmo','paypal','cashapp','zelle'].includes(payment))fail('Choose a payment method.');
    const id='GLP-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');const o={id,created:clock(),expires:clock()+86400,status:'awaiting_payment',customer,...q,payment_method:payment,token_hash:hash(token),idempotency_key:key,request_hash:hash(JSON.stringify(body)),receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:q.affiliate?'awaiting_payment':'not_applicable'};
+   o.goaffpro_affiliate_id=q.affiliate?(await s.get('affiliates',q.affiliate)).goaffpro_id||'':null;
    for(const item of q.items){const p=await s.get('products',item.id);p.stock-=item.quantity;await s.put('products',p.id,p)}if(q.coupon){const c=await s.get('coupons',q.coupon);c.used++;await s.put('coupons',c.code,c)}
    await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);return{order:publicOrder(o),token};
   }
@@ -70,6 +87,7 @@ async function handle({path,method='GET',headers={},body={}}){
   }
   if(path.startsWith('/admin/')){
    const sessionId=await session(s,h);
+   if(path==='/admin/affiliate/photo-link'&&method==='POST'){const result=await photos.issueLink(s,text(body.slug||'',60));await audit(s,'affiliate_photo_link_created');return result}
    if(path==='/admin/logout'&&method==='POST'){await s.remove('sessions',sessionId);setCookie='glow_next_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+(process.env.STORE_LOCAL?'':'; Secure');return{ok:true}}
    if(path==='/admin/data'&&method==='GET')return{products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),audit:(await s.get('audit','log')||[]).slice().reverse()};
    const r=path.match(/^\/admin\/receipt\/([A-Z0-9-]+)$/);if(r&&method==='GET'){const o=await s.get('orders',r[1]);if(!o?.receipt)fail('Receipt not found.',404);return{_binary:o.receipt,_type:o.receipt_type}}
@@ -81,7 +99,7 @@ async function handle({path,method='GET',headers={},body={}}){
     const code=text(body.code||'',40).toUpperCase(),kind=body.kind;if(!['fixed','percent'].includes(kind))fail('Invalid discount type.');const old=await s.get('coupons',code);const c={code,kind,value:int(body.value,1,kind==='percent'?100:1000000),minimum:int(body.minimum??0),max_uses:int(body.max_uses??100,1),used:old?.used||0,expires:int(body.expires??0,0,9999999999),active:int(body.active??1,0,1)};await s.put('coupons',code,c);await audit(s,'coupon_saved');return{ok:true};
    }
    if(path==='/admin/affiliate'&&method==='POST'){
-    const slug=text(body.slug||'',60).toLowerCase();if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||['admin','api','shop','store-next'].includes(slug))fail('Choose a unique lowercase store link.');const a={slug,name:text(body.name||'',150),bio:text(body.bio||'',500,false),goaffpro_id:text(body.goaffpro_id||'',100,false),commission_bps:int(body.commission_bps??1500,0,10000),active:int(body.active??1,0,1)};await s.put('affiliates',slug,a);await audit(s,'affiliate_saved');return{ok:true};
+    const slug=text(body.slug||'',60).toLowerCase();if(!validSlug(slug))fail('Choose a unique lowercase store link.');const old=await s.get('affiliates',slug),goaffproId=text(body.goaffpro_id||'',100,false);if(goaffproId&&(await s.list('affiliates')).some(a=>a.slug!==slug&&a.goaffpro_id===goaffproId))fail('This GoAffPro affiliate already has a storefront. Edit that storefront instead.',409);const a={...old,slug,name:text(body.name||'',150),bio:text(body.bio||'',500,false),goaffpro_id:goaffproId,commission_bps:int(body.commission_bps??1500,0,10000),active:int(body.active??1,0,1)};await s.put('affiliates',slug,a);await audit(s,'affiliate_saved');return{ok:true};
    }
    if(path==='/admin/settings'&&method==='POST'){
     settings.shipping_cents=int(body.shipping_cents);settings.free_shipping_cents=int(body.free_shipping_cents??settings.free_shipping_cents);settings.payment_links=validateLinks(body.payment_links);await s.put('settings','main',settings);await audit(s,'settings_saved');return{ok:true};

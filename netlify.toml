@@ -19,6 +19,11 @@
   path = "/*"
 
 [[redirects]]
+  from = "/store-next/profile/:affiliate"
+  to = "/store-next/index.html"
+  status = 200
+
+[[redirects]]
   from = "/store-next/admin"
   to = "/store-next/index.html"
   status = 200
@@ -50,4 +55,5 @@
 
 [functions."store-next"]
   node_bundler = "esbuild"
-  external_node_modules = ["pg"]
+  external_node_modules = ["pg", "sharp"]
+  included_files = ["node_modules/@img/sharp-linux-x64/**", "node_modules/@img/sharp-libvips-linux-x64/**"]

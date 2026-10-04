@@ -1,6 +1,6 @@
 # Glow GLP’s store replacement — development version 0.2
 
-The replacement is built separately at `/store-next/`. It does not change the live homepage, current checkout, WooCommerce stock script, or existing affiliate page. This is an isolated development branch. It is not a live-store release.
+The replacement is built separately at `/store-next/`. It does not change the live homepage, current checkout, WooCommerce stock script, or existing affiliate page. This preview is deployed on Netlify, while the main store checkout remains unchanged. Payments and external order reporting remain disabled.
 
 ## Run locally
 
@@ -39,7 +39,7 @@ The existing build command regenerates current-site prices and metadata from `ca
 
 Actual payments are disabled, regardless of saved recipient links. Taxes are visibly unconfigured and zero for fictional test orders. Setting `settings.demo` to false disables order submission rather than allowing unvalidated live checkout.
 
-GoAffPro has no live conversion or cancellation synchronization yet. Affiliate cookies, affiliate coupon attribution, self-referral rules, commission overrides, profile login/photo upload, and the existing-account migration still need implementation and account testing.
+GoAffPro has no live conversion or cancellation synchronization yet. Affiliate cookies, affiliate coupon attribution, self-referral rules, commission overrides, full affiliate account sign-in, and external order reporting still need implementation and account testing. Approved affiliate profiles can now create named storefronts. Private links allow affiliates to upload their own photo.
 
 ShipStation is not connected. The dry-run payload is a review aid; discount representation, parcel weights/dimensions, carriers/services, store IDs, account API version/permissions, retries, and verified tracking callbacks need implementation. No label purchase happens. Marking an order shipped locally does not yet mean it was dispatched by a carrier.
 
@@ -84,8 +84,19 @@ The 14 backend/migration checks and frontend DOM/HTTP checks passed. The latter 
 
 ## GoAffPro connection check
 
-The management Affiliates tab can verify the GoAffPro credential and preview the first 100 approved profiles (ID, name, referral code and status). This is a read-only connection step: it does not create storefronts automatically, synchronize coupons, report orders, or pay commissions.
+The management Affiliates tab can verify the GoAffPro credential and preview the first 100 approved profiles (ID, name, referral code and status). The connection check is read-only. A separate Create approved storefronts action creates local named storefronts from approved GoAffPro profiles. It does not synchronize coupons, report orders, or pay commissions.
 
 Create a restricted API key in GoAffPro Settings → Developer. `affiliate.profile.read` is used by this check; `sales.read` and `sales.write` are reserved for the upcoming paid-order integration. Save the private X-GOAFFPRO-ACCESS-TOKEN value as `GOAFFPRO_ACCESS_TOKEN` in Netlify's production Functions environment, preferably marked as a secret. Never commit the value or put it in browser code. Redeploy after adding it, then sign in at `/store-next/admin`, open Affiliates, and click Check GoAffPro connection.
 
 Connection verification is tied to a hash of the currently configured key. Replacing the key requires another check. The public token is not used in this phase. Paid-order reporting remains disabled; test orders must never be reported as genuine sales. Existing WooCommerce affiliate tracking remains separate until the eventual checkout cutover.
+
+
+## Named storefronts and affiliate photos
+
+In management → Affiliates, **Create approved storefronts** imports approved profiles in pages of 100, up to 10,000 profiles per run. Each local storefront gets a friendly unique name-based slug, the GoAffPro affiliate ID, a blank editable introduction, and a 15% local estimate. This estimate does not change GoAffPro commissions. Existing records matched by GoAffPro ID retain their slug, name, introduction, estimate and enabled/disabled state on repeat imports. The importer does not automatically disable profiles later removed from GoAffPro; staff must disable them locally until continuous status synchronization is implemented.
+
+Use **Copy store link** to share `/store-next/<slug>`. Editing an existing storefront locks its slug in the form to preserve links. Public profile responses contain only its display name, introduction and photo URL; the whole affiliate roster and internal IDs are not included in the public catalog. Orders snapshot the GoAffPro affiliate ID internally at creation, alongside storefront attribution.
+
+Use **Photo upload link** to generate a private link for an affiliate at `/store-next/profile/<slug>#<token>`. Only the staff dashboard can issue these links. They expire after 30 days and issuing a new one immediately invalidates the previous one. Staff must share this link directly with the correct affiliate; the public storefront link and private photo link serve different purposes. The fragment token is removed from the address bar after opening and kept in that browser's session storage. The server stores only its hash and expiry.
+
+The private page can upload or remove only that affiliate's photo. It cannot edit products, prices, inventory, commissions or orders. Accepted still JPEG/PNG/WebP inputs are limited to 3 MB and 25 million pixels. Sharp decodes them, applies orientation, crops to 512×512, and encodes a new JPEG without retaining EXIF/location metadata or original bytes. Photos are stored separately from affiliate records and shown publicly only on active storefronts. Native sharp and its Linux x64 image libraries are packaged with the Netlify function. Link authorization, cross-site rejection, image decoding, metadata removal and ownership isolation are covered by local tests. Actual affiliate imports and photo uploads should be verified in the signed-in production dashboard after deployment.
