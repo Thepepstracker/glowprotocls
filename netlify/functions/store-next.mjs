@@ -1,4 +1,8 @@
 import adapter from './lib/store-handler.cjs';
+import database from './lib/store-db.cjs';
+import {getDatabase} from '@netlify/database';
+
+database.configureHostedDatabase(getDatabase);
 
 // The modern runtime supplies Netlify.env, including the branch database URL.
 export default async function store(request) {

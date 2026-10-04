@@ -1,6 +1,7 @@
 'use strict';
 const path=require('node:path'),fs=require('node:fs');
-let queue=Promise.resolve(), pool;
+let queue=Promise.resolve(), pool, hostedDatabase;
+function configureHostedDatabase(factory){hostedDatabase=factory;}
 function sqliteDb(){
  if(!process.env.STORE_LOCAL)throw Object.assign(new Error('The store database is not connected. Use the local development command or configure STORE_DATABASE_URL.'),{status:503});
  const {DatabaseSync}=require('node:sqlite');const file=process.env.STORE_SQLITE_PATH||path.resolve('.store-data/store.sqlite');fs.mkdirSync(path.dirname(file),{recursive:true});
@@ -10,7 +11,7 @@ async function transaction(work){
  if(process.env.STORE_DATABASE_URL || !process.env.STORE_LOCAL){
   if(!pool){
    if(process.env.STORE_DATABASE_URL){const {Pool}=require('pg');pool=new Pool({connectionString:process.env.STORE_DATABASE_URL,max:3,connectionTimeoutMillis:10000,idleTimeoutMillis:10000});}
-   else{const {getDatabase}=require('@netlify/database');pool=getDatabase().pool;}
+   else{if(!hostedDatabase)throw Object.assign(new Error('Hosted database adapter is not configured.'),{status:503});pool=hostedDatabase().pool;}
   }
   const c=await pool.connect();
   try{await c.query('BEGIN');await c.query('SET LOCAL statement_timeout=15000');await c.query('SELECT pg_advisory_xact_lock(70619026)');
@@ -32,4 +33,4 @@ function remoteStore(c){return{
  put:async(kind,key,value)=>c.query('INSERT INTO glow_store_records(kind,key,payload) VALUES($1,$2,$3) ON CONFLICT(kind,key) DO UPDATE SET payload=excluded.payload',[kind,String(key),JSON.stringify(value)]),
  remove:async(kind,key)=>c.query('DELETE FROM glow_store_records WHERE kind=$1 AND key=$2',[kind,String(key)])
 }}
-module.exports={transaction};
+module.exports={transaction,configureHostedDatabase};
