@@ -47,3 +47,12 @@ test('staff can order for a different customer without borrowing staff identity 
  assert.ok((await call('/account',undefined,recipient.cookie)).body.orders.some(o=>o.id===saved.id));
  const outsider=await call('/orders',orderBody({email:'new-recipient@example.com'},0,{order_for_customer:true}),combined);const guest=await transaction(s=>s.get('orders',outsider.body.order.id));assert.equal(guest.customer_id,null);assert.equal(guest.customer.email,'new-recipient@example.com');
 });
+test('repeated draft edits release and reserve rewards once per revision',async()=>live(async()=>{
+ const a=await customer(300);const body=orderBody(a,50);const r=await call('/orders',body,a.cookie),id=r.body.order.id;const req=b=>handle({path:'/orders/'+id+'/edit',method:'POST',headers:{'x-store-request':'1',cookie:a.cookie,'x-order-token':r.body.token},body:b});
+ const balance=async()=>(await call('/account',undefined,a.cookie)).body.wallet;
+ assert.equal((await balance()).reserved,50);
+ await req({...body,points_redeemed:100,expected_revision:0,not_paid:true});assert.equal((await balance()).reserved,100);
+ await req({...body,points_redeemed:75,expected_revision:1,not_paid:true});assert.equal((await balance()).reserved,75);assert.equal((await balance()).balance,300);
+ await assert.rejects(req({...body,points_redeemed:301,expected_revision:2,not_paid:true}),/enough/);assert.equal((await balance()).reserved,75);
+ await admin('/admin/status',{id,status:'canceled'});assert.equal((await balance()).reserved,0);assert.equal((await balance()).balance,300);
+}));

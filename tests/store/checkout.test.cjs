@@ -63,3 +63,20 @@ test('email and phone are required before saving or reserving an order; staff an
  await assert.rejects(call('/orders/'+id+'/receipt',receipt,{'x-order-token':token}),/phone/);
  const submitted=await call('/orders/'+id+'/receipt',{...receipt,phone:'+44 20 7946 0018'},{'x-order-token':token});assert.equal(submitted.body.customer.phone,'+442079460018');assert.equal(submitted.body.status,'payment_submitted');
 });
+test('draft edits keep one order, return its stock to availability and roll back invalid or stale changes',async()=>{
+ const original=orderBody(),r=await call('/orders',original),id=r.body.order.id,h={'x-order-token':r.body.token};
+ await assert.rejects(call('/orders/'+id+'/edit-context'),/denied/);
+ const before=(await call('/catalog')).body.products.find(p=>p.id===1).stock;
+ const ctx=(await call('/orders/'+id+'/edit-context',undefined,h)).body;assert.equal(ctx.products.find(p=>p.id===1).stock,before+1);
+ const edit={...original,items:[{id:1,quantity:2}],customer:{...original.customer,address:'99 Changed Road'},expected_revision:0,not_paid:true};
+ const quoted=(await call('/orders/'+id+'/edit-quote',edit,h)).body;assert.equal(quoted.subtotal,8798);
+ await assert.rejects(call('/orders/'+id+'/edit',{...edit,not_paid:false},h),/not paid/);
+ await assert.rejects(call('/orders/'+id+'/edit',{...edit,items:[{id:1,quantity:100}]},h),/available/);assert.equal((await call('/catalog')).body.products.find(p=>p.id===1).stock,before);
+ const updated=(await call('/orders/'+id+'/edit',edit,h)).body.order;assert.equal(updated.id,id);assert.equal(updated.revision,1);assert.equal(updated.customer.address,'99 Changed Road');assert.equal(updated.total,quoted.total);assert.equal((await call('/catalog')).body.products.find(p=>p.id===1).stock,before-1);
+ await assert.rejects(call('/orders/'+id+'/edit',edit,h),/another tab/);
+ const again=(await call('/orders/'+id+'/edit',{...edit,items:[{id:1,quantity:1}],expected_revision:1},h)).body.order;assert.equal(again.revision,2);assert.equal((await call('/catalog')).body.products.find(p=>p.id===1).stock,before);
+ const receipt={reference:'EDIT TEST',mime:'image/png',file:(await sharp({create:{width:16,height:32,channels:3,background:'#fff'}}).png().toBuffer()).toString('base64')};
+ await assert.rejects(call('/orders/'+id+'/receipt',{...receipt,expected_revision:1},h),/latest total/);
+ await call('/orders/'+id+'/receipt',{...receipt,expected_revision:2},h);await assert.rejects(call('/orders/'+id+'/edit-context',undefined,h),/submitted/);
+ await admin('/admin/status',{id,status:'canceled'});assert.equal((await call('/catalog')).body.products.find(p=>p.id===1).stock,before+1);
+});

@@ -27,6 +27,14 @@ function contactPhone(value){
  if(raw.length>32||!/^\+?[0-9 () .-]+$/.test(raw)||(/^[+]/.test(raw)?digits.length<7||digits.length>15:!(digits.length===10||digits.length===11&&digits.startsWith('1'))))fail('Enter a valid phone number: 10 digits for US numbers, or + and the country code for international numbers.');
  return raw.startsWith('+')?'+'+digits:'+1'+(digits.length===11?digits.slice(1):digits);
 }
+function checkoutCustomer(input){const body={customer:input},customer={};for(const k of ['name','email','address','city','state','zip'])customer[k]=text(body.customer?.[k]||'',k==='address'?500:150);
+   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))fail('Enter a valid email address.');
+   customer.phone=contactPhone(body.customer?.phone);
+   customer.state=customer.state.toUpperCase();
+   if(!/^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|AS|GU|MP|PR|VI|AA|AE|AP)$/.test(customer.state))fail('Enter a valid two-letter US state or territory code.');
+   if(!/^\d{5}(-\d{4})?$/.test(customer.zip))fail('Enter a five-digit ZIP code, optionally followed by four digits.');
+ return customer;
+}
 async function setStock(s,p,stock){int(stock);const members=p.stock_pool?(await s.list('products')).filter(x=>x.stock_pool===p.stock_pool&&x.id!==p.id):[];for(const x of [...members,p]){x.stock=stock;await s.put('products',x.id,x)}}
 async function release(s,o,status){await accounts.release(s,o);for(const line of o.items){const p=await s.get('products',line.id);await setStock(s,p,p.stock+line.quantity)}if(o.coupon){const c=await s.get('coupons',o.coupon);if(c){c.used=Math.max(0,c.used-1);await s.put('coupons',c.code,c)}}o.status=status;await s.put('orders',o.id,o);await audit(s,status,o.id)}
 async function expire(s){for(const o of await s.list('orders'))if(o.status==='awaiting_payment'&&o.expires<=clock())await release(s,o,'expired')}
@@ -44,6 +52,9 @@ async function quote(s,b,h={}){
 async function orderAuth(s,id,headers){const o=await s.get('orders',id),a=await accounts.session(s,headers);if(!o||(!equal(o.token_hash,hash(headers['x-order-token']||''))&&!(a&&o.customer_id===a.id)))fail('Order access denied.',404);return o}
 function validateLinks(links){if(!links||typeof links!=='object'||Array.isArray(links))fail('Invalid payment settings.');const out={};for(const[k,domains]of Object.entries({venmo:['venmo.com','www.venmo.com','account.venmo.com'],paypal:['paypal.com','www.paypal.com','paypal.me','www.paypal.me'],cashapp:['cash.app'],zelle:[]})){const v=text(links[k]||'',300,false);if(v&&k!=='zelle'){let u;try{u=new URL(v)}catch{fail('Enter an official HTTPS '+k+' link.')}if(u.protocol!=='https:'||!domains.includes(u.hostname)||u.username||u.password)fail('Enter an official HTTPS '+k+' link.')}out[k]=v}return out}
 function shipmentPayload(o){return shipping.payload(o,null)}
+function editable(o){if(o.status!=='awaiting_payment'||o.has_receipt||o.receipt)fail('This order has been submitted or closed. Contact the store to change it.',409)}
+function draftStore(s,o){const reserved=new Map();for(const line of o.items){reserved.set(line.id,(reserved.get(line.id)||0)+line.quantity)}return{...s,get:async(kind,key)=>{const r=await s.get(kind,key);if(!r)return r;if(kind==='products'){let qty=reserved.get(r.id)||0;if(r.stock_pool){qty=o.items.reduce((n,line)=>n+(line.stock_pool===r.stock_pool?line.quantity:0),0)}return{...r,stock:r.stock+qty}}if(kind==='coupons'&&key===o.coupon)return{...r,used:Math.max(0,r.used-1)};if(kind==='rewards_wallets'&&key===o.customer_id&&o.is_test===false)return{...r,reserved:Math.max(0,r.reserved-(o.points_redeemed||0))};return r}}}
+async function editStore(s,o){const copy={...o,items:[]};for(const line of o.items){const p=await s.get('products',line.id);copy.items.push({...line,stock_pool:p?.stock_pool})}return draftStore(s,copy)}
 async function handle({path,method='GET',headers={},body={}}){
  const h=Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),v]));let setCookie,emailJob;
  if(!['GET','POST'].includes(method))fail('Method not allowed.',405);
@@ -109,12 +120,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(settings.demo!==true&&!(settings.demo===false&&settings.checkout_enabled===true&&settings.tax_mode==='none'))fail('Live checkout is disabled. Enable it in dashboard Settings after saving inventory and payment recipients.',503);
    const key=text(body.idempotency_key||'',100);if(await s.get('idempotency',key))fail('This order was already submitted. Use your saved confirmation.',409);
    const assisted=body.order_for_customer===true,staffSession=assisted?await session(s,h):null;if(assisted&&body.points_redeemed)fail('Customer rewards cannot be redeemed from a staff login.');
-   const a=assisted?null:await accounts.session(s,h),q=await quote(s,body,assisted?{}:h),customer={};for(const k of ['name','email','address','city','state','zip'])customer[k]=text(body.customer?.[k]||'',k==='address'?500:150);
-   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))fail('Enter a valid email address.');
-   customer.phone=contactPhone(body.customer?.phone);
-   customer.state=customer.state.toUpperCase();
-   if(!/^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|AS|GU|MP|PR|VI|AA|AE|AP)$/.test(customer.state))fail('Enter a valid two-letter US state or territory code.');
-   if(!/^\d{5}(-\d{4})?$/.test(customer.zip))fail('Enter a five-digit ZIP code, optionally followed by four digits.');
+   const a=assisted?null:await accounts.session(s,h),q=await quote(s,body,assisted?{}:h),customer=checkoutCustomer(body.customer);
    if(a&&accounts.email(customer.email)!==a.email)fail('Use your account email for this order.');
    const payment=text(body.payment_method||'',20);if(!['venmo','paypal','cashapp','zelle'].includes(payment))fail('Choose a payment method.');if(settings.demo===false&&!settings.payment_links[payment])fail('This payment method is not available.');
    const id='GLP-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');const o={id,created:clock(),expires:clock()+86400,status:'awaiting_payment',customer,...q,payment_method:payment,token_hash:hash(token),idempotency_key:key,request_hash:hash(JSON.stringify(body)),checkout_stage:'draft',submitted_at:null,receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:q.affiliate?'awaiting_payment':'not_applicable'};
@@ -124,8 +130,26 @@ async function handle({path,method='GET',headers={},body={}}){
    for(const item of q.items){const p=await s.get('products',item.id);await setStock(s,p,p.stock-item.quantity)}if(q.coupon){const c=await s.get('coupons',q.coupon);c.used++;await s.put('coupons',c.code,c)}
    await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);emailJob=await emails.queueOrder(s,o,token);return{order:publicOrder(o),token};
   }
+  const edit=path.match(/^\/orders\/([A-Z0-9-]+)\/(edit-context|edit-quote|edit)$/);
+  if(edit){const o=await orderAuth(s,edit[1],h);editable(o);const available=await editStore(s,o);
+   if(edit[2]==='edit-context'&&method==='GET'){const products=[];for(const p of await s.list('products'))if(p.active)products.push(withProductPhotos(await available.get('products',p.id)));return{products,settings:{...settings,email_enabled:emails.configuration().ready},order:publicOrder(o)}}
+   if(method!=='POST')fail('Method not allowed.',405);
+   if(body.points_redeemed&&o.order_for_customer)fail('Customer rewards cannot be redeemed from a staff login.');
+   const q=await quote(available,body,o.order_for_customer?{}:h);
+   if(edit[2]==='edit-quote')return q;
+   if(body.not_paid!==true)fail('Confirm you have not paid before changing this draft.');
+   if(body.expected_revision!==(o.revision||0))fail('This checkout changed in another tab. Reopen your order before editing.',409);
+   const customer=checkoutCustomer(body.customer);if(accounts.email(customer.email)!==accounts.email(o.customer.email))fail('Keep the same order email while editing. Contact the store to change it.');
+   const payment=text(body.payment_method||'',20);if(!['venmo','paypal','cashapp','zelle'].includes(payment)||settings.demo===false&&!settings.payment_links[payment])fail('Choose an available payment method.');
+   if(q.points_redeemed){const a=await accounts.session(s,h);if(!a||a.id!==o.customer_id)fail('Sign in to the original customer account to use its rewards.',401)}
+   const revision=(o.revision||0)+1;await release(s,o,'awaiting_payment');Object.assign(o,q,{customer,payment_method:payment,revision,reservation_version:revision,updated:clock()});
+   o.goaffpro_affiliate_id=q.affiliate?(await s.get('affiliates',q.affiliate)).goaffpro_id||'':null;await accounts.reserve(s,o);
+   for(const line of o.items){const p=await s.get('products',line.id);await setStock(s,p,p.stock-line.quantity)}if(o.coupon){const c=await s.get('coupons',o.coupon);c.used++;await s.put('coupons',c.code,c)}await s.put('orders',o.id,o);await audit(s,'checkout_edited',o.id);
+   if(o.is_test===false)emailJob=await emails.enqueue(s,{id:'draft-edit-'+o.id+'-'+revision,kind:'checkout_updated',to:o.customer.email,related_id:o.id,subject:'Updated Glow Lab checkout '+o.id,content:emails.template('Your checkout has been updated.',['Order: '+o.id,'Your latest total is $'+(o.total/100).toFixed(2)+'. Use this amount instead of earlier checkout emails.','Your order is still awaiting payment. Your existing private checkout link shows the latest items and shipping address. After paying, upload your screenshot and submit your order.'],null,null)});return{order:publicOrder(o)};
+  }
   const m=path.match(/^\/orders\/([A-Z0-9-]+)(\/receipt)?$/);if(m){const o=await orderAuth(s,m[1],h);if(method==='GET'&&!m[2])return publicOrder(o);if(method==='POST'&&m[2]){
    if(!['awaiting_payment','payment_submitted'].includes(o.status))fail('This order no longer accepts receipts.',409);
+   if((o.revision||0)>0&&body.expected_revision!==o.revision)fail('This checkout changed. Refresh your order and check the latest total before submitting payment proof.',409);
    if(!o.customer.phone)o.customer.phone=contactPhone(body.phone);
    const reference=text(body.reference||'',100,false);o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
   }fail('Endpoint not found.',404)}
