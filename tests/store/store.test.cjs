@@ -146,3 +146,15 @@ test('legacy referral codes resolve unique active storefronts without exposing I
 });
 
 async function attachProof(fixture){await call('/orders/'+fixture.order.id+'/receipt',{mime:'image/png',file:(await require('sharp')({create:{width:16,height:32,channels:3,background:'#fff'}}).png().toBuffer()).toString('base64')},{'x-order-token':fixture.token})}
+
+test('shared stock blocks combined overselling, reserves all sizes and restores on cancellation',async()=>{
+ const login=await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD});cookie=login.headers['Set-Cookie'].split(';')[0];
+ for(const sku of ['POOL-A','POOL-B'])await admin('/admin/product',{name:sku,sku,price:1000,stock:9,stock_pool:'shared-test',active:1});
+ let d=(await admin('/admin/data')).body;const a=d.products.find(p=>p.sku==='POOL-A'),b=d.products.find(p=>p.sku==='POOL-B');
+ await assert.rejects(call('/quote',{items:[{id:a.id,quantity:5},{id:b.id,quantity:5}]}),/Only 9/);
+ const o=await order({items:[{id:a.id,quantity:3},{id:b.id,quantity:4}]});d=(await admin('/admin/data')).body;assert.deepEqual(d.products.filter(p=>p.stock_pool==='shared-test').map(p=>p.stock),[2,2]);
+ await assert.rejects(admin('/admin/product',{...a,stock_pool:'changed',stock:9}),/reserved orders/);
+ await assert.rejects(order({items:[{id:b.id,quantity:3}]}),/Only 2/);
+ await admin('/admin/status',{id:o.order.id,status:'canceled'});d=(await admin('/admin/data')).body;assert.deepEqual(d.products.filter(p=>p.stock_pool==='shared-test').map(p=>p.stock),[9,9]);
+ await admin('/admin/product',{...a,stock:6});d=(await admin('/admin/data')).body;assert.deepEqual(d.products.filter(p=>p.stock_pool==='shared-test').map(p=>p.stock),[6,6]);
+});
