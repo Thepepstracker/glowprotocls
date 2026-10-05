@@ -33,3 +33,17 @@ test('source reconciliation preserves new-store rewards, pending accounts, held 
  const unchanged=(await admin('/admin/rewards/import-preview',{customers:rows})).body;assert.equal(unchanged.changes.length,0);await admin('/admin/rewards/reconcile',{batch_id:unchanged.batch_id});assert.equal((await call('/account',undefined,a.cookie)).body.wallet.balance,165);
  const lower=(await admin('/admin/rewards/import-preview',{customers:[{...rows[0],points:120}]})).body;const stale=(await admin('/admin/rewards/import-preview',{customers:[{...rows[0],points:160}]})).body;await admin('/admin/rewards/reconcile',{batch_id:lower.batch_id});assert.equal((await call('/account',undefined,a.cookie)).body.wallet.balance,145);await assert.rejects(admin('/admin/rewards/reconcile',{batch_id:stale.batch_id}),e=>e.status===409);
 });
+test('staff can order for a different customer without borrowing staff identity or rewards; ordinary customers cannot override email',async()=>{
+ const staffCustomer=await customer(100),recipient=await customer(0);const combined=adminCookie+'; '+staffCustomer.cookie;
+ const body=orderBody(recipient,0,{order_for_customer:true});
+ await assert.rejects(call('/orders',body,staffCustomer.cookie),/management/);
+ await assert.rejects(call('/quote',body,staffCustomer.cookie),/management/);
+ await assert.rejects(call('/orders',{...body,order_for_customer:false},staffCustomer.cookie),/account email/);
+ await assert.rejects(call('/orders',{...body,points_redeemed:10},combined),/cannot be redeemed/);
+ const before=(await call('/account',undefined,staffCustomer.cookie)).body.wallet.balance;
+ const r=await call('/orders',body,combined);assert.equal(r.body.order.customer.email,recipient.email);assert.equal(r.body.order.order_for_customer,true);
+ const saved=await transaction(s=>s.get('orders',r.body.order.id));assert.equal(saved.customer_id,recipient.id);assert.equal(saved.created_by_staff,'owner');
+ assert.equal((await call('/account',undefined,staffCustomer.cookie)).body.wallet.balance,before);
+ assert.ok((await call('/account',undefined,recipient.cookie)).body.orders.some(o=>o.id===saved.id));
+ const outsider=await call('/orders',orderBody({email:'new-recipient@example.com'},0,{order_for_customer:true}),combined);const guest=await transaction(s=>s.get('orders',outsider.body.order.id));assert.equal(guest.customer_id,null);assert.equal(guest.customer.email,'new-recipient@example.com');
+});

@@ -19,7 +19,7 @@ const int=(v,min=0,max=10000000)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fai
 function signingKey(){if(!process.env.STORE_SESSION_SECRET||process.env.STORE_SESSION_SECRET.length<32)fail('Admin sessions are not configured.',503);return process.env.STORE_SESSION_SECRET}
 function sign(value){return crypto.createHmac('sha256',signingKey()).update(value).digest('base64url')}
 async function session(store,headers){const cookie=(headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('glow_next_admin='));const token=cookie?.slice('glow_next_admin='.length)||'',parts=token.split('.');if(parts.length!==3||Number(parts[0])<=clock()||!equal(sign(parts[0]+'.'+parts[1]),parts[2]))fail('Sign in to the management dashboard.',401);const record=await store.get('sessions',parts[1]);if(!record||record.expires<=clock())fail('Sign in to the management dashboard.',401);if(record.staff_id){const a=await store.get('staff',record.staff_id);if(!a?.active||!a.verified||record.auth_version!==a.auth_version)fail('Sign in to the management dashboard.',401)}return parts[1]}
-const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
+const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,created_by_staff,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
 async function audit(s,action,id=''){const log=await s.get('audit','log')||[];log.push({created:clock(),action,order_id:id});await s.put('audit','log',log.slice(-250))}
 function contactPhone(value){
  if(typeof value!=='string'||!value.trim())fail('Enter your phone number so we can contact you about your order.');
@@ -102,13 +102,14 @@ async function handle({path,method='GET',headers={},body={}}){
   if(publicPhoto&&method==='GET'){const a=await s.get('affiliates',publicPhoto[1]),image=await s.get('affiliate_photos',publicPhoto[1]);if(!a?.active||!image)fail('Photo not found.',404);return{_binary:image.data,_type:'image/jpeg'}}
   const profile=path.match(/^\/affiliate-profile\/([a-z0-9-]+)$/);
   if(profile&&method==='GET'){const a=await photos.authorize(s,profile[1],h['x-profile-token']);return{slug:a.slug,name:a.name,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
-  if(path==='/quote'&&method==='POST')return quote(s,body,h);
+  if(path==='/quote'&&method==='POST'){if(body.order_for_customer===true){await session(s,h);if(body.points_redeemed)fail('Customer rewards cannot be redeemed from a staff login.');return quote(s,body,{})}return quote(s,body,h)}
   if(path==='/account'&&method==='GET')return accounts.accountData(s,await accounts.session(s,h,true));
   if(path==='/account/logout'&&method==='POST'){const token=(h.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('glow_next_customer='))?.slice(19);if(token)await s.remove('customer_sessions',accounts.hash(token));setCookie=accounts.cookie('',0);return{ok:true}}
   if(path==='/orders'&&method==='POST'){
    if(settings.demo!==true&&!(settings.demo===false&&settings.checkout_enabled===true&&settings.tax_mode==='none'))fail('Live checkout is disabled. Enable it in dashboard Settings after saving inventory and payment recipients.',503);
    const key=text(body.idempotency_key||'',100);if(await s.get('idempotency',key))fail('This order was already submitted. Use your saved confirmation.',409);
-   const a=await accounts.session(s,h),q=await quote(s,body,h),customer={};for(const k of ['name','email','address','city','state','zip'])customer[k]=text(body.customer?.[k]||'',k==='address'?500:150);
+   const assisted=body.order_for_customer===true,staffSession=assisted?await session(s,h):null;if(assisted&&body.points_redeemed)fail('Customer rewards cannot be redeemed from a staff login.');
+   const a=assisted?null:await accounts.session(s,h),q=await quote(s,body,assisted?{}:h),customer={};for(const k of ['name','email','address','city','state','zip'])customer[k]=text(body.customer?.[k]||'',k==='address'?500:150);
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))fail('Enter a valid email address.');
    customer.phone=contactPhone(body.customer?.phone);
    customer.state=customer.state.toUpperCase();
@@ -118,7 +119,8 @@ async function handle({path,method='GET',headers={},body={}}){
    const payment=text(body.payment_method||'',20);if(!['venmo','paypal','cashapp','zelle'].includes(payment))fail('Choose a payment method.');if(settings.demo===false&&!settings.payment_links[payment])fail('This payment method is not available.');
    const id='GLP-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');const o={id,created:clock(),expires:clock()+86400,status:'awaiting_payment',customer,...q,payment_method:payment,token_hash:hash(token),idempotency_key:key,request_hash:hash(JSON.stringify(body)),checkout_stage:'draft',submitted_at:null,receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:q.affiliate?'awaiting_payment':'not_applicable'};
    o.goaffpro_affiliate_id=q.affiliate?(await s.get('affiliates',q.affiliate)).goaffpro_id||'':null;
-   o.is_test=settings.demo!==false;o.customer_id=a?.id||null;o.points_earned=0;await accounts.reserve(s,o);
+   const beneficiary=assisted?await s.get('customers',accounts.hash(accounts.email(customer.email))):a;
+   o.is_test=settings.demo!==false;o.customer_id=beneficiary?.verified?beneficiary.id:null;if(assisted){const actor=await s.get('sessions',staffSession);o.created_by_staff=actor.staff_id||'owner';o.order_for_customer=true}o.points_earned=0;await accounts.reserve(s,o);
    for(const item of q.items){const p=await s.get('products',item.id);await setStock(s,p,p.stock-item.quantity)}if(q.coupon){const c=await s.get('coupons',q.coupon);c.used++;await s.put('coupons',c.code,c)}
    await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);emailJob=await emails.queueOrder(s,o,token);return{order:publicOrder(o),token};
   }
@@ -138,6 +140,7 @@ async function handle({path,method='GET',headers={},body={}}){
   if(path.startsWith('/admin/')){
    const sessionId=await session(s,h);
    const owner=!(await s.get('sessions',sessionId)).staff_id;
+   if(path==='/admin/checkout-context'&&method==='GET')return{can_order_for_customer:true};
    if(path==='/admin/staff/invite'&&method==='POST'){if(!owner)fail('Only the owner can manage staff access.',403);const r=await staff.invite(s,body);emailJob=r.job;await audit(s,'staff_invited',r.staff.email);return{ok:true,staff:r.staff}}
    if(path==='/admin/staff/revoke'&&method==='POST'){if(!owner)fail('Only the owner can manage staff access.',403);const a=await s.get('staff',text(body.id||'',64));if(!a)fail('Staff member not found.',404);a.active=false;a.auth_version++;delete a.setup;await s.put('staff',a.id,a);await audit(s,'staff_access_revoked',a.email);return{ok:true}}
    if(path==='/admin/affiliate/photo-link'&&method==='POST'){const result=await photos.issueLink(s,text(body.slug||'',60));await audit(s,'affiliate_photo_link_created');return result}
