@@ -31,7 +31,7 @@ async function dispatch(id){
   if(['accepted','expired','canceled','needs_review','rejected'].includes(j.status)||j.lease_until>now())return null;
   if(j.expires<=now()){j.status='expired';delete j.payload;await s.put('email_outbox',id,j);return null}
   if(j.first_attempt&&j.first_attempt+23*3600<=now()){j.status='needs_review';j.message='Provider retry window ended. Check Resend before sending another email.';await s.put('email_outbox',id,j);return null}
-  if(j.setup_hash){const a=await s.get('customers',j.related_id);if(!a?.setup||a.setup.token_hash!==j.setup_hash||a.setup.expires<=now()){j.status='canceled';delete j.payload;await s.put('email_outbox',id,j);return null}}
+  if(j.setup_hash){const a=await s.get(j.kind==='staff_setup'?'staff':'customers',j.related_id);if((j.kind==='staff_setup'&&!a?.active)||!a?.setup||a.setup.token_hash!==j.setup_hash||a.setup.expires<=now()){j.status='canceled';delete j.payload;await s.put('email_outbox',id,j);return null}}
   const fingerprint=hash(cfg.key);if(j.key_fingerprint&&j.key_fingerprint!==fingerprint){j.status='needs_review';j.message='Email credentials changed after a send attempt. Check the original Resend account.';await s.put('email_outbox',id,j);return null}
   let payload;try{payload=open(j.payload)}catch{j.status='needs_review';j.message='Email content could not be decrypted. Check the store session secret.';await s.put('email_outbox',id,j);return null}
   j.status='sending';j.first_attempt||=now();j.key_fingerprint=fingerprint;j.attempts++;j.lease_until=now()+60;j.lease=crypto.randomBytes(16).toString('hex');await s.put('email_outbox',id,j);return{job:j,payload};

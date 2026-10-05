@@ -1,0 +1,21 @@
+'use strict';
+const {test,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-staff-test-'));Object.assign(process.env,{STORE_LOCAL:'1',STORE_SQLITE_PATH:path.join(tmp,'db.sqlite'),STORE_ADMIN_PASSWORD:'owner-test-password',STORE_SESSION_SECRET:'staff-tests-session-secret-more-than-32',STORE_ORIGIN:'http://127.0.0.1:8787',STORE_EMAIL_ENABLED:'1',STORE_EMAIL_FROM:'team@example.com',RESEND_API_KEY:'test-not-real'});
+const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),{handle}=require('../../netlify/functions/lib/store-core.cjs'),{seed}=require('../../tools/store/seed-data.cjs');
+const call=(p,b,cookie)=>handle({path:p,method:b?'POST':'GET',headers:{'x-store-request':'1',...(cookie?{cookie}:{})},body:b||{}});
+const cookie=r=>r.headers['Set-Cookie'].split(';')[0];let sent;const oldFetch=global.fetch;global.fetch=async(url,opts)=>{assert.equal(url,'https://api.resend.com/emails');sent=JSON.parse(opts.body);return{ok:true,status:200,json:async()=>({id:'test-provider-id'})}};after(()=>{global.fetch=oldFetch;fs.rmSync(tmp,{recursive:true,force:true})});
+test('owner invitation, private staff setup, full operational access and immediate revocation',async()=>{
+ await transaction(seed);const owner=cookie(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD}));
+ await assert.rejects(call('/admin/staff/invite',{email:'staff@example.com',name:'Staff'}),/Sign in/);
+ await call('/admin/staff/invite',{email:'Staff@example.com',name:'Staff'},owner);assert.deepEqual(sent.to,['staff@example.com']);
+ const match=sent.text.match(/#staff=([a-f0-9]{64})\.([A-Za-z0-9_-]{43})/);assert.ok(match);const body={id:match[1],token:match[2],password:'long staff passphrase for testing'};
+ await assert.rejects(call('/staff/setup',{...body,token:'wrong'}),/unavailable/);
+ await assert.rejects(call('/admin/login',{email:'staff@example.com',password:body.password}),/incorrect/);
+ const auth=await call('/staff/setup',body),staffCookie=cookie(auth);const data=(await call('/admin/data',null,staffCookie)).body;assert.equal(data.owner,false);assert.ok(data.products.length);assert.equal(JSON.stringify(data).includes(body.password),false);assert.equal(JSON.stringify(data).includes('scrypt-v1'),false);
+ await call('/admin/product',{name:'Staff price edit',sku:'STAFF-TEST',price:1000,stock:1},staffCookie);
+ await assert.rejects(call('/admin/staff/invite',{email:'other@example.com',name:'Other'},staffCookie),/Only the owner/);
+ await assert.rejects(call('/staff/setup',body),/unavailable/);
+ const login=cookie(await call('/admin/login',{email:'STAFF@example.com',password:body.password}));await call('/admin/logout',{},login);await assert.rejects(call('/admin/data',null,login),/Sign in/);
+ await call('/admin/staff/revoke',{id:body.id},owner);await assert.rejects(call('/admin/data',null,staffCookie),/Sign in/);await assert.rejects(call('/admin/login',{email:'staff@example.com',password:body.password}),/incorrect/);
+ assert.equal((await call('/admin/data',null,owner)).body.owner,true);
+});

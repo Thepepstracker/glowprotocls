@@ -8,6 +8,7 @@ const reporting=require('./goaffpro-orders.cjs');
 const shipping=require('./shipstation.cjs');
 const accounts=require('./customer-accounts.cjs');
 const emails=require('./store-email.cjs');
+const staff=require('./staff-accounts.cjs');
 const {withProductPhotos}=require('./product-photos.cjs');
 const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
 const clock=()=>Math.floor(Date.now()/1000),hash=s=>crypto.createHash('sha256').update(s).digest('hex');
@@ -17,7 +18,7 @@ const text=(value,max=200,required=true)=>{if(typeof value!=='string')fail('Inva
 const int=(v,min=0,max=10000000)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fail('Enter a valid whole number.');return v};
 function signingKey(){if(!process.env.STORE_SESSION_SECRET||process.env.STORE_SESSION_SECRET.length<32)fail('Admin sessions are not configured.',503);return process.env.STORE_SESSION_SECRET}
 function sign(value){return crypto.createHmac('sha256',signingKey()).update(value).digest('base64url')}
-async function session(store,headers){const cookie=(headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('glow_next_admin='));const token=cookie?.slice('glow_next_admin='.length)||'',parts=token.split('.');if(parts.length!==3||Number(parts[0])<=clock()||!equal(sign(parts[0]+'.'+parts[1]),parts[2]))fail('Sign in to the management dashboard.',401);const record=await store.get('sessions',parts[1]);if(!record||record.expires<=clock())fail('Sign in to the management dashboard.',401);return parts[1]}
+async function session(store,headers){const cookie=(headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('glow_next_admin='));const token=cookie?.slice('glow_next_admin='.length)||'',parts=token.split('.');if(parts.length!==3||Number(parts[0])<=clock()||!equal(sign(parts[0]+'.'+parts[1]),parts[2]))fail('Sign in to the management dashboard.',401);const record=await store.get('sessions',parts[1]);if(!record||record.expires<=clock())fail('Sign in to the management dashboard.',401);if(record.staff_id){const a=await store.get('staff',record.staff_id);if(!a?.active||!a.verified||record.auth_version!==a.auth_version)fail('Sign in to the management dashboard.',401)}return parts[1]}
 const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
 async function audit(s,action,id=''){const log=await s.get('audit','log')||[];log.push({created:clock(),action,order_id:id});await s.put('audit','log',log.slice(-250))}
 async function setStock(s,p,stock){int(stock);const members=p.stock_pool?(await s.list('products')).filter(x=>x.stock_pool===p.stock_pool&&x.id!==p.id):[];for(const x of [...members,p]){x.stock=stock;await s.put('products',x.id,x)}}
@@ -46,6 +47,7 @@ async function handle({path,method='GET',headers={},body={}}){
   if(h['sec-fetch-site']==='cross-site')fail('Cross-site request denied.',403);
   if(!body||typeof body!=='object'||Array.isArray(body))fail('Invalid request.');
  }
+ const staffAuth=await staff.authRoute(path,body,h,method);if(staffAuth)return staffAuth;
  const accountAuth=await accounts.authRoute(path,body,h,method);if(accountAuth)return accountAuth;
  if(path==='/admin/email/retry'&&method==='POST'){
   const id=text(body.id||'',200);await transaction(async s=>{await session(s,h);const j=await s.get('email_outbox',id);if(!j)fail('Email not found.',404);if(j.status==='rejected')await emails.prepareRetry(s,j)});
@@ -127,6 +129,9 @@ async function handle({path,method='GET',headers={},body={}}){
   }
   if(path.startsWith('/admin/')){
    const sessionId=await session(s,h);
+   const owner=!(await s.get('sessions',sessionId)).staff_id;
+   if(path==='/admin/staff/invite'&&method==='POST'){if(!owner)fail('Only the owner can manage staff access.',403);const r=await staff.invite(s,body);emailJob=r.job;await audit(s,'staff_invited',r.staff.email);return{ok:true,staff:r.staff}}
+   if(path==='/admin/staff/revoke'&&method==='POST'){if(!owner)fail('Only the owner can manage staff access.',403);const a=await s.get('staff',text(body.id||'',64));if(!a)fail('Staff member not found.',404);a.active=false;a.auth_version++;delete a.setup;await s.put('staff',a.id,a);await audit(s,'staff_access_revoked',a.email);return{ok:true}}
    if(path==='/admin/affiliate/photo-link'&&method==='POST'){const result=await photos.issueLink(s,text(body.slug||'',60));await audit(s,'affiliate_photo_link_created');return result}
    if(path==='/admin/logout'&&method==='POST'){await s.remove('sessions',sessionId);setCookie='glow_next_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+(process.env.STORE_LOCAL?'':'; Secure');return{ok:true}}
    if(path==='/admin/shipstation/settings'&&method==='POST'){const r=await s.get('integrations','shipstation');if(!shipping.status(r).connected)fail('Check ShipStation connection first.',409);const target=r.stores.find(x=>x.id===body.store_id);if(!target)fail('Choose a verified ShipStation manual store.');await s.put('integrations','shipstation',{...r,store_id:target.id,store_name:target.name,enabled:body.enabled===true});await audit(s,'shipstation_settings_saved');return{ok:true}}
@@ -139,7 +144,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/rewards/reconcile'&&method==='POST'){const r=await accounts.reconcileBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_reconciled');return r}
    if(path==='/admin/rewards/import'&&method==='POST'){const r=await accounts.importBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_imported');return r}
    if(path==='/admin/rewards/adjust'&&method==='POST'){const id=text(body.customer_id||'',64),a=await s.get('customers',id);if(!a?.verified)fail('Choose a verified customer.');if(!Number.isSafeInteger(body.points)||!body.points||Math.abs(body.points)>1000000)fail('Enter a nonzero whole-point adjustment.');const key=text(body.idempotency_key||'',100),note=text(body.note||'',500);await accounts.event(s,id,'adjust:'+key,'staff_adjustment',body.points,0,null,note);await audit(s,'rewards_adjusted');return{ok:true}}
-   if(path==='/admin/data'&&method==='GET')return{products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,email:await emails.adminData(s),goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),shipstation:shipping.status(await s.get('integrations','shipstation')),audit:(await s.get('audit','log')||[]).slice().reverse()};
+   if(path==='/admin/data'&&method==='GET')return{owner,staff:(await s.list('staff')).map(staff.publicStaff),products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,email:await emails.adminData(s),goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),shipstation:shipping.status(await s.get('integrations','shipstation')),audit:(await s.get('audit','log')||[]).slice().reverse()};
    const r=path.match(/^\/admin\/receipt\/([A-Z0-9-]+)$/);if(r&&method==='GET'){const o=await s.get('orders',r[1]);if(!o?.receipt)fail('Receipt not found.',404);return{_binary:o.receipt,_type:o.receipt_type}}
    if(path==='/admin/product'&&method==='POST'){
     const all=await s.list('products'),id=body.id?int(body.id,1):Math.max(0,...all.map(p=>p.id))+1;const old=body.id?await s.get('products',id):{};if(!old)fail('Product not found.',404);
