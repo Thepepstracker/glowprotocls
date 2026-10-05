@@ -71,3 +71,7 @@
 [functions."store-email-worker"]
   node_bundler = "esbuild"
   external_node_modules = ["pg"]
+
+[functions."store-shipping-worker"]
+  node_bundler = "esbuild"
+  external_node_modules = ["pg"]
