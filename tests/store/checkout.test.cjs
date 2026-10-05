@@ -3,7 +3,7 @@ const {test,before,after}=require('node:test'),assert=require('node:assert/stric
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-checkout-'));process.env.STORE_LOCAL='1';process.env.STORE_SQLITE_PATH=path.join(tmp,'store.sqlite');process.env.STORE_ADMIN_PASSWORD='checkout-test-admin-password';process.env.STORE_SESSION_SECRET='checkout-test-session-secret-long-enough';
 const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=require('../../tools/store/seed-data.cjs'),{handle}=require('../../netlify/functions/lib/store-core.cjs');let cookie;
 const call=(path,body,headers={})=>handle({path,method:body===undefined?'GET':'POST',headers:{'x-store-request':'1',...headers},body:body||{}}),admin=(p,b)=>call(p,b,{cookie});
-const orderBody=extra=>({items:[{id:1,quantity:1}],payment_method:'zelle',affiliate:'',idempotency_key:crypto.randomUUID(),customer:{name:'Test',email:'test@example.com',address:'1 Example Street',city:'Example',state:'GA',zip:'30301'},...extra});
+const orderBody=extra=>({items:[{id:1,quantity:1}],payment_method:'zelle',affiliate:'',idempotency_key:crypto.randomUUID(),customer:{name:'Test',email:'test@example.com',phone:'2025550101',address:'1 Example Street',city:'Example',state:'GA',zip:'30301'},...extra});
 before(async()=>{await transaction(seed);cookie=(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD})).headers['Set-Cookie'].split(';')[0]});after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
 test('live mode requires admin, explicit tax choice, payment recipient and inventory; mode never changes existing orders',async()=>{
  const mode={mode:'live',tax_mode:'none'};await assert.rejects(call('/admin/checkout-settings',mode),e=>e.status===401);
@@ -48,4 +48,18 @@ test('checkout stays a recoverable draft until a valid screenshot is submitted; 
  const image=await sharp({create:{width:20,height:20,channels:3,background:'#fff'}}).png().toBuffer(),body={file:image.toString('base64'),mime:'image/png'};
  const submitted=(await call(route+'/receipt',body,h)).body;assert.equal(submitted.checkout_stage,'submitted');assert.equal(submitted.status,'payment_submitted');assert.ok(submitted.submitted_at);assert.equal(submitted.has_receipt,true);assert.equal(submitted.commission_status,'not_eligible');
  const repeat=(await call(route+'/receipt',body,h)).body;assert.equal(repeat.submitted_at,submitted.submitted_at);assert.equal(repeat.status,'payment_submitted');
+});
+test('email and phone are required before saving or reserving an order; staff and shipping retain contact number',async()=>{
+ const before=(await call('/catalog')).body.products.find(p=>p.id===1).stock;
+ for(const changes of [{phone:''},{phone:undefined},{phone:'123'},{phone:'202-abc-0101'},{email:''}])await assert.rejects(call('/orders',orderBody({customer:{...orderBody().customer,...changes}})),/phone|email|required fields/);
+ assert.equal((await call('/catalog')).body.products.find(p=>p.id===1).stock,before);
+ const o=(await call('/orders',orderBody({customer:{...orderBody().customer,phone:'(202) 555-0101'}}))).body.order;assert.equal(o.customer.phone,'+12025550101');
+ assert.equal((await admin('/admin/data')).body.orders.find(x=>x.id===o.id).customer.phone,'+12025550101');
+ const ship=require('../../netlify/functions/lib/shipstation.cjs').payload(o,null);assert.equal(ship.shipTo.phone,'+12025550101');
+ const receipt={reference:'TEST',mime:'image/png',file:(await sharp({create:{width:16,height:32,channels:3,background:'#ffffff'}}).png().toBuffer()).toString('base64')};
+ // A returning older draft must also supply the missing contact number before submission.
+ const fresh=await call('/orders',orderBody());const id=fresh.body.order.id,token=fresh.body.token;
+ await transaction(async s=>{const old=await s.get('orders',id);delete old.customer.phone;await s.put('orders',id,old)});
+ await assert.rejects(call('/orders/'+id+'/receipt',receipt,{'x-order-token':token}),/phone/);
+ const submitted=await call('/orders/'+id+'/receipt',{...receipt,phone:'+44 20 7946 0018'},{'x-order-token':token});assert.equal(submitted.body.customer.phone,'+442079460018');assert.equal(submitted.body.status,'payment_submitted');
 });

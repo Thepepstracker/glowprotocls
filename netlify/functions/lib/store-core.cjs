@@ -21,6 +21,12 @@ function sign(value){return crypto.createHmac('sha256',signingKey()).update(valu
 async function session(store,headers){const cookie=(headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('glow_next_admin='));const token=cookie?.slice('glow_next_admin='.length)||'',parts=token.split('.');if(parts.length!==3||Number(parts[0])<=clock()||!equal(sign(parts[0]+'.'+parts[1]),parts[2]))fail('Sign in to the management dashboard.',401);const record=await store.get('sessions',parts[1]);if(!record||record.expires<=clock())fail('Sign in to the management dashboard.',401);if(record.staff_id){const a=await store.get('staff',record.staff_id);if(!a?.active||!a.verified||record.auth_version!==a.auth_version)fail('Sign in to the management dashboard.',401)}return parts[1]}
 const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
 async function audit(s,action,id=''){const log=await s.get('audit','log')||[];log.push({created:clock(),action,order_id:id});await s.put('audit','log',log.slice(-250))}
+function contactPhone(value){
+ if(typeof value!=='string'||!value.trim())fail('Enter your phone number so we can contact you about your order.');
+ const raw=value.trim(),digits=raw.replace(/\D/g,'');
+ if(raw.length>32||!/^\+?[0-9 () .-]+$/.test(raw)||(/^[+]/.test(raw)?digits.length<7||digits.length>15:!(digits.length===10||digits.length===11&&digits.startsWith('1'))))fail('Enter a valid phone number: 10 digits for US numbers, or + and the country code for international numbers.');
+ return raw.startsWith('+')?'+'+digits:'+1'+(digits.length===11?digits.slice(1):digits);
+}
 async function setStock(s,p,stock){int(stock);const members=p.stock_pool?(await s.list('products')).filter(x=>x.stock_pool===p.stock_pool&&x.id!==p.id):[];for(const x of [...members,p]){x.stock=stock;await s.put('products',x.id,x)}}
 async function release(s,o,status){await accounts.release(s,o);for(const line of o.items){const p=await s.get('products',line.id);await setStock(s,p,p.stock+line.quantity)}if(o.coupon){const c=await s.get('coupons',o.coupon);if(c){c.used=Math.max(0,c.used-1);await s.put('coupons',c.code,c)}}o.status=status;await s.put('orders',o.id,o);await audit(s,status,o.id)}
 async function expire(s){for(const o of await s.list('orders'))if(o.status==='awaiting_payment'&&o.expires<=clock())await release(s,o,'expired')}
@@ -104,6 +110,7 @@ async function handle({path,method='GET',headers={},body={}}){
    const key=text(body.idempotency_key||'',100);if(await s.get('idempotency',key))fail('This order was already submitted. Use your saved confirmation.',409);
    const a=await accounts.session(s,h),q=await quote(s,body,h),customer={};for(const k of ['name','email','address','city','state','zip'])customer[k]=text(body.customer?.[k]||'',k==='address'?500:150);
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))fail('Enter a valid email address.');
+   customer.phone=contactPhone(body.customer?.phone);
    customer.state=customer.state.toUpperCase();
    if(!/^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|AS|GU|MP|PR|VI|AA|AE|AP)$/.test(customer.state))fail('Enter a valid two-letter US state or territory code.');
    if(!/^\d{5}(-\d{4})?$/.test(customer.zip))fail('Enter a five-digit ZIP code, optionally followed by four digits.');
@@ -117,6 +124,7 @@ async function handle({path,method='GET',headers={},body={}}){
   }
   const m=path.match(/^\/orders\/([A-Z0-9-]+)(\/receipt)?$/);if(m){const o=await orderAuth(s,m[1],h);if(method==='GET'&&!m[2])return publicOrder(o);if(method==='POST'&&m[2]){
    if(!['awaiting_payment','payment_submitted'].includes(o.status))fail('This order no longer accepts receipts.',409);
+   if(!o.customer.phone)o.customer.phone=contactPhone(body.phone);
    const reference=text(body.reference||'',100,false);o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
   }fail('Endpoint not found.',404)}
   if(path==='/admin/login'&&method==='POST'){
