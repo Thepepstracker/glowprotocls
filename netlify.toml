@@ -18,6 +18,35 @@
   function = "fix-product-images"
   path = "/*"
 
+# New storefront is the public shopping entry point. Legacy order records stay in WordPress.
+[[redirects]]
+  from = "/"
+  to = "/store-next/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/index.html"
+  to = "/store-next/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/checkout.html"
+  to = "/store-next/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/cart"
+  to = "/store-next/"
+  status = 302
+
+[[redirects]]
+  from = "/my-account"
+  to = "/store-next/account"
+  status = 302
+
 [[redirects]]
   from = "/store-next/account"
   to = "/store-next/index.html"
