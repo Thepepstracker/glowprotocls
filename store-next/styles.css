@@ -23,3 +23,5 @@ main:has(.storefront-hero){max-width:none;padding:0}.storefront-hero{position:re
 @media(max-width:420px){.collection .grid{grid-template-columns:1fr}.collection .card .bottom{flex-direction:row;align-items:center}.collection .product-image{height:230px}.hero-shop{font-size:8px;margin-top:8px}.hero-brand>small{font-size:6px}.hero-brand>img{margin-bottom:4px}.hero-brand>span{font-size:11px}}
 
 @media(max-width:600px){.hero-shop{display:none}.hero-brand>small{display:none}.hero-brand>span{font-size:12px;letter-spacing:.06em}.hero-brand>img{width:78%;margin-bottom:6px}}
+
+.product-more-photos{margin:0 0 12px}.product-more-photos summary{cursor:pointer;color:#66512b;font-size:14px}.product-more-photos[open] .product-image{margin-top:12px}

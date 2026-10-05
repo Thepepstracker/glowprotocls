@@ -8,6 +8,7 @@ const reporting=require('./goaffpro-orders.cjs');
 const shipping=require('./shipstation.cjs');
 const accounts=require('./customer-accounts.cjs');
 const emails=require('./store-email.cjs');
+const {withProductPhotos}=require('./product-photos.cjs');
 const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
 const clock=()=>Math.floor(Date.now()/1000),hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const equal=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y)};
@@ -84,7 +85,7 @@ async function handle({path,method='GET',headers={},body={}}){
  }
  const result=await transaction(async s=>{
   const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);await expire(s);
-  if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active),settings:{...settings,email_enabled:emails.configuration().ready}};
+  if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active).map(withProductPhotos),settings:{...settings,email_enabled:emails.configuration().ready}};
   const referral=path.match(/^\/referrals\/([^/]+)$/);
   if(referral&&method==='GET'){let code;try{code=decodeURIComponent(referral[1])}catch{fail('Affiliate referral is unavailable.',404)}const a=await resolveReferral(s,code);if(!a)fail('Affiliate referral is unavailable.',404);return{slug:a.slug,name:a.name,bio:a.bio,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
   const storefront=path.match(/^\/storefronts\/([a-z0-9-]+)$/);
