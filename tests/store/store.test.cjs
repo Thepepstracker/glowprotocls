@@ -79,21 +79,21 @@ test('GoAffPro reporting sends correct dollar amounts once after verified live p
   return{ok:true,status:200,json:async()=>({affiliates:[{id:202,status:'approved',email:'affiliate@example.com'}]})};
  };
  const before=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(before.body.status,'blocked');assert.equal(posts,0);
- const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});assert.equal(paid.body.goaffpro.status,'synced');assert.equal(posts,1);assert.equal(payload.affiliate_id,'202');assert.equal(payload.order.total,50.20);assert.equal(payload.order.subtotal,35.20);assert.equal(payload.order.discount,8.79);assert.equal(payload.order.shipping,15);assert.equal(payload.order.forceSDK,true);assert.equal(payload.order.commission,undefined);assert.equal(payload.order.line_items[0].discount,8.79);
+ await attachProof(fixture);const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});assert.equal(paid.body.goaffpro.status,'synced');assert.equal(posts,1);assert.equal(payload.affiliate_id,'202');assert.equal(payload.order.total,50.20);assert.equal(payload.order.subtotal,35.20);assert.equal(payload.order.discount,8.79);assert.equal(payload.order.shipping,15);assert.equal(payload.order.forceSDK,true);assert.equal(payload.order.commission,undefined);assert.equal(payload.order.line_items[0].discount,8.79);
  const again=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(again.body.status,'synced');assert.equal(posts,1);
  }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
 });
 test('GoAffPro suppresses test, legacy, unmapped and self-purchase sales',async()=>{
  const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;let posts=0;
  try{process.env.GOAFFPRO_ACCESS_TOKEN='suppression-test-token';global.fetch=async(url,opts)=>{if(opts.method==='POST')posts++;return{ok:true,status:200,json:async()=>url.includes('/admin/orders')?{orders:[]}:{affiliates:[{id:202,status:'approved',email:customer.email.toUpperCase()}]}}};
- for(const mode of ['test','legacy','unmapped','self']){const fixture=await order();await transaction(async s=>{const o=await s.get('orders',fixture.order.id);o.is_test=mode==='test';if(mode==='legacy')delete o.is_test;o.goaffpro_affiliate_id=mode==='unmapped'?'':'202';await s.put('orders',o.id,o)});const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});if(mode==='self'){assert.equal(paid.body.goaffpro.status,'failed');assert.match(paid.body.goaffpro.message,/Self-purchase/)}else assert.ok(['blocked','test_only'].includes(paid.body.goaffpro.status));}
+ for(const mode of ['test','legacy','unmapped','self']){const fixture=await order();await transaction(async s=>{const o=await s.get('orders',fixture.order.id);o.is_test=mode==='test';if(mode==='legacy')delete o.is_test;o.goaffpro_affiliate_id=mode==='unmapped'?'':'202';await s.put('orders',o.id,o)});await attachProof(fixture);const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});if(mode==='self'){assert.equal(paid.body.goaffpro.status,'failed');assert.match(paid.body.goaffpro.message,/Self-purchase/)}else assert.ok(['blocked','test_only'].includes(paid.body.goaffpro.status));}
  assert.equal(posts,0);
  }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
 });
 test('an ambiguous GoAffPro send is reconciled without repeating the sale',async()=>{
  const originalFetch=global.fetch,oldKey=process.env.GOAFFPRO_ACCESS_TOKEN;const fixture=await order();await transaction(async s=>{const o=await s.get('orders',fixture.order.id);o.is_test=false;o.goaffpro_affiliate_id='202';await s.put('orders',o.id,o)});let posts=0,visible=false,sent;
  try{process.env.GOAFFPRO_ACCESS_TOKEN='ambiguity-test-token';global.fetch=async(url,opts)=>{if(opts.method==='POST'){posts++;sent=JSON.parse(opts.body);throw new Error('Socket timeout with private data that must not leak')};return{ok:true,status:200,json:async()=>url.includes('/admin/orders')?{orders:visible?[{id:801,number:sent.order.number,affiliate_id:202,total:sent.order.total,subtotal:sent.order.subtotal,status:'approved'}]:[]}:{affiliates:[{id:202,status:'approved',email:'other@example.com'}]}}};
- const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});assert.equal(paid.body.goaffpro.status,'needs_review');assert.equal(JSON.stringify(paid).includes('private data'),false);
+ await attachProof(fixture);const paid=await admin('/admin/status',{id:fixture.order.id,status:'paid',verified:true});assert.equal(paid.body.goaffpro.status,'needs_review');assert.equal(JSON.stringify(paid).includes('private data'),false);
  const retry=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(retry.body.status,'needs_review');assert.equal(posts,1);
  visible=true;const reconciled=await admin('/admin/goaffpro/report',{id:fixture.order.id});assert.equal(reconciled.body.status,'synced');assert.equal(posts,1);
  }finally{global.fetch=originalFetch;if(oldKey===undefined)delete process.env.GOAFFPRO_ACCESS_TOKEN;else process.env.GOAFFPRO_ACCESS_TOKEN=oldKey}
@@ -144,3 +144,5 @@ test('legacy referral codes resolve unique active storefronts without exposing I
  await transaction(async s=>{const a=await s.get('affiliates','referral-test');await s.put('affiliates',a.slug,{...a,active:1});await s.put('affiliates','duplicate-referral',{...a,slug:'duplicate-referral',active:0})});
  await assert.rejects(call('/referrals/MixedCaseRef'),e=>e.status===404);
 });
+
+async function attachProof(fixture){await call('/orders/'+fixture.order.id+'/receipt',{mime:'image/png',file:(await require('sharp')({create:{width:16,height:32,channels:3,background:'#fff'}}).png().toBuffer()).toString('base64')},{'x-order-token':fixture.token})}
