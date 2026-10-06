@@ -8,7 +8,7 @@ const bundles={
 };
 function withProductPhotos(product){
  const key=String(product.bundle||((product.sku||'').match(/^bundle-(\d+)-/)||[])[1]||'');
- const images=bundles[key];
+ const images=product.sku==='glp-2t-60-mg'?['/product-images/glp-2t-60mg.webp']:bundles[key];
  if(!images||product.image&&!product.image.includes('product-placeholder.svg'))return product;
  return {...product,image:images[0],additional_images:images.slice(1)};
 }
