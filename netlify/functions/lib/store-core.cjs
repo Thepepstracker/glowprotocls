@@ -49,7 +49,9 @@ async function quote(s,b,h={}){
  return{items,subtotal,discount,coupon_discount,rewards_discount,points_redeemed:requested,points_to_earn:Math.floor((subtotal-discount)/100),shipping,tax:0,total:subtotal-discount+shipping,coupon:code||null,affiliate:slug||null,affiliate_name:affiliate?.name||null,affiliate_source:couponAffiliate?'coupon':(slug?'storefront':null),commission:affiliate?Math.floor((subtotal-discount)*affiliate.commission_bps/10000):0,tax_note:settings.tax_note}
 
 }
-async function orderAuth(s,id,headers){const o=await s.get('orders',id),a=await accounts.session(s,headers);if(!o||(!equal(o.token_hash,hash(headers['x-order-token']||''))&&!(a&&o.customer_id===a.id)))fail('Order access denied.',404);return o}
+function reminderToken(o){const expires=clock()+7*86400;return 'r_'+expires+'_'+sign('payment-reminder:'+o.id+':'+o.token_hash+':'+expires)}
+function validReminderToken(o,token){const m=String(token||'').match(/^r_(\d{10})_([A-Za-z0-9_-]{43})$/);return !!m&&Number(m[1])>clock()&&equal(m[2],sign('payment-reminder:'+o.id+':'+o.token_hash+':'+m[1]))}
+async function orderAuth(s,id,headers){const o=await s.get('orders',id),a=await accounts.session(s,headers);if(!o||(!equal(o.token_hash,hash(headers['x-order-token']||''))&&!validReminderToken(o,headers['x-order-token'])&&!(a&&o.customer_id===a.id)))fail('Order access denied.',404);return o}
 function validateLinks(links){if(!links||typeof links!=='object'||Array.isArray(links))fail('Invalid payment settings.');const out={};for(const[k,domains]of Object.entries({venmo:['venmo.com','www.venmo.com','account.venmo.com'],paypal:['paypal.com','www.paypal.com','paypal.me','www.paypal.me'],cashapp:['cash.app'],zelle:[]})){const v=text(links[k]||'',300,false);if(v&&k!=='zelle'){let u;try{u=new URL(v)}catch{fail('Enter an official HTTPS '+k+' link.')}if(u.protocol!=='https:'||!domains.includes(u.hostname)||u.username||u.password)fail('Enter an official HTTPS '+k+' link.')}out[k]=v}return out}
 function shipmentPayload(o){return shipping.payload(o,null)}
 function editable(o){if(!['order_received','awaiting_payment'].includes(o.status)||o.has_receipt||o.receipt)fail('This order has been submitted or closed. Contact the store to change it.',409)}
@@ -170,6 +172,16 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/affiliate/photo-link'&&method==='POST'){const result=await photos.issueLink(s,text(body.slug||'',60));await audit(s,'affiliate_photo_link_created');return result}
    if(path==='/admin/logout'&&method==='POST'){await s.remove('sessions',sessionId);setCookie='glow_next_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+(process.env.STORE_LOCAL?'':'; Secure');return{ok:true}}
    if(path==='/admin/shipstation/settings'&&method==='POST'){const r=await s.get('integrations','shipstation');if(!shipping.status(r).connected)fail('Check ShipStation connection first.',409);const target=r.stores.find(x=>x.id===body.store_id);if(!target)fail('Choose a verified ShipStation manual store.');await s.put('integrations','shipstation',{...r,store_id:target.id,store_name:target.name,enabled:body.enabled===true});await audit(s,'shipstation_settings_saved');return{ok:true}}
+   if(path==='/admin/order/remind'&&method==='POST'){
+    if(!emails.configuration().ready)fail('Connect automatic email in Settings first.',503);
+    const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);
+    if(o.is_test!==false)fail('Payment reminders are only available for live orders.',409);
+    if(!['order_received','awaiting_payment'].includes(o.status)||o.receipt||o.paid)fail('This order is paid, closed, or already awaiting payment verification. Do not request another payment.',409);
+    const requestKey=text(body.idempotency_key||'',100),jobId='payment-reminder-'+o.id+'-'+hash(requestKey),existing=await s.get('email_outbox',jobId);
+    if(existing){emailJob=jobId;return{ok:true,job_id:jobId}}
+    if((o.last_payment_reminder_at||0)>clock()-300)fail('A reminder was requested recently. Wait five minutes before sending another.',429);
+    emailJob=await emails.queueReminder(s,o,reminderToken(o),jobId);o.last_payment_reminder_at=clock();o.last_payment_reminder_job=jobId;await s.put('orders',o.id,o);await audit(s,'payment_reminder_requested',o.id);return{ok:true,job_id:jobId};
+   }
    if(path==='/admin/customers'&&method==='GET')return accounts.adminData(s);
    if(path==='/admin/order/customer'&&method==='POST'){
     const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);
