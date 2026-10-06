@@ -10,7 +10,7 @@ async function request(route,body){
  try{return await r.json()}catch{fail('ShipStation returned an unexpected response.')}
 }
 async function check(){const stores=await request('/stores?showInactive=false');if(!Array.isArray(stores))fail('ShipStation returned an unexpected store list.');return{fingerprint:fingerprint(),checked_at:now(),stores:stores.filter(x=>x.active===true&&x.marketplaceId===0&&Number.isSafeInteger(x.storeId)).map(x=>({id:x.storeId,name:String(x.storeName).slice(0,150)}))}}
-const eligible=o=>o?.is_test===false&&o.status==='paid'&&!!o.paid&&!!o.receipt;
+const eligible=o=>o?.is_test===false&&o.status==='paid'&&!!o.paid;
 function payload(o,storeId){
  if(storeId!=null&&(!Number.isSafeInteger(storeId)||storeId<1))fail('Select a verified ShipStation manual store.');
  const sum=o.items.reduce((n,i)=>n+i.amount,0);if(sum!==o.subtotal||o.discount<0||o.discount>sum||o.total!==sum-o.discount+o.shipping+o.tax)fail('Review order totals before shipping.');
@@ -18,7 +18,7 @@ function payload(o,storeId){
 }
 function matches(r,o,storeId){return r&&Number.isSafeInteger(r.orderId)&&r.customerEmail?.toLowerCase()===o.customer.email.toLowerCase()&&r.orderNumber===o.id&&r.orderKey==='glow-store-next-'+o.id&&r.advancedOptions?.storeId===storeId&&Math.round(r.amountPaid*100)===o.total}
 async function send(id){
- const claim=await transaction(async s=>{const integration=await s.get('integrations','shipstation');if(!status(integration).enabled)return{status:'not_connected',message:'Connect and enable ShipStation in Shipping first.'};const o=await s.get('orders',id);if(!eligible(o))return{status:'blocked',message:'Only live orders with a screenshot and verified payment can be sent.'};const key='shipstation-'+id,q=await s.get('outbox',key)||{id:key,provider:'shipstation',order_id:id,attempts:0};if(q.status==='synced')return{status:'synced',remote_id:q.remote_id};if(q.lease_until>now())return{status:'sending'};if(q.account_fingerprint&&q.account_fingerprint!==fingerprint())return{status:'needs_review',message:'Credentials changed after an attempt. Check the original ShipStation account.'};q.lease=crypto.randomBytes(16).toString('hex');q.lease_until=now()+90;q.status='sending';q.attempts++;await s.put('outbox',key,q);return{o,q,key,integration}});
+ const claim=await transaction(async s=>{const integration=await s.get('integrations','shipstation');if(!status(integration).enabled)return{status:'not_connected',message:'Connect and enable ShipStation in Shipping first.'};const o=await s.get('orders',id);if(!eligible(o))return{status:'blocked',message:'Only live orders with staff-verified payment can be sent.'};const key='shipstation-'+id,q=await s.get('outbox',key)||{id:key,provider:'shipstation',order_id:id,attempts:0};if(q.status==='synced')return{status:'synced',remote_id:q.remote_id};if(q.lease_until>now())return{status:'sending'};if(q.account_fingerprint&&q.account_fingerprint!==fingerprint())return{status:'needs_review',message:'Credentials changed after an attempt. Check the original ShipStation account.'};q.lease=crypto.randomBytes(16).toString('hex');q.lease_until=now()+90;q.status='sending';q.attempts++;await s.put('outbox',key,q);return{o,q,key,integration}});
  if(!claim.o)return claim;const{o,q,key,integration}=claim;let outcome;
  try{
   const found=await request('/orders?orderNumber='+encodeURIComponent(o.id)+'&storeId='+integration.store_id+'&pageSize=100');if(!Array.isArray(found.orders)||found.pages>1)fail('ShipStation order lookup needs review.');
@@ -41,3 +41,4 @@ async function tracking(id){
 }
 async function pending(limit=2){const batch=await transaction(async s=>{const integration=await s.get('integrations','shipstation');if(!status(integration).enabled)return[];const orders=await s.list('orders'),outbox=await s.list('outbox');return orders.filter(eligible).filter(o=>{const q=outbox.find(q=>q.id==='shipstation-'+o.id);return o.shipstation_order_id||(!q?.post_started&&(q?.next_attempt||0)<=now())}).sort((a,b)=>(a.shipstation_checked_at||0)-(b.shipstation_checked_at||0)).slice(0,limit)});await Promise.all(batch.map(async o=>{if(o.shipstation_order_id)await tracking(o.id);else await send(o.id);await transaction(async s=>{const current=await s.get('orders',o.id);if(current){current.shipstation_checked_at=now();await s.put('orders',o.id,current)}})}));return{processed:batch.length}}
 module.exports={configured,status,check,payload,send,tracking,pending,eligible,fingerprint};
+
