@@ -2,7 +2,7 @@
 const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs'),api=require('./goaffpro.cjs');
 const now=()=>Math.floor(Date.now()/1000);
 const fail=message=>{throw new Error(message)};
-function eligible(o){return o&&['paid','shipped'].includes(o.status)&&!!o.paid&&o.is_test===false&&!!o.goaffpro_affiliate_id}
+function eligible(o){return o&&['paid','shipped'].includes(o.status)&&!!o.paid&&o.is_test===false&&!!o.goaffpro_affiliate_id&&!o.balance_due_cents&&!o.refund_due_cents&&!o.goaffpro_needs_review}
 function payload(o){
  const sum=o.items.reduce((n,i)=>n+i.amount,0);if(sum!==o.subtotal||o.discount<0||o.discount>sum||o.total!==sum-o.discount+o.shipping+o.tax)fail('Order totals require review before reporting.');
  const discounts=o.items.map((i,index)=>({index,cents:sum?Number(BigInt(i.amount)*BigInt(o.discount)/BigInt(sum)):0,remainder:sum?BigInt(i.amount)*BigInt(o.discount)%BigInt(sum):0n}));
@@ -50,3 +50,4 @@ async function report(id){
  return outcome;
 }
 module.exports={report,payload,eligible};
+
