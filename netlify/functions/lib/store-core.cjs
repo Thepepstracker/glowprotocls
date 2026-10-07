@@ -110,7 +110,7 @@ async function handle({path,method='GET',headers={},body={}}){
   text(body.reference||'',100,false);receiptImage=await receipts.encodeReceipt(body);
  }
  const result=await transaction(async s=>{
-  const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);await expire(s);
+  const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);if(settings.demo===false&&settings.payment_links?.zelle==='9742418176'&&!await s.get('migrations','zelle-recipient-20261007')){settings.payment_links.zelle='943-241-8176';settings.zelle_recipient_name='Heather Zader';await s.put('settings','main',settings);await s.put('migrations','zelle-recipient-20261007',{applied:clock()});await audit(s,'zelle_recipient_corrected');}await expire(s);
   if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active).map(withProductPhotos),settings:{...settings,email_enabled:emails.configuration().ready}};
   const referral=path.match(/^\/referrals\/([^/]+)$/);
   if(referral&&method==='GET'){let code;try{code=decodeURIComponent(referral[1])}catch{fail('Affiliate referral is unavailable.',404)}const a=await resolveReferral(s,code);if(!a)fail('Affiliate referral is unavailable.',404);return{slug:a.slug,name:a.name,bio:a.bio,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
