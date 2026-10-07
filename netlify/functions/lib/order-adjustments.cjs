@@ -16,6 +16,8 @@ async function edit(s,o,b,actor,setStock){
  const total=integer(subtotal-discount+shipping+tax);for(const {p,delta} of changes.values())if(p.stock+delta<0)fail('Not enough available stock for '+p.name+'.',409);
  // Do not change an order while an external transfer has an active or uncertain attempt.
  for(const provider of ['shipstation','goaffpro']){const job=await s.get('outbox',provider+'-'+o.id);if(job&&(job.lease_until>now()||job.post_started&&job.status!=='synced'||['sending','uncertain','needs_review'].includes(job.status)))fail('Check the '+provider+' transfer before changing this order.',409);}
+ const orderEmails=(await s.list('email_outbox')).filter(j=>j.related_id===o.id&&['checkout_recovery','checkout_updated','order_submitted','order_paid','payment_reminder'].includes(j.kind));
+ if(orderEmails.some(j=>j.status==='sending'&&j.lease_until>now()))fail('An order email is being sent. Wait a minute before saving adjustments.',409);
  const before={items:o.items,subtotal:o.subtotal,discount:o.discount,shipping:o.shipping,tax:o.tax,total:o.total};
  const paid=!!o.paid;if(paid&&o.verified_payment_cents==null)o.verified_payment_cents=o.total;
  if(!paid)await accounts.release(s,o);
@@ -27,6 +29,7 @@ async function edit(s,o,b,actor,setStock){
  if(o.shipstation_order_id){o.shipstation_needs_review=true;o.shipstation_status='needs_review';o.shipstation_message='Order changed. Update the existing order in ShipStation and confirm review before shipping.';}
  if(o.goaffpro_status==='synced'||o.goaffpro_remote_id){o.goaffpro_needs_review=true;o.goaffpro_status='needs_review';o.goaffpro_message='Order changed. Review the existing sale and commission in GoAffPro.';}
  o.adjustments=[...(o.adjustments||[]),{created:now(),actor,reason:b.reason.trim(),before,after:{items,total,subtotal,discount,shipping,tax},revision:o.revision}];
+ for(const j of orderEmails)if(!['accepted','expired','canceled'].includes(j.status)){j.status='needs_review';j.message='Order adjusted. Review the current total and email before sending updated instructions.';await s.put('email_outbox',j.id,j)}
  await s.put('orders',o.id,o);return o;
 }
 async function recordPayment(s,o,b,actor){check(o,b);if(!o.paid||b.verified!==true)fail('Confirm the actual payment or refund in the receiving account.');const payment=integer(b.payment_cents),refund=integer(b.refund_cents);if(!payment&&!refund||payment&&refund)fail('Record either a payment or a refund.');if(payment>(o.balance_due_cents||0)||refund>(o.refund_due_cents||0))fail('The amount exceeds the outstanding balance.');o.verified_payment_cents=(o.verified_payment_cents??o.total)+payment-refund;o.balance_due_cents=Math.max(0,o.total-o.verified_payment_cents);o.refund_due_cents=Math.max(0,o.verified_payment_cents-o.total);o.revision=(o.revision||0)+1;o.updated=now();o.payment_adjustments=[...(o.payment_adjustments||[]),{created:now(),actor,reason:b.reason.trim(),payment_cents:payment,refund_cents:refund,revision:o.revision}];await syncRewards(s,o);await s.put('orders',o.id,o);return o;}
