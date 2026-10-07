@@ -27,8 +27,8 @@ async function authRoute(path,body,h,method){
   await rate(register?'register':'reset-ip',ip,10,3600);await rate('setup-email',address,5,3600);
   const job=await transaction(async s=>{
    const id=hash(address);let a=await s.get('customers',id);if(!a&&register){a={id,email:address,name,created:now(),verified:false,auth_version:0,password:null};await s.put('customers',id,a)}
-   const held=await s.get('rewards_imports',id);if(!emails.configuration().ready||!a||held?.held||address.endsWith('@gmail.coml')||(register&&a.verified)||(!register&&!a.verified)||(a.last_setup_email||0)>now()-300)return null;
-   const link=await issueSetup(s,id);a=await s.get('customers',id);a.last_setup_email=now();await s.put('customers',id,a);return emails.queueSetup(s,link,!register);
+   const held=await s.get('rewards_imports',id);if(!emails.configuration().ready||!a||held?.held||address.endsWith('@gmail.coml')||(register&&a.verified)||(a.last_setup_email||0)>now()-300)return null;
+   const link=await issueSetup(s,id);a=await s.get('customers',id);a.last_setup_email=now();await s.put('customers',id,a);return emails.queueSetup(s,link,a.verified);
   });
   await emails.safeDispatch(job);
   return{status:200,headers:{},body:{ok:true,message:emails.configuration().ready?'If this address is eligible, a private setup or reset link will arrive shortly. Check your inbox and spam folder.':'Your request has been received. Contact the store for a private setup/reset link sent to your email. Automatic email delivery is not enabled yet.'}};
