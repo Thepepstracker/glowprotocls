@@ -62,7 +62,12 @@ async function handle({path,method='GET',headers={},body={}}){
  if(!['GET','POST'].includes(method))fail('Method not allowed.',405);
  if(method==='POST'){
   if(h['x-store-request']!=='1')fail('Request protection header required.',403);
-  if(h.origin&&process.env.STORE_ORIGIN&&h.origin!==process.env.STORE_ORIGIN)fail('Cross-origin request denied.',403);
+  if(h.origin&&process.env.STORE_ORIGIN){
+   let incoming,configured;try{incoming=new URL(h.origin);configured=new URL(process.env.STORE_ORIGIN.trim())}catch{fail('Cross-origin request denied.',403)}
+   const glowHosts=new Set(['glowglps.com','www.glowglps.com']);
+   const sameGlowSite=glowHosts.has(incoming.hostname)&&glowHosts.has(configured.hostname)&&incoming.protocol==='https:'&&configured.protocol==='https:'&&incoming.port===configured.port;
+   if(incoming.username||incoming.password||incoming.origin!==h.origin||(!sameGlowSite&&incoming.origin!==configured.origin))fail('Cross-origin request denied.',403);
+  }
   if(h['sec-fetch-site']==='cross-site')fail('Cross-site request denied.',403);
   if(!body||typeof body!=='object'||Array.isArray(body))fail('Invalid request.');
  }

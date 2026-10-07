@@ -159,3 +159,5 @@ test('shared stock blocks combined overselling, reserves all sizes and restores 
  await admin('/admin/product',{...a,stock:6});d=(await admin('/admin/data')).body;assert.deepEqual(d.products.filter(p=>p.stock_pool==='shared-test').map(p=>p.stock),[6,6]);
 });
 
+
+test('canonical and www store addresses pass origin protection while unrelated origins stay blocked',async()=>{const previous=process.env.STORE_ORIGIN;try{for(const configured of ['https://glowglps.com','https://www.glowglps.com/']){process.env.STORE_ORIGIN=configured;for(const origin of ['https://glowglps.com','https://www.glowglps.com']){const q=await call('/quote',{items:[{id:1,quantity:1}]},{origin,'sec-fetch-site':'same-origin'});assert.equal(q.status,200)}for(const origin of ['https://evil.example','https://glowglps.com.evil.example','http://www.glowglps.com','https://www.glowglps.com:444','null'])await assert.rejects(call('/quote',{items:[{id:1,quantity:1}]},{origin}),/Cross-origin/);await assert.rejects(call('/quote',{items:[{id:1,quantity:1}]},{origin:'https://glowglps.com','sec-fetch-site':'cross-site'}),/Cross-site/);}}finally{process.env.STORE_ORIGIN=previous}});
