@@ -19,7 +19,7 @@ const int=(v,min=0,max=10000000)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fai
 function signingKey(){if(!process.env.STORE_SESSION_SECRET||process.env.STORE_SESSION_SECRET.length<32)fail('Admin sessions are not configured.',503);return process.env.STORE_SESSION_SECRET}
 function sign(value){return crypto.createHmac('sha256',signingKey()).update(value).digest('base64url')}
 async function session(store,headers){const cookie=(headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('glow_next_admin='));const token=cookie?.slice('glow_next_admin='.length)||'',parts=token.split('.');if(parts.length!==3||Number(parts[0])<=clock()||!equal(sign(parts[0]+'.'+parts[1]),parts[2]))fail('Sign in to the management dashboard.',401);const record=await store.get('sessions',parts[1]);if(!record||record.expires<=clock())fail('Sign in to the management dashboard.',401);if(record.staff_id){const a=await store.get('staff',record.staff_id);if(!a?.active||!a.verified||record.auth_version!==a.auth_version)fail('Sign in to the management dashboard.',401)}return parts[1]}
-const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,created_by_staff,payment_verified_by,invoice_sent_by,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
+const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,created_by_staff,payment_verified_by,invoice_sent_by,restored_by,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)?'eligible':'not_eligible'}};
 async function audit(s,action,id=''){const log=await s.get('audit','log')||[];log.push({created:clock(),action,order_id:id});await s.put('audit','log',log.slice(-250))}
 function contactPhone(value){
  if(typeof value!=='string'||!value.trim())fail('Enter your phone number so we can contact you about your order.');
@@ -37,7 +37,7 @@ function checkoutCustomer(input){const body={customer:input},customer={};for(con
 }
 async function setStock(s,p,stock){int(stock);const members=p.stock_pool?(await s.list('products')).filter(x=>x.stock_pool===p.stock_pool&&x.id!==p.id):[];for(const x of [...members,p]){x.stock=stock;await s.put('products',x.id,x)}}
 async function release(s,o,status){await accounts.release(s,o);for(const line of o.items){const p=await s.get('products',line.id);await setStock(s,p,p.stock+line.quantity)}if(o.coupon){const c=await s.get('coupons',o.coupon);if(c){c.used=Math.max(0,c.used-1);await s.put('coupons',c.code,c)}}o.status=status;await s.put('orders',o.id,o);await audit(s,status,o.id)}
-async function expire(s){for(const o of await s.list('orders'))if(o.status==='awaiting_payment'&&o.expires<=clock())await release(s,o,'expired')}
+async function expire(s){for(const o of await s.list('orders'))if(o.status==='awaiting_payment'){if(o.payment_window_days!==7){o.expires=Math.max(o.expires||0,(o.invoice_sent_at||o.created)+7*86400);o.payment_window_days=7;await s.put('orders',o.id,o)}if(o.expires<=clock())await release(s,o,'expired')}}
 async function quote(s,b,h={}){
  if(!Array.isArray(b.items)||!b.items.length||b.items.length>100)fail('Add at least one product.');const seen=new Set(),poolQuantities=new Map(),items=[];let subtotal=0;
  for(const line of b.items){const id=int(line.id,1),quantity=int(line.quantity,1,100);if(seen.has(id))fail('Duplicate product in the cart.');seen.add(id);const p=await s.get('products',id);if(!p||!p.active)fail('A product is unavailable.');const stockKey=p.stock_pool?'pool:'+p.stock_pool:'product:'+id;const combined=(poolQuantities.get(stockKey)||0)+quantity;poolQuantities.set(stockKey,combined);if(combined>p.stock)fail(`Only ${p.stock} of ${p.name} available.`,409);const amount=p.price*quantity;subtotal+=amount;items.push({id,name:p.name,sku:p.sku,quantity,price:p.price,amount})}
@@ -172,6 +172,16 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/affiliate/photo-link'&&method==='POST'){const result=await photos.issueLink(s,text(body.slug||'',60));await audit(s,'affiliate_photo_link_created');return result}
    if(path==='/admin/logout'&&method==='POST'){await s.remove('sessions',sessionId);setCookie='glow_next_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+(process.env.STORE_LOCAL?'':'; Secure');return{ok:true}}
    if(path==='/admin/shipstation/settings'&&method==='POST'){const r=await s.get('integrations','shipstation');if(!shipping.status(r).connected)fail('Check ShipStation connection first.',409);const target=r.stores.find(x=>x.id===body.store_id);if(!target)fail('Choose a verified ShipStation manual store.');await s.put('integrations','shipstation',{...r,store_id:target.id,store_name:target.name,enabled:body.enabled===true});await audit(s,'shipstation_settings_saved');return{ok:true}}
+   if(path==='/admin/order/restore'&&method==='POST'){
+    const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);if(o.status!=='expired')fail('Only expired orders can be reinstated.',409);
+    if(body.expected_revision!==(o.revision||0))fail('This order changed. Reopen it before reinstating.',409);
+    const pools=new Map();for(const line of o.items){const p=await s.get('products',line.id);if(!p)fail('A product on this order is missing. Review inventory before reinstating.',409);const key=p.stock_pool?'pool:'+p.stock_pool:'product:'+p.id;const group=pools.get(key)||{p,quantity:0};group.quantity+=line.quantity;pools.set(key,group)}
+    for(const {p,quantity} of pools.values())if(p.stock<quantity)fail('Not enough stock to reinstate '+p.name+'. Update inventory before reinstating this paid order.',409);
+    o.reservation_version=Math.max(o.reservation_version||0,o.revision||0)+1;await accounts.reserve(s,o);
+    for(const {p,quantity} of pools.values())await setStock(s,p,p.stock-quantity);
+    if(o.coupon){const c=await s.get('coupons',o.coupon);if(c){c.used++;await s.put('coupons',c.code,c)}}
+    o.status='awaiting_payment';o.expires=clock()+7*86400;o.payment_window_days=7;o.restored_at=clock();o.restored_by=(await s.get('sessions',sessionId)).staff_id||'owner';o.restore_count=(o.restore_count||0)+1;o.revision=(o.revision||0)+1;await s.put('orders',o.id,o);await audit(s,'order_reinstated',o.id);return{ok:true,order:publicOrder(o)};
+   }
    if(path==='/admin/order/remind'&&method==='POST'){
     if(!emails.configuration().ready)fail('Connect automatic email in Settings first.',503);
     const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);
@@ -236,7 +246,7 @@ async function handle({path,method='GET',headers={},body={}}){
    }
  if(path==='/admin/status'&&method==='POST'){
     const o=await s.get('orders',body.id);if(!o)fail('Order not found.',404);const target=body.status;
-    if(target==='awaiting_payment'&&o.status==='order_received'){o.status=target;o.invoice_sent_at=clock();o.invoice_sent_by=(await s.get('sessions',sessionId)).staff_id||'owner';o.expires=clock()+86400;await s.put('orders',o.id,o);await audit(s,'invoice_sent',o.id);return{ok:true}}
+    if(target==='awaiting_payment'&&o.status==='order_received'){o.status=target;o.invoice_sent_at=clock();o.invoice_sent_by=(await s.get('sessions',sessionId)).staff_id||'owner';o.expires=clock()+7*86400;o.payment_window_days=7;await s.put('orders',o.id,o);await audit(s,'invoice_sent',o.id);return{ok:true}}
     if(target==='canceled'&&['order_received','awaiting_payment','payment_submitted'].includes(o.status)){await release(s,o,target);emailJob=await emails.queueUpdate(s,o);return{ok:true}}
     if(target==='paid'&&['order_received','awaiting_payment','payment_submitted'].includes(o.status)){if(body.verified!==true)fail('Confirm that the payment was received.');o.status='paid';o.paid=clock();o.payment_verified_by=(await s.get('sessions',sessionId)).staff_id||'owner';o.payment_verification_source=o.receipt?'screenshot_and_staff':'staff_verified';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||o.created;await accounts.paid(s,o);o.shipstation_status=o.is_test===false?'queued':'test_only';o.goaffpro_status=o.affiliate?(o.is_test===false?'queued':'test_only'):'not_applicable';await s.put('outbox','shipstation-'+o.id,{id:'shipstation-'+o.id,provider:'shipstation',order_id:o.id,status:'not_connected',attempts:0});if(o.affiliate)await s.put('outbox','goaffpro-'+o.id,{id:'goaffpro-'+o.id,provider:'goaffpro',order_id:o.id,status:o.goaffpro_status,attempts:0});await audit(s,'payment_verified',o.id)}
     else if(target==='shipped'&&o.status==='paid'){o.status='shipped';o.tracking=text(body.tracking||'',150,false);await audit(s,'shipped',o.id)}
