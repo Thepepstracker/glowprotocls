@@ -1,0 +1,43 @@
+/* Zader Health: same store layout as Glow, in the Zader navy and teal (matches zaderhealth.com artwork). */
+body.brand-zader{--gold:#03b9d5;--gold-dark:#55d4e2;--panel:#071e33;--muted:#b8c6d2;--line:#ffffff26;--cream:#0b2742;--serif:'Montserrat','Inter',system-ui,sans-serif;color:#f4f6f9;background:#031628}
+.brand-zader{color-scheme:dark}
+.brand-zader .demo{background:linear-gradient(105deg,#008ba6,#003653 57%,#031527);color:#f4f6f9}
+.brand-zader header{background:#031628;border-bottom-color:#ffffff1f}
+.brand-zader .brand .brand-wordmark{color:#f4f6f9;font-family:'Montserrat',sans-serif;letter-spacing:.22em;font-weight:800}
+.brand-zader .brand small{color:#03b9d5;letter-spacing:.5em}
+.brand-zader nav a{color:#f4f6f9;font-family:'Montserrat',sans-serif;font-weight:600}
+.brand-zader nav a:hover{color:#55d4e2}
+.brand-zader h1,.brand-zader h2,.brand-zader h3{color:#f4f6f9;font-family:'Montserrat',sans-serif;letter-spacing:.01em}
+.brand-zader h1{font-weight:700}
+.brand-zader .price,.brand-zader .metric strong{color:#f4f6f9;font-family:'Montserrat',sans-serif}
+.brand-zader .card,.brand-zader .panel{background:#071e33;border-color:#ffffff26;box-shadow:none}
+.brand-zader .product-image{background:#021221}
+.brand-zader button{background:#03b9d5;color:#021221}
+.brand-zader button:hover{background:#55d4e2;color:#021221}
+.brand-zader button.secondary,.brand-zader .tabs button{background:#0b2742;color:#f4f6f9;border-color:#ffffff33}
+.brand-zader button.secondary:hover{background:#12355a;color:#f4f6f9}
+.brand-zader .tabs button.selected{background:#03b9d5;color:#021221}
+.brand-zader .bag-toggle{background:transparent;color:#f4f6f9;border-color:#ffffff40}
+.brand-zader input,.brand-zader select,.brand-zader textarea{background:#021221;color:#f4f6f9;border-color:#ffffff40}
+.brand-zader input::placeholder,.brand-zader textarea::placeholder{color:#8fa3b5}
+.brand-zader .notice{background:#0b2742;color:#d9e4ec;border-left-color:#03b9d5}
+.brand-zader .badge{background:#0b2742;color:#d9e4ec}
+.brand-zader .badge.paid,.brand-zader .badge.shipped{background:#0e3b2c;color:#b9f0d3}
+.brand-zader .badge.canceled,.brand-zader .badge.expired{background:#46141c;color:#ffc9d0}
+.brand-zader th{color:#55d4e2}
+.brand-zader footer{background:#021221;color:#b8c6d2;border-top-color:#ffffff1f}
+.brand-zader footer a{color:#55d4e2}
+.brand-zader #toast{background:#03b9d5;color:#021221}
+.brand-zader .payload{background:#021221;color:#f4f6f9}
+.brand-zader .error{color:#ff9aa8}
+.brand-zader .collection .stock{color:#55d4e2}
+.brand-zader .storefront-hero{background:#031628}
+.brand-zader .hero-banner{aspect-ratio:1672/941;max-height:720px}
+.brand-zader .hero-brand{left:auto;right:9%;width:30%;max-width:420px}
+.brand-zader .hero-brand>img{width:100%;filter:none;margin-bottom:24px}
+.brand-zader .hero-shop{color:#f4f6f9;border-bottom-color:#03b9d5}
+.brand-zader .hero-shop span{color:#03b9d5}
+@media(max-width:740px){.brand-zader .hero-brand{right:4%;width:42%}.brand-zader .hero-brand>img{margin-bottom:8px}}
+@media(max-width:600px){.brand-zader .hero-shop{display:none}}
+.brand-zader .product-image{object-fit:cover;background:#000f22}
+html:has(body.brand-zader){background:#021221}.brand-zader footer{margin-bottom:0}

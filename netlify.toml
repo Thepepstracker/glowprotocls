@@ -18,6 +18,132 @@
   function = "fix-product-images"
   path = "/*"
 
+# Zader Health (zaderhealth.com) is a second brand on this same store: same Management area,
+# same stock counts, its own catalog and look. Domain rules must come before the Glow rules below.
+[[redirects]]
+  from = "https://www.zaderhealth.com/*"
+  to = "https://zaderhealth.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/about.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/affiliate.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/bpc-157-research-guide.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/checkout.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/coa.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/contact.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/faq.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/glow-loyalty.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/peptide-storage-and-handling.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/price-desk.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/terms.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/tonight.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/peptides.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/store-next/index.html"
+  to = "https://zaderhealth.com/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/"
+  to = "/store-next/zader.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/index.html"
+  to = "/store-next/zader.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/store-next"
+  to = "/store-next/zader.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/store-next/"
+  to = "/store-next/zader.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/store-next/*"
+  to = "/store-next/zader.html"
+  status = 200
+
+[[redirects]]
+  from = "https://zaderhealth.com/*"
+  to = "/store-next/zader.html"
+  status = 200
+
 # New storefront is the public shopping entry point. Legacy order records stay in WordPress.
 [[redirects]]
   from = "/"

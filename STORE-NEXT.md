@@ -174,3 +174,61 @@ Live payment verification and payment/shipping confirmation emails require an at
 Save SHIPSTATION_API_KEY and SHIPSTATION_API_SECRET in the production Netlify Functions environment, not GitHub or chat. Redeploy, then use Shipping → Check ShipStation connection, choose an active Manual Store, and enable transfer. Only verified live orders with a screenshot are sent. Preview/test orders and unpaid drafts are blocked. API credentials are never returned to the browser. Selecting a manual store preserves the WooCommerce source.
 Orders use a stable namespaced orderKey and matching amount/email/store checks. A reservation lease prevents concurrent sends. Unknown POST results need reconciliation; there is no blind create retry. Definite authorization/validation rejection is retryable. Credentials changing invalidates the connection until rechecked and protects uncertain prior sends. Discounts, including rewards, are sent as an adjustment line. No weights are fabricated and no labels/postage are purchased by this code.
 The scheduled shipping worker runs every five minutes, processing two orders concurrently with fair rotation and retry backoff. Tracking checks require ShipStation to mark the order shipped and return exactly one non-void outbound shipment. Missing/multiple shipments need manual review; automatic split-shipment fulfillment is not supported yet. A verified tracking update saves shipped status and queues one shipping email atomically. Transfer/shipping readiness still requires a real connection check and one legitimate end-to-end order before WooCommerce is disconnected.
+
+## Brands: Glow Lab, Zader Health, Pep Puppy (added 7 Oct 2026)
+
+One store, one database, one Management area, several brands. The visited domain decides the brand
+(`netlify/functions/lib/brands.cjs`): glowglps.com is Glow Lab, zaderhealth.com is Zader Health,
+peppuppy.com is Pep Puppy. Any other host (netlify.app previews, localhost) is Glow, so Glow behaves
+exactly as before. Records without a `brand` field are Glow.
+
+- **Catalog:** each product has a brand. A domain only shows and sells its own brand's products;
+  a cart cannot mix brands. Zader's 40 products are created automatically the first time anyone
+  opens zaderhealth.com (migration record `zader-catalog-v1`), at Zader's own prices.
+- **Shared stock:** every Zader product joins its Glow twin in a stock group (`shared-<glow sku>`),
+  using the existing stock-group feature. A sale on either site lowers the one count; a cancel
+  returns it to both. Pinealon 10 mg and BPC-157 5 mg have no Glow twin and keep their own count (0).
+- **Coupons:** each coupon belongs to one brand (Coupons → Store). Existing coupons are Glow-only.
+- **Orders:** Zader order numbers start `ZDR-`, Glow `GLP-`. Search "ZDR" in Orders to see Zader only.
+  Payment recipients, shipping charges and checkout mode are shared.
+- **Rewards and affiliates:** Glow only. Zader orders are not linked to customer accounts, earn no
+  points and are never reported to GoAffPro.
+- **Emails:** Zader emails say Zader Health and link back to zaderhealth.com. They send from the Glow
+  sender address unless `STORE_EMAIL_FROM_ZADER` is set to an address on a Resend-verified domain.
+- **ShipStation:** Zader orders go to the same manual store with "ZADER HEALTH ORDER" in the
+  internal notes, so packing can use the right insert.
+- **Storefront stock:** customers only see "In stock" / "Sold out". In live mode the public catalog
+  reports 99 for anything in stock instead of the real count; the server still enforces real stock.
+- **Pep Puppy:** brand is defined in waitlist mode (no orders accepted). peppuppy.com is still served
+  by its own static Netlify site with waitlist forms.
+- **Netlify:** zaderhealth.com must be a domain alias on this site. The domain rules at the top of
+  netlify.toml serve `store-next/zader.html` there and keep Glow pages off the Zader domain.
+- **Local preview:** `npm run store:dev`, then open http://zader.localhost:8787/ for Zader.
+
+## Customer shipping emails
+
+Each email has a fixed id per order and event, so the same email is never sent twice.
+
+| When | Email | Source |
+|---|---|---|
+| Staff mark paid | "Payment received · your order is in queue" (items, ship-to, what happens next) | Management |
+| Label created in ShipStation | "Your shipping label has been created" (carrier, service, tracking number, Track your package button) | ShipStation shipment list, checked every minute |
+| UPS gives or changes a delivery date | "Arriving Tuesday, October 13" / "New delivery date" | UPS Track API |
+| UPS out for delivery | "Out for delivery today" | UPS Track API |
+| UPS delivered | "Delivered" (date, time, where it was left) | UPS Track API |
+
+- `netlify/functions/lib/order-tracking.cjs` handles carrier links, service names, UPS sign-in and tracking, and the delivery emails.
+- The scheduled shipping worker runs every minute. Each run:
+  - sends up to 6 newly paid orders to ShipStation
+  - makes one shipment-list call that picks up new labels
+  - checks UPS for up to 8 packages that are due
+- UPS checks happen every 20 minutes until UPS gives a date, then hourly, then every 15 minutes on delivery day. They stop once the package is delivered or 30 days have passed.
+- The email worker runs every minute and sends up to 12 queued emails, stopping after 20 seconds.
+- Customer order page: shows a 5-step tracker (payment received → label created → UPS has it → out for delivery → delivered) with the tracking number, the UPS date and a Track button.
+- Management: each order line shows the UPS status and date. It warns **"No UPS scan for over a day"** when a label was made but UPS never scanned the package.
+- UPS setup: create an app at developer.ups.com with the **Tracking** product. Then add these in Netlify → Environment variables:
+  - `UPS_CLIENT_ID`
+  - `UPS_CLIENT_SECRET`
+  - optional: `UPS_ACCOUNT_NUMBER` (6 characters)
+
+  Without them, the label-created email still goes out. Only the date, out-for-delivery and delivered emails wait.

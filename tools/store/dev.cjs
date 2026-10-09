@@ -13,7 +13,7 @@ const server=http.createServer(async(req,res)=>{
  }
  if(req.method!=='GET'){res.writeHead(405);res.end('Method not allowed');return}
  let target;
- if(/^\/store-next\/?$/.test(url.pathname)||/^\/store-next\/(admin|[a-z0-9-]+)\/?$/.test(url.pathname))target=path.join(root,'store-next/index.html');
+ if(url.pathname==='/'||/^\/store-next\/?$/.test(url.pathname)||/^\/store-next\/(admin|[a-z0-9-]+)\/?$/.test(url.pathname)){const b=require('../../netlify/functions/lib/brands.cjs').fromHeaders(req.headers).id;target=path.join(root,b==='glow'?'store-next/index.html':'store-next/'+b+'.html')}
  else{let clean;try{clean=decodeURIComponent(url.pathname)}catch{res.writeHead(400);res.end();return}target=path.resolve(root,'.'+clean)}
  const rel=path.relative(root,target);if(rel.startsWith('..')||path.isAbsolute(rel)||rel.split(path.sep).some(p=>p.startsWith('.'))||!content[path.extname(target)]){res.writeHead(404);res.end('Not found');return}
  fs.readFile(target,(error,data)=>{if(error){res.writeHead(404);res.end('Not found');return}res.writeHead(200,{'Content-Type':content[path.extname(target)],'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(data)})
