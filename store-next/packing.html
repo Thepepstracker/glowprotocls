@@ -49,6 +49,20 @@ table{width:100%;border-collapse:collapse;background:var(--card);border-radius:1
 td,th{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
 td.n{text-align:right;font-weight:800;font-size:20px;width:90px}
 .small{font-size:14px;color:var(--muted)}
+.now{position:sticky;top:58px;z-index:4;background:#fff8e6;border-bottom:2px solid var(--gold);padding:10px 16px}
+.now .in{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.now .key{font-weight:800;font-size:13px;letter-spacing:.12em;border:2px solid var(--ink);border-radius:8px;padding:6px 14px;background:#fff}
+.now .what{font-size:22px;font-weight:800}
+.now .sub{color:var(--muted);font-size:15px}
+.order.current{border-color:var(--gold);box-shadow:0 0 0 4px rgba(184,138,46,.18)}
+.item.current{background:#fffaf0;border-radius:10px}
+.tap.next{border-color:var(--gold);box-shadow:0 0 0 4px rgba(184,138,46,.35);animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 9px rgba(184,138,46,.12)}}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+.cheer{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%) scale(.8);z-index:51;background:var(--ok);color:#fff;font-size:28px;font-weight:800;padding:22px 30px;border-radius:18px;text-align:center;opacity:0;transition:all .25s;pointer-events:none;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+.cheer.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.cheer small{display:block;font-size:16px;font-weight:600;opacity:.9;margin-top:4px}
+@media (prefers-reduced-motion:reduce){.tap.next{animation:none}}
 @media (max-width:600px){.item{flex-wrap:wrap}.taps{width:100%;justify-content:flex-start}.oid{font-size:19px}}
 </style>
 </head>
@@ -60,6 +74,8 @@ td.n{text-align:right;font-weight:800;font-size:20px;width:90px}
   </div>
   <div class="bar"><i id="bar"></i></div>
 </header>
+<div class="now" id="now" hidden><div class="in"><span class="key">SPACE</span><div><div class="what" id="nowWhat"></div><div class="sub" id="nowSub"></div></div></div></div>
+<canvas id="confetti"></canvas><div class="cheer" id="cheer"></div>
 <main>
   <div class="tools">
     <input type="search" id="search" placeholder="Search order number or name" autocomplete="off">
@@ -72,12 +88,12 @@ td.n{text-align:right;font-weight:800;font-size:20px;width:90px}
     <button data-view="pick" aria-pressed="false">Pick list</button>
   </div>
   <div id="out"><div class="msg">Loading paid orders…</div></div>
-  <p class="small">Shows every order marked <b>Paid · in queue</b> (not shipped yet), oldest first. Tap one box for every vial or item as it goes in the bag. When every box in an order is green, that order is checked. Your ticks are saved on this device only and nothing in the store changes. If an order is edited after you checked it, its ticks clear so you check it again.</p>
+  <p class="small">Shows every order marked <b>Paid · in queue</b> (not shipped yet), oldest first. Press the <b>space bar</b> once for every vial as it goes in the bag (or tap the boxes). The gold box shows what to put in next. <b>Backspace</b> undoes the last one. When every box in an order is green, that order is checked. Your ticks are saved on this device only and nothing in the store changes. If an order is edited after you checked it, its ticks clear so you check it again.</p>
 </main>
 <script>
 (function(){
 'use strict';
-var KEY='glp_packing_v1',orders=[],view='todo',query='',justDone={};
+var KEY='glp_packing_v1',orders=[],view='todo',query='',justDone={},history=[],lastTarget='';
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}}
 function save(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
 var saved=load();
@@ -101,6 +117,43 @@ function render(){
   if(!orders.length){out.innerHTML='<div class="msg">No paid orders waiting to ship right now.</div>';return}
   if(!list.length){out.innerHTML='<div class="msg">'+(view==='todo'?'Every paid order is checked. ✅':'Nothing here yet.')+'</div>';return}
   out.innerHTML=list.map(card).join('');
+  markTarget(list);
+}
+function target(list){
+  for(var a=0;a<list.length;a++){var o=list[a];if(isDone(o))continue;var t=ticks(o);
+    for(var i=0;i<(o.items||[]).length;i++){for(var u=0;u<o.items[i].quantity;u++){var k=i+'-'+u;if(!t[k])return{o:o,k:k,item:o.items[i],unit:u}}}}
+  return null;
+}
+function visibleList(){return view==='pick'?[]:orders.filter(matches).filter(function(o){return view==='all'?true:view==='done'?isDone(o):(!isDone(o)||justDone[o.id])})}
+function markTarget(list){
+  var now=document.getElementById('now'),x=target(list);
+  if(!x){now.hidden=true;lastTarget='';return}
+  var b=document.querySelector('.tap[data-o="'+x.o.id+'"][data-k="'+x.k+'"]');
+  if(b){b.classList.add('next');var li=b.closest('.item');if(li)li.classList.add('current');var sec=b.closest('.order');if(sec)sec.classList.add('current');
+    var id=x.o.id+'|'+x.k;if(id!==lastTarget){lastTarget=id;b.scrollIntoView({behavior:'smooth',block:'center'})}}
+  now.hidden=false;
+  document.getElementById('nowWhat').textContent=x.item.name;
+  document.getElementById('nowSub').textContent='Vial '+(x.unit+1)+' of '+x.item.quantity+' · '+x.o.id+' · '+((x.o.customer&&x.o.customer.name)||'');
+}
+function tickTarget(){
+  var x=target(visibleList());if(!x)return;
+  setTick(x.o,x.k,true);history.push({id:x.o.id,k:x.k});
+  if(isDone(x.o)){justDone[x.o.id]=1;celebrate(x.o)}
+  render();
+}
+function undo(){
+  var h=history.pop();if(!h)return;var o=orders.find(function(z){return z.id===h.id});if(!o)return;
+  setTick(o,h.k,false);delete justDone[o.id];render();
+}
+function celebrate(o){
+  var c=document.getElementById('cheer');c.innerHTML='Order complete! 🎉<small>'+esc(o.id)+' · '+esc((o.customer&&o.customer.name)||'')+' · '+units(o)+' in the bag</small>';
+  c.classList.add('show');setTimeout(function(){c.classList.remove('show')},1600);
+  if(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  var cv=document.getElementById('confetti'),ctx=cv.getContext('2d'),W=cv.width=innerWidth,H=cv.height=innerHeight,cols=['#b88a2e','#e9c46a','#1f7a3a','#5fc27e','#e76f51','#2a9d8f','#264653','#f4a261'],P=[];
+  for(var i=0;i<180;i++)P.push({x:W/2+(Math.random()-.5)*W*.3,y:H*.35,vx:(Math.random()-.5)*14,vy:-Math.random()*14-4,s:6+Math.random()*7,r:Math.random()*6,vr:(Math.random()-.5)*.3,c:cols[i%cols.length]});
+  var start=performance.now();
+  (function frame(t){var e=t-start;ctx.clearRect(0,0,W,H);P.forEach(function(p){p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.globalAlpha=Math.max(0,1-e/2600);ctx.fillStyle=p.c;ctx.fillRect(-p.s/2,-p.s/3,p.s,p.s*.66);ctx.restore()});
+    if(e<2600)requestAnimationFrame(frame);else ctx.clearRect(0,0,W,H)})(start);
 }
 function card(o){
   var t=ticks(o),c=o.customer||{},done=isDone(o),brand=o.brand==='zader'?'<span class="tag z">ZADER</span>':'';
@@ -135,10 +188,15 @@ function fetchOrders(){
 }
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
-  if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';setTick(o,b.dataset.k,on);if(isDone(o))justDone[o.id]=1;render();return}
-  if(b.dataset.reset){delete saved[b.dataset.reset];save(saved);render();return}
+  if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';var was=isDone(o);setTick(o,b.dataset.k,on);if(on)history.push({id:o.id,k:b.dataset.k});if(isDone(o)){justDone[o.id]=1;if(!was)celebrate(o)}b.blur();render();return}
+  if(b.dataset.reset){delete saved[b.dataset.reset];delete justDone[b.dataset.reset];save(saved);render();return}
   if(b.dataset.view){view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});render();return}
   if(b.id==='refresh'){justDone={};document.getElementById('out').innerHTML='<div class="msg">Loading paid orders…</div>';fetchOrders()}
+});
+document.addEventListener('keydown',function(e){
+  var tag=(e.target&&e.target.tagName)||'';if(tag==='INPUT'||tag==='TEXTAREA'||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.code==='Space'||e.key===' '){e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();if(!e.repeat)tickTarget();return}
+  if(e.key==='Backspace'){e.preventDefault();undo()}
 });
 document.getElementById('search').addEventListener('input',function(e){query=e.target.value.trim();render()});
 fetchOrders();
