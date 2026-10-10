@@ -210,10 +210,56 @@
   to = "/store-next/index.html"
   status = 200
 
+# The retired static store (index.html) must never open for a customer: its "Add to Order"
+# sends the bag to glps.shop, which now lands on an empty bag here. Real files (coa.html,
+# about.html, ...) are still served first because these rules are not forced.
+[[redirects]]
+  from = "/checkout"
+  to = "/store-next/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/checkout/"
+  to = "/store-next/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/shop"
+  to = "/store-next/"
+  status = 302
+
+[[redirects]]
+  from = "/shop/*"
+  to = "/store-next/"
+  status = 302
+
+[[redirects]]
+  from = "/product/*"
+  to = "/store-next/"
+  status = 302
+
+[[redirects]]
+  from = "/account"
+  to = "/store-next/account"
+  status = 302
+
+# Short affiliate links: glowglps.com/holly-marshall -> that affiliate's store.
+[[redirects]]
+  from = "/:slug"
+  to = "/store-next/:slug"
+  status = 302
+
+[[redirects]]
+  from = "/:slug/"
+  to = "/store-next/:slug"
+  status = 302
+
 [[redirects]]
   from = "/*"
-  to = "/index.html"
-  status = 200
+  to = "/store-next/"
+  status = 302
 
 [functions]
   directory = "netlify/functions"
