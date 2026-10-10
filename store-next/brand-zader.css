@@ -41,3 +41,17 @@ body.brand-zader{--gold:#03b9d5;--gold-dark:#55d4e2;--panel:#071e33;--muted:#b8c
 @media(max-width:600px){.brand-zader .hero-shop{display:none}}
 .brand-zader .product-image{object-fit:cover;background:#000f22}
 html:has(body.brand-zader){background:#021221}.brand-zader footer{margin-bottom:0}
+
+/* Product photos and phone layout (Oct 2026): every product shows its own labelled vial;
+   on phones each product is a compact row so the 40-item list is quick to scan. */
+.brand-zader #products .product-image{object-fit:cover;object-position:center;background:#e9edf2;border-radius:10px}
+@media(max-width:640px){
+.brand-zader #products .card{display:grid;grid-template-columns:116px minmax(0,1fr);grid-template-areas:"img name" "img stock" "img bottom";grid-template-rows:auto auto 1fr;column-gap:14px;row-gap:2px;align-items:start;padding:12px;min-height:0}
+.brand-zader #products .card>.product-image{grid-area:img;width:116px;height:132px;margin:0}
+.brand-zader #products .card>h3{grid-area:name;margin:2px 0 0;font-size:1.1rem;line-height:1.3}
+.brand-zader #products .card button{font-size:15px;padding:11px 14px}
+.brand-zader #products .card .price{font-size:22px}
+.brand-zader #products .card>.stock{grid-area:stock;margin:2px 0 6px}
+.brand-zader #products .card>.bottom{grid-area:bottom;align-self:end;margin-top:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.brand-zader #products .card>.product-more-photos{display:none}
+}

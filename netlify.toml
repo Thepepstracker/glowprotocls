@@ -111,6 +111,18 @@
   force = true
 
 [[redirects]]
+  from = "https://zaderhealth.com/robots.txt"
+  to = "/store-next/zader-robots.txt"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/sitemap.xml"
+  to = "/store-next/zader-sitemap.xml"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "https://zaderhealth.com/"
   to = "/store-next/zader.html"
   status = 200

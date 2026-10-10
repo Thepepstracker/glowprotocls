@@ -76,3 +76,16 @@ test('products saved in Management keep or set their brand',async()=>{
  const g=(await admin('/admin/data')).body.products.find(p=>p.sku==='kpv-10-mg');await admin('/admin/product',{...g});
  assert.equal((await admin('/admin/data')).body.products.find(p=>p.id===g.id).brand,'glow');
 });
+
+test('each Zader product gets its own label photo once; a photo changed in Management is kept',async()=>{
+ const d=(await admin('/admin/data')).body;const z=d.products.filter(p=>p.brand==='zader');
+ assert.ok(z.length>=40);assert.ok(z.every(p=>p.image==='/img/zader/products/'+p.sku+'.jpg'),'fresh catalog uses per-product photos');
+ for(const p of z)assert.ok(fs.existsSync(path.join(__dirname,'../..',p.image)),'photo file exists: '+p.image);
+ // simulate a store that got the catalog before photos existed
+ await transaction(async s=>{for(const p of z){p.image='/img/zader/zader-vial.jpg';await s.put('products',p.id,p)}const kpv=z.find(p=>p.sku==='zdr-kpv-10-mg');kpv.image='/img/custom.jpg';await s.put('products',kpv.id,kpv);await s.remove('migrations','zader-photos-v1')});
+ await call('/catalog',undefined,ZADER);
+ const after=(await admin('/admin/data')).body.products.filter(p=>p.brand==='zader');
+ assert.equal(after.find(p=>p.sku==='zdr-kpv-10-mg').image,'/img/custom.jpg');
+ assert.equal(after.find(p=>p.sku==='zdr-nad-500-mg').image,'/img/zader/products/zdr-nad-500-mg.jpg');
+ assert.equal(after.filter(p=>p.image.startsWith('/img/zader/products/')).length,after.length-1);
+});

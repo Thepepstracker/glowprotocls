@@ -72,10 +72,19 @@ const ZADER_CATALOG=[
  ['Tesamorelin · 5 mg','tesamorelin-5-mg',8399,'5 mg'],
  ['Tesamorelin · 10 mg','tesamorelin-10-mg',11799,'10 mg']
 ];
-const ZADER_MIGRATION='zader-catalog-v1';
+// Each Zader product has its own label photo (name and strength on the vial).
+const ZADER_PHOTOS=new Set(["zdr-5-amino-1mq-5-mg", "zdr-5-amino-1mq-50-mg", "zdr-acetic-acid-10-ml", "zdr-adamax-10-mg", "zdr-adamax-5-mg", "zdr-aicar-100-mg", "zdr-aicar-50-mg", "zdr-ara-290-10-mg", "zdr-bac-water-10-ml", "zdr-bac-water-20-ml", "zdr-bac-water-3-ml", "zdr-bpc-157-10-mg", "zdr-bpc-157-5-mg", "zdr-dsip-5-mg", "zdr-epithalon-50-50-mg", "zdr-fox-04-10-mg", "zdr-ghk-cu-100-mg", "zdr-glutathione-1500-mg", "zdr-glutathione-750-mg", "zdr-ipamorelin-10-mg", "zdr-klow-blend-80-mg", "zdr-kpv-10-mg", "zdr-lipo-c-b12-10-ml", "zdr-mots-c-10-mg", "zdr-nad-500-mg", "zdr-pinealon-10-mg", "zdr-pt-141-10-mg", "zdr-reta-10-mg", "zdr-reta-20-mg", "zdr-selank-10-mg", "zdr-ss-31-10-mg", "zdr-tb-500-10-mg", "zdr-tesamorelin-10-mg", "zdr-tesamorelin-5-mg", "zdr-thymosin-alpha-1-5-mg", "zdr-tirz-10-10-mg", "zdr-tirz-10-15-mg", "zdr-tirz-10-20-mg", "zdr-tirz-10-30-mg", "zdr-vitamin-b12-10-ml"]);
+const zaderPhoto=sku=>ZADER_PHOTOS.has(sku)?'/img/zader/products/'+sku+'.jpg':ZADER_IMAGE;
+const ZADER_MIGRATION='zader-catalog-v1',ZADER_PHOTO_MIGRATION='zader-photos-v1';
 // Runs once, inside the normal store transaction. Idempotent: guarded by a migration record and by SKU.
+// Once: swap the shared stand-in vial for each product's own photo. Photos staff changed are kept.
+async function ensureZaderPhotos(s){
+ if(await s.get('migrations',ZADER_PHOTO_MIGRATION))return false;
+ let changed=0;for(const p of await s.list('products')){if(p.brand==='zader'&&p.image===ZADER_IMAGE&&ZADER_PHOTOS.has(p.sku)){p.image=zaderPhoto(p.sku);await s.put('products',p.id,p);changed++}}
+ await s.put('migrations',ZADER_PHOTO_MIGRATION,{applied:Math.floor(Date.now()/1000),changed});return true;
+}
 async function ensureZaderCatalog(s,validSlug){
- if(await s.get('migrations',ZADER_MIGRATION))return false;
+ if(await s.get('migrations',ZADER_MIGRATION))return ensureZaderPhotos(s);
  const all=await s.list('products');if(!all.length)return false;
  const bySku=new Map(all.map(p=>[String(p.sku).toLowerCase(),p]));let nextId=Math.max(0,...all.map(p=>p.id));let created=0,linked=0;
  for(const [name,glowSku,price,size,ownSku] of ZADER_CATALOG){
@@ -87,10 +96,11 @@ async function ensureZaderCatalog(s,validSlug){
    if(!glow.stock_pool){glow.stock_pool=pool;await s.put('products',glow.id,glow);linked++}
    stock=glow.stock;
   }
-  const p={id:++nextId,brand:'zader',name,sku,slug:sku,size,price,stock,stock_pool:pool,active:1,image:ZADER_IMAGE,source:glow?'zader catalog; shares stock with Glow '+glow.sku:'zader catalog; own stock'};
+  const p={id:++nextId,brand:'zader',name,sku,slug:sku,size,price,stock,stock_pool:pool,active:1,image:zaderPhoto(sku),source:glow?'zader catalog; shares stock with Glow '+glow.sku:'zader catalog; own stock'};
   await s.put('products',p.id,p);bySku.set(sku,p);created++;
  }
  await s.put('migrations',ZADER_MIGRATION,{applied:Math.floor(Date.now()/1000),created,linked});
+ await ensureZaderPhotos(s);
  return true;
 }
-module.exports={BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ensureZaderCatalog,hostOf};
+module.exports={BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ZADER_PHOTOS,ensureZaderCatalog,ensureZaderPhotos,hostOf};

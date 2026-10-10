@@ -232,3 +232,17 @@ Each email has a fixed id per order and event, so the same email is never sent t
   - optional: `UPS_ACCOUNT_NUMBER` (6 characters)
 
   Without them, the label-created email still goes out. Only the date, out-for-delivery and delivered emails wait.
+
+## Our own address is never a customer's ship-to
+
+- Checkout and the staff "Edit customer" form set `autocomplete="off"`, so a staff phone or laptop should not drop its saved home address into a customer's order.
+- Server guard in `netlify/functions/lib/own-contact.cjs`:
+  - Checks every order create, edit and staff edit against the Netlify environment variables `STORE_OWN_ADDRESSES` and `STORE_OWN_PHONES` (each a `|`-separated list). The values live only in Netlify, never in this public repo.
+  - A match is refused with a plain message.
+  - Matching ignores case, punctuation and unit numbers, and treats Lane/Ln-style spellings as the same.
+- ShipStation export refuses an order whose ship-to matches, and shows the reason in Management.
+
+## Zader product photos
+
+- `img/zader/products/<sku>.jpg`: one label photo per Zader product.
+- The migration `zader-photos-v1` in `brands.cjs` runs once, on the first zaderhealth.com request after deploy. It swaps the shared stand-in vial for each product's photo and keeps any photo staff changed in Management.

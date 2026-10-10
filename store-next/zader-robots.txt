@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /store-next/admin
+Disallow: /store-next/account
+Sitemap: https://zaderhealth.com/sitemap.xml
