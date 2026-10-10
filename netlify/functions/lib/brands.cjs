@@ -3,7 +3,7 @@
 // (coupon.brand) and order prefix; all brands share the database, payment recipients and the
 // Management area. Rows without a brand field belong to Glow, so every existing record keeps working.
 const BRANDS={
- glow:{id:'glow',name:'Glow Lab',legal_name:'Glow Lab Protocols',hosts:['glowglps.com','www.glowglps.com'],dev_hosts:[],origin:'',order_prefix:'GLP',rewards:true,affiliates:true,waitlist:false,accent:'#c9a24b',email_from_env:''},
+ glow:{id:'glow',name:'Glow Lab',legal_name:'Glow Lab Protocols',hosts:['glowglps.com','www.glowglps.com','glowlabprotocols.com','www.glowlabprotocols.com'],dev_hosts:[],origin:'',order_prefix:'GLP',rewards:true,affiliates:true,waitlist:false,accent:'#c9a24b',email_from_env:''},
  zader:{id:'zader',name:'Zader Health',legal_name:'Zader Health',hosts:['zaderhealth.com','www.zaderhealth.com'],dev_hosts:['zader.localhost'],origin:'https://zaderhealth.com',order_prefix:'ZDR',rewards:false,affiliates:false,waitlist:false,accent:'#03b9d5',email_from_env:'STORE_EMAIL_FROM_ZADER'},
  peppuppy:{id:'peppuppy',name:'Pep Puppy',legal_name:'Pep Puppy',hosts:['peppuppy.com','www.peppuppy.com'],dev_hosts:['peppuppy.localhost'],origin:'https://peppuppy.com',order_prefix:'PEP',rewards:false,affiliates:false,waitlist:true,accent:'#5d399d',email_from_env:'STORE_EMAIL_FROM_PEPPUPPY'}
 };
