@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Packing Check · Glow Lab</title>
+<style>
+:root{--bg:#f7f4ee;--card:#fff;--ink:#1b1b1b;--muted:#6b6459;--line:#e4dccd;--gold:#b88a2e;--ok:#1f7a3a;--okbg:#e7f4ea;--warn:#a23b1d;--warnbg:#fbeae5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;padding:12px 16px}
+header .row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;max-width:980px;margin:0 auto}
+h1{font-size:20px;margin:0;letter-spacing:.02em}
+.bar{height:8px;background:#444;border-radius:4px;overflow:hidden;max-width:980px;margin:10px auto 0}
+.bar i{display:block;height:100%;background:#5fc27e;width:0;transition:width .2s}
+.count{font-weight:700}
+main{max-width:980px;margin:0 auto;padding:16px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+input[type=search]{flex:1;min-width:200px;font-size:17px;padding:12px;border:1px solid var(--line);border-radius:10px}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--ink);background:#fff;color:var(--ink);padding:10px 14px}
+button.primary{background:var(--ink);color:#fff}
+.tabs button[aria-pressed=true]{background:var(--ink);color:#fff}
+.msg{padding:16px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.order{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.order.done{border-color:var(--ok);background:var(--okbg)}
+.order.warn{border-color:var(--warn)}
+.oh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.oid{font-size:22px;font-weight:800;letter-spacing:.03em}
+.who{font-size:18px;font-weight:600}
+.addr{color:var(--muted);font-size:15px}
+.tag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:20px;background:#eee;margin-left:6px;vertical-align:middle}
+.tag.z{background:#d6f0f5;color:#0b5566}
+.tag.done{background:var(--ok);color:#fff}
+.items{margin:14px 0 6px;padding:0;list-style:none}
+.item{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.qty{flex:0 0 auto;min-width:64px;text-align:center;font-size:26px;font-weight:800;border:2px solid var(--ink);border-radius:10px;padding:4px 8px}
+.qty.multi{background:#fff4d6;border-color:var(--gold)}
+.name{flex:1;font-size:19px;font-weight:600}
+.name small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+.taps{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tap{width:52px;height:52px;border-radius:10px;border:2px solid var(--ink);background:#fff;font-size:22px;padding:0}
+.tap.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
+.state{font-weight:700}
+.state.ok{color:var(--ok)}
+.note{background:#fff8e6;border:1px solid #f0d58c;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
+td,th{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+td.n{text-align:right;font-weight:800;font-size:20px;width:90px}
+.small{font-size:14px;color:var(--muted)}
+@media (max-width:600px){.item{flex-wrap:wrap}.taps{width:100%;justify-content:flex-start}.oid{font-size:19px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>Packing Check</h1>
+    <div><span class="count" id="count">0 of 0 orders checked</span></div>
+  </div>
+  <div class="bar"><i id="bar"></i></div>
+</header>
+<main>
+  <div class="tools">
+    <input type="search" id="search" placeholder="Search order number or name" autocomplete="off">
+    <button id="refresh" class="primary">Refresh orders</button>
+  </div>
+  <div class="tools tabs">
+    <button data-view="todo" aria-pressed="true">To check</button>
+    <button data-view="done" aria-pressed="false">Checked</button>
+    <button data-view="all" aria-pressed="false">All paid</button>
+    <button data-view="pick" aria-pressed="false">Pick list</button>
+  </div>
+  <div id="out"><div class="msg">Loading paid orders…</div></div>
+  <p class="small">Shows every order marked <b>Paid · in queue</b> (not shipped yet), oldest first. Tap one box for every vial or item as it goes in the bag. When every box in an order is green, that order is checked. Your ticks are saved on this device only and nothing in the store changes. If an order is edited after you checked it, its ticks clear so you check it again.</p>
+</main>
+<script>
+(function(){
+'use strict';
+var KEY='glp_packing_v1',orders=[],view='todo',query='',justDone={};
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}}
+function save(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
+var saved=load();
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fp(o){return (o.items||[]).map(function(i){return i.id+':'+i.quantity}).join(',')+'|'+(o.revision||0)}
+function units(o){return (o.items||[]).reduce(function(n,i){return n+i.quantity},0)}
+function ticks(o){var s=saved[o.id];if(!s||s.fp!==fp(o)){return{}}return s.t||{}}
+function tickCount(o){var t=ticks(o),n=0;Object.keys(t).forEach(function(k){if(t[k])n++});return n}
+function isDone(o){return units(o)>0&&tickCount(o)>=units(o)}
+function setTick(o,key,on){var s=saved[o.id];if(!s||s.fp!==fp(o))s={fp:fp(o),t:{}};s.t[key]=on;if(isDoneWith(o,s))s.at=Date.now();saved[o.id]=s;save(saved)}
+function isDoneWith(o,s){var n=0;Object.keys(s.t).forEach(function(k){if(s.t[k])n++});return n>=units(o)}
+function when(sec){return sec?new Date(sec*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}
+function matches(o){if(!query)return true;var q=query.toLowerCase();return (o.id||'').toLowerCase().indexOf(q)>=0||((o.customer&&o.customer.name)||'').toLowerCase().indexOf(q)>=0}
+function render(){
+  var paid=orders.filter(matches),done=orders.filter(isDone).length;
+  document.getElementById('count').textContent=done+' of '+orders.length+' orders checked';
+  document.getElementById('bar').style.width=(orders.length?Math.round(done*100/orders.length):0)+'%';
+  var out=document.getElementById('out');
+  if(view==='pick'){out.innerHTML=pickList();return}
+  var list=paid.filter(function(o){return view==='all'?true:view==='done'?isDone(o):(!isDone(o)||justDone[o.id])});
+  if(!orders.length){out.innerHTML='<div class="msg">No paid orders waiting to ship right now.</div>';return}
+  if(!list.length){out.innerHTML='<div class="msg">'+(view==='todo'?'Every paid order is checked. ✅':'Nothing here yet.')+'</div>';return}
+  out.innerHTML=list.map(card).join('');
+}
+function card(o){
+  var t=ticks(o),c=o.customer||{},done=isDone(o),brand=o.brand==='zader'?'<span class="tag z">ZADER</span>':'';
+  var rows=(o.items||[]).map(function(i,idx){
+    var taps='';for(var u=0;u<i.quantity;u++){var k=idx+'-'+u,on=!!t[k];taps+='<button class="tap'+(on?' on':'')+'" data-o="'+esc(o.id)+'" data-k="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(i.name)+' '+(u+1)+' of '+i.quantity+'">'+(on?'✓':(u+1))+'</button>'}
+    return '<li class="item"><div class="qty'+(i.quantity>1?' multi':'')+'">'+i.quantity+' ×</div><div class="name">'+esc(i.name)+'</div><div class="taps">'+taps+'</div></li>';
+  }).join('');
+  var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
+  var n=tickCount(o),u=units(o);
+  return '<section class="order'+(done?' done':'')+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+brand+(done?'<span class="tag done">CHECKED</span>':'')+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div></div><div class="small">Paid '+esc(when(o.paid))+'<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
+    +'<ul class="items">'+rows+'</ul>'
+    +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
+    +'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(done?'✅ All '+u+' in the bag. Ready for its label.':n+' of '+u+' checked')+'</span>'+(n?'<button data-reset="'+esc(o.id)+'">Start this order over</button>':'')+'</div></section>';
+}
+function pickList(){
+  var totals={};orders.forEach(function(o){(o.items||[]).forEach(function(i){var k=i.name;totals[k]=(totals[k]||0)+i.quantity})});
+  var rows=Object.keys(totals).sort(function(a,b){return totals[b]-totals[a]||a.localeCompare(b)});
+  if(!rows.length)return '<div class="msg">No paid orders waiting to ship.</div>';
+  return '<p class="small">Everything you need to pull for the '+orders.length+' paid orders waiting to ship.</p><table><tbody>'+rows.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="n">'+totals[k]+'</td></tr>'}).join('')+'</tbody></table>';
+}
+function fetchOrders(){
+  var out=document.getElementById('out');
+  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Fdata',{headers:{'X-Store-Request':'1'},cache:'no-store'}).then(function(r){
+    if(r.status===401){out.innerHTML='<div class="msg"><b>Sign in first.</b> Open <a href="/store-next/admin" target="_blank" rel="noopener">Management</a>, sign in, then come back and tap <b>Refresh orders</b>.</div>';throw 0}
+    if(!r.ok){out.innerHTML='<div class="msg">The store did not answer ('+r.status+'). Tap Refresh orders to try again.</div>';throw 0}
+    return r.json();
+  }).then(function(d){
+    orders=(d.orders||[]).filter(function(o){return o.status==='paid'}).sort(function(a,b){return (a.paid||a.created||0)-(b.paid||b.created||0)});
+    var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);
+    render();
+  }).catch(function(e){if(e!==0)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';setTick(o,b.dataset.k,on);if(isDone(o))justDone[o.id]=1;render();return}
+  if(b.dataset.reset){delete saved[b.dataset.reset];save(saved);render();return}
+  if(b.dataset.view){view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});render();return}
+  if(b.id==='refresh'){justDone={};document.getElementById('out').innerHTML='<div class="msg">Loading paid orders…</div>';fetchOrders()}
+});
+document.getElementById('search').addEventListener('input',function(e){query=e.target.value.trim();render()});
+fetchOrders();
+})();
+</script>
+</body>
+</html>
