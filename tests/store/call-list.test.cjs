@@ -1,0 +1,51 @@
+'use strict';
+const {test,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-calls-'));
+Object.assign(process.env,{STORE_LOCAL:'1',STORE_SQLITE_PATH:path.join(tmp,'store.sqlite'),STORE_SESSION_SECRET:'call-list-test-session-secret-long-enough',STORE_ORIGIN:'http://127.0.0.1:8787',STORE_EMAIL_ENABLED:'1',RESEND_API_KEY:'re_test_fixture',STORE_EMAIL_FROM:'orders@example.com',STORE_EMAIL_REPLY_TO:'reply@example.com',STORE_CALL_LIST_TO:'staff@example.com'});
+const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),calls=require('../../netlify/functions/lib/call-list.cjs'),emails=require('../../netlify/functions/lib/store-email.cjs');
+after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
+const dayAgo=n=>calls.etDate(Math.floor(Date.now()/1000)-n*86400);
+let n=0;
+function order(extra={},customer={}){return{id:'GLP-CALL'+String(++n).padStart(6,'0'),created:Math.floor(Date.now()/1000)-20*86400,paid:Math.floor(Date.now()/1000)-20*86400,status:'shipped',is_test:false,customer:{name:'Pat Caller',email:'pat'+n+'@example.com',phone:'(404) 555-01'+String(n).padStart(2,'0'),address:'1 A St',city:'Atlanta',state:'GA',zip:'30301',...customer},items:[{id:1,name:'NAD+ · 500 mg',quantity:2}],total:6600,...extra}}
+test('only shipped real orders with a phone, in the landing window, are due; first orders sort first',()=>{
+ const today=calls.etDate();
+ const due=order({shipment:{ship_date:dayAgo(5)}});
+ const repeat1=order({shipment:{ship_date:dayAgo(6)}},{email:'same@example.com'});
+ const repeat2=order({status:'shipped',shipment:{ship_date:dayAgo(30)}},{email:'same@example.com'});
+ const tooSoon=order({shipment:{ship_date:dayAgo(2)}});
+ const tooLate=order({shipment:{ship_date:dayAgo(12)}});
+ const noPhone=order({shipment:{ship_date:dayAgo(5)}},{phone:''});
+ const testOrder=order({is_test:true,shipment:{ship_date:dayAgo(5)}});
+ const unpaid=order({status:'paid',shipment:{ship_date:dayAgo(5)}});
+ const delivered=order({shipment:{ship_date:dayAgo(5),delivered_date:dayAgo(3)}});
+ const deliveredToday=order({shipment:{ship_date:dayAgo(3),delivered_date:dayAgo(0)}});
+ const estimate=order({paid:Math.floor(Date.now()/1000)-6*86400});
+ const listed=order({shipment:{ship_date:dayAgo(5)},call_listed_at:1});
+ const list=calls.due([due,repeat1,repeat2,tooSoon,tooLate,noPhone,testOrder,unpaid,delivered,deliveredToday,estimate,listed],today);
+ const ids=list.map(x=>x.o.id);
+ assert.deepEqual(new Set(ids),new Set([due.id,repeat1.id,delivered.id,estimate.id]));
+ assert.equal(ids[ids.length-1],repeat1.id,'a repeat customer sorts after first orders');
+ assert.equal(list.find(x=>x.o.id===estimate.id).landing.kind,'estimate');
+});
+test('the email lists each person with a tap-to-call number and the calling rules, then never lists them again',async()=>{
+ const a=order({shipment:{ship_date:dayAgo(5)}},{name:'Marla Jones',phone:'+1 (770) 555-0142'});
+ const b=order({shipment:{ship_date:dayAgo(7)}},{name:'Ruth Smith'});
+ await transaction(async s=>{for(const o of [a,b])await s.put('orders',o.id,o)});
+ const preview=await calls.run({preview:true});assert.equal(preview.count,2);
+ const r=await calls.run({force:true});assert.equal(r.status,'queued');assert.equal(r.count,2);
+ const job=await transaction(s=>s.get('email_outbox',r.job));assert.equal(job.kind,'call_list');assert.equal(job.to,'staff@example.com');
+ const rendered=calls.render(calls.due([{...a},{...b}],calls.etDate()),calls.etDate());
+ assert.match(rendered.subject,/^2 to call today · (Ruth|Marla) and 1 other$/);
+ assert.match(rendered.content.html,/href="tel:\+17705550142"/);
+ assert.match(rendered.content.html,/\(770\) 555-0142/);
+ assert.match(rendered.content.text,/What not to ask: how it is working for them/);
+ assert.match(rendered.content.html,/NAD\+ · 500 mg × 2/);
+ const stored=await transaction(s=>s.get('orders',a.id));assert.ok(stored.call_listed_at);
+ const again=await calls.run({force:true});assert.equal(again.status,'nobody');
+ assert.equal((await transaction(s=>s.list('email_outbox'))).filter(j=>j.kind==='call_list').length,1);
+});
+test('outside the 12 o\'clock hour the scheduled run does nothing',async()=>{if(calls.etHour()!==12)assert.equal((await calls.run()).status,'not_time');else assert.notEqual((await calls.run()).status,'not_time')});
+test('no email is queued on a day with nobody to call',async()=>{
+ const r=await calls.run({force:true});assert.equal(r.status,'nobody');
+ assert.equal(typeof emails.enqueue,'function');
+});

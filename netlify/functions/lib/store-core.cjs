@@ -94,6 +94,14 @@ async function handle({path,method='GET',headers={},body={}}){
  if(path==='/admin/goaffpro/reporting-check'&&method==='POST'){
   await transaction(s=>session(s,h));const record=await goaffpro.reportingCheck();await transaction(async s=>{await session(s,h);await s.put('integrations','goaffpro',record);await audit(s,'goaffpro_reporting_permissions_checked')});return{status:200,headers:{},body:{...goaffpro.status(record),message:'Order lookup and self-purchase checks are available. The sales.write permission will be exercised on the first eligible live order.'}};
  }
+ // Daily call list: preview who is due (GET) or send the email now (POST). Staff only.
+ if(path==='/admin/call-list'&&['GET','POST'].includes(method)){
+  await transaction(s=>session(s,h));const callList=require('./call-list.cjs');
+  if(method==='GET')return{status:200,headers:{},body:await callList.run({preview:true})};
+  const r=await callList.run({force:true});if(r.job)await emails.safeDispatch(r.job);
+  await transaction(async s=>{await session(s,h);await audit(s,'call_list_sent')});
+  return{status:200,headers:{},body:r};
+ }
  if(path==='/admin/goaffpro/report'&&method==='POST'){
   await transaction(s=>session(s,h));const id=text(body.id||'',100);return{status:200,headers:{},body:await reporting.report(id)};
  }
