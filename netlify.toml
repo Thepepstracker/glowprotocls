@@ -58,8 +58,8 @@
 
 [[redirects]]
   from = "https://zaderhealth.com/contact.html"
-  to = "https://zaderhealth.com/"
-  status = 301
+  to = "/store-next/zader-contact.html"
+  status = 200
   force = true
 
 [[redirects]]
@@ -88,8 +88,8 @@
 
 [[redirects]]
   from = "https://zaderhealth.com/terms.html"
-  to = "https://zaderhealth.com/"
-  status = 301
+  to = "/store-next/zader-terms.html"
+  status = 200
   force = true
 
 [[redirects]]
@@ -108,6 +108,67 @@
   from = "https://zaderhealth.com/store-next/index.html"
   to = "https://zaderhealth.com/"
   status = 301
+  force = true
+
+# Zader policy pages (Terms, Privacy, Shipping & Returns, Contact).
+[[redirects]]
+  from = "https://zaderhealth.com/terms"
+  to = "/store-next/zader-terms.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/terms/"
+  to = "/store-next/zader-terms.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/privacy"
+  to = "/store-next/zader-privacy.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/privacy/"
+  to = "/store-next/zader-privacy.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/privacy.html"
+  to = "/store-next/zader-privacy.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/shipping"
+  to = "/store-next/zader-shipping.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/shipping/"
+  to = "/store-next/zader-shipping.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/shipping.html"
+  to = "/store-next/zader-shipping.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/contact"
+  to = "/store-next/zader-contact.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://zaderhealth.com/contact/"
+  to = "/store-next/zader-contact.html"
+  status = 200
   force = true
 
 [[redirects]]

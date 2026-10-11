@@ -21,11 +21,15 @@ async function createStorefronts(store,profiles){
  }
  return result;
 }
-// Exact referral codes preserve GoAffPro's mixed-case identifiers. Ambiguous
-// assignments fail closed, including duplicates on disabled storefronts.
+// An exact match on GoAffPro's code wins. Otherwise the code is matched ignoring
+// capital letters (customers type "bornbrazen" for "Bornbrazen", and phones
+// capitalise the first letter), but only when exactly one storefront matches.
+// Ambiguous assignments fail closed, including duplicates on disabled storefronts.
 async function resolveReferral(store,code){
  if(typeof code!=='string'||!code||code.length>200||/[\x00-\x20\x7f]/.test(code))return null;
- const matches=(await store.list('affiliates')).filter(a=>a.goaffpro_ref_code===code);
+ const all=await store.list('affiliates');
+ let matches=all.filter(a=>a.goaffpro_ref_code===code);
+ if(!matches.length){const key=code.toLowerCase();matches=all.filter(a=>typeof a.goaffpro_ref_code==='string'&&a.goaffpro_ref_code.toLowerCase()===key)}
  return matches.length===1&&matches[0].active?matches[0]:null;
 }
 module.exports={validSlug,createStorefronts,resolveReferral};

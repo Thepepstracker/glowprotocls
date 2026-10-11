@@ -138,7 +138,12 @@ test('legacy referral codes resolve unique active storefronts without exposing I
  const profile=(await call('/referrals/MixedCaseRef')).body;
  assert.deepEqual(Object.keys(profile),['slug','name','bio','photo_url']);assert.equal(profile.slug,'referral-test');
  assert.equal((await call('/quote',{items:[{id:1,quantity:1}],affiliate:profile.slug})).body.affiliate,'referral-test');
- for(const code of ['mixedcaseref','unknown','%20','%E0%A4%A'])await assert.rejects(call('/referrals/'+code),e=>e.status===404);
+ for(const code of ['mixedcaseref','MIXEDCASEREF','Mixedcaseref'])assert.equal((await call('/referrals/'+code)).body.slug,'referral-test','a different capitalisation still finds the one matching storefront');
+ for(const code of ['unknown','%20','%E0%A4%A','mixedcaseref2'])await assert.rejects(call('/referrals/'+code),e=>e.status===404);
+ await transaction(async s=>{await s.put('affiliates','case-twin',{slug:'case-twin',name:'Case Twin',bio:'',goaffpro_id:'998',goaffpro_ref_code:'mixedCASEref',commission_bps:1500,active:1})});
+ await assert.rejects(call('/referrals/mixedcaseref'),e=>e.status===404);
+ assert.equal((await call('/referrals/MixedCaseRef')).body.slug,'referral-test','an exact match still wins over a case twin');
+ await transaction(async s=>{const a=await s.get('affiliates','case-twin');await s.put('affiliates','case-twin',{...a,goaffpro_ref_code:'other-code'})});
  await transaction(async s=>{const a=await s.get('affiliates','referral-test');await s.put('affiliates',a.slug,{...a,active:0})});
  await assert.rejects(call('/referrals/MixedCaseRef'),e=>e.status===404);
  await transaction(async s=>{const a=await s.get('affiliates','referral-test');await s.put('affiliates',a.slug,{...a,active:1});await s.put('affiliates','duplicate-referral',{...a,slug:'duplicate-referral',active:0})});
