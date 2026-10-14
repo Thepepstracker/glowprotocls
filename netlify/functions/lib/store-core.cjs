@@ -38,7 +38,7 @@ function checkoutCustomer(input){const body={customer:input},customer={};for(con
 }
 async function setStock(s,p,stock){int(stock);const members=p.stock_pool?(await s.list('products')).filter(x=>x.stock_pool===p.stock_pool&&x.id!==p.id):[];for(const x of [...members,p]){x.stock=stock;await s.put('products',x.id,x)}}
 async function release(s,o,status){await accounts.release(s,o);for(const line of o.items){const p=await s.get('products',line.id);await setStock(s,p,p.stock+line.quantity)}if(o.coupon){const c=await s.get('coupons',o.coupon);if(c){c.used=Math.max(0,c.used-1);await s.put('coupons',c.code,c)}}o.status=status;await s.put('orders',o.id,o);await audit(s,status,o.id)}
-async function expire(s){for(const o of await s.list('orders'))if(o.status==='awaiting_payment'){if(o.payment_window_days!==7){o.expires=Math.max(o.expires||0,(o.invoice_sent_at||o.created)+7*86400);o.payment_window_days=7;await s.put('orders',o.id,o)}if(o.expires<=clock())await release(s,o,'expired')}}
+async function expire(s){for(const o of await s.list('orders')){if(o.proof_required===true&&o.checkout_stage==='draft'&&o.status==='order_received'&&!o.receipt&&o.expires&&o.expires<=clock()){await release(s,o,'expired');continue}if(o.status==='awaiting_payment'){if(o.payment_window_days!==7){o.expires=Math.max(o.expires||0,(o.invoice_sent_at||o.created)+7*86400);o.payment_window_days=7;await s.put('orders',o.id,o)}if(o.expires<=clock())await release(s,o,'expired')}}}
 async function quote(s,b,h={},brand=brands.fromHeaders(h)){
  if(!Array.isArray(b.items)||!b.items.length||b.items.length>100)fail('Add at least one product.');const seen=new Set(),poolQuantities=new Map(),items=[];let subtotal=0;
  for(const line of b.items){const id=int(line.id,1),quantity=int(line.quantity,1,100);if(seen.has(id))fail('Duplicate product in the cart.');seen.add(id);const p=await s.get('products',id);if(!p||!p.active||brands.productBrand(p)!==brand.id)fail('A product is unavailable.');const stockKey=p.stock_pool?'pool:'+p.stock_pool:'product:'+id;const combined=(poolQuantities.get(stockKey)||0)+quantity;poolQuantities.set(stockKey,combined);if(combined>p.stock)fail(`Only ${p.stock} of ${p.name} available.`,409);const amount=p.price*quantity;subtotal+=amount;items.push({id,name:p.name,sku:p.sku,quantity,price:p.price,amount})}
@@ -141,10 +141,10 @@ async function handle({path,method='GET',headers={},body={}}){
    const a=assisted?null:await accounts.session(s,h),q=await quote(s,body,assisted?{}:h,reqBrand),customer=checkoutCustomer(body.customer);
    if(a&&accounts.email(customer.email)!==a.email)fail('Use your account email for this order.');
    const payment=text(body.payment_method||'',20);if(!['venmo','paypal','cashapp','zelle'].includes(payment))fail('Choose a payment method.');if(settings.demo===false&&!settings.payment_links[payment])fail('This payment method is not available.');
-   const id=reqBrand.order_prefix+'-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');const o={id,created:clock(),expires:null,status:'order_received',customer,...q,payment_method:payment,token_hash:hash(token),idempotency_key:key,request_hash:hash(JSON.stringify(body)),checkout_stage:'draft',submitted_at:null,receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:q.affiliate?'awaiting_payment':'not_applicable'};
+   const id=reqBrand.order_prefix+'-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');const o={id,created:clock(),expires:null,status:'order_received',customer,...q,payment_method:payment,token_hash:hash(token),idempotency_key:key,request_hash:hash(JSON.stringify(body)),checkout_stage:'draft',proof_required:!assisted,submitted_at:null,receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:q.affiliate?'awaiting_payment':'not_applicable'};
    o.goaffpro_affiliate_id=q.affiliate?(await s.get('affiliates',q.affiliate)).goaffpro_id||'':null;
    const beneficiary=assisted?await s.get('customers',accounts.hash(accounts.email(customer.email))):a;
-   o.is_test=settings.demo!==false;o.customer_id=beneficiary?.verified&&reqBrand.rewards?beneficiary.id:null;if(assisted){const actor=await s.get('sessions',staffSession);o.created_by_staff=actor.staff_id||'owner';o.order_for_customer=true}o.points_earned=0;await accounts.reserve(s,o);
+   o.is_test=settings.demo!==false;o.customer_id=beneficiary?.verified&&reqBrand.rewards?beneficiary.id:null;if(assisted){const actor=await s.get('sessions',staffSession);o.created_by_staff=actor.staff_id||'owner';o.order_for_customer=true}o.points_earned=0;if(o.proof_required){o.expires=clock()+7*86400;o.payment_window_days=7}await accounts.reserve(s,o);
    for(const item of q.items){const p=await s.get('products',item.id);await setStock(s,p,p.stock-item.quantity)}if(q.coupon){const c=await s.get('coupons',q.coupon);c.used++;await s.put('coupons',c.code,c)}
    await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);emailJob=await emails.queueOrder(s,o,token);return{order:publicOrder(o),token};
   }
@@ -169,7 +169,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(!['order_received','awaiting_payment','payment_submitted'].includes(o.status))fail('This order no longer accepts receipts.',409);
    if((o.revision||0)>0&&body.expected_revision!==o.revision)fail('This checkout changed. Refresh your order and check the latest total before submitting payment proof.',409);
    if(!o.customer.phone)o.customer.phone=contactPhone(body.phone);
-   const reference=text(body.reference||'',100,false);o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
+   const method=text(body.payment_method??o.payment_method,20);if(!['venmo','paypal','cashapp','zelle'].includes(method)||o.is_test===false&&!settings.payment_links?.[method])fail('Choose an available payment method.');const reference=text(body.reference||'',100,false);o.payment_method=method;o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
   }fail('Endpoint not found.',404)}
   if(path==='/admin/login'&&method==='POST'){
    if(!process.env.STORE_ADMIN_PASSWORD||process.env.STORE_ADMIN_PASSWORD.length<12)fail('Admin password is not configured.',503);
@@ -293,4 +293,5 @@ async function handle({path,method='GET',headers={},body={}}){
  return{status:result?._status||(method==='POST'&&path==='/orders'?201:200),headers:setCookie?{'Set-Cookie':setCookie}:{},body:result?._error?{error:result._error}:result};
 }
 module.exports={handle,quote,shipmentPayload,publicOrder};
+
 
