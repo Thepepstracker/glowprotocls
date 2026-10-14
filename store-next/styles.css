@@ -53,3 +53,9 @@ a[data-order-link]{display:inline-block;background:var(--gold);color:#181a20;bor
 .merch-emblem{min-height:250px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:50%;aspect-ratio:1;width:min(100%,330px);margin:auto;border:1px solid var(--line)}
 .merch-emblem img{width:64%;height:auto}nav a[aria-current=page]{color:var(--gold-dark);text-decoration:underline;text-underline-offset:6px}
 @media(max-width:740px){.storefront-content{padding:40px 20px}.collection-shortcuts{gap:10px;margin-bottom:36px}.collection-shortcuts a{padding:10px 14px}.collection .grid{grid-template-columns:1fr;gap:24px}.collection .card{padding:24px;min-height:0}.collection .product-image{height:240px}.collection-group{margin-bottom:50px}.section-heading h2{font-size:30px}.merch-feature{align-items:flex-start;flex-direction:column;padding:28px}.merch-page{padding:42px 20px 60px}.merch-coming{grid-template-columns:1fr;padding:28px;gap:28px}.merch-emblem{min-height:0;width:200px}.merch-coming h2{font-size:34px}}
+
+/* Short, readable descriptions for the beauty collection. */
+.collection .product-description{margin:0 0 16px;color:#514c43;font-size:15px;line-height:1.65}
+.collection .product-description p{margin:0 0 10px}
+.collection .product-description .product-ingredients{font-size:13px;color:#6b6254;margin-bottom:0}
+.collection .product-description strong{color:#40392e;font-weight:600}
