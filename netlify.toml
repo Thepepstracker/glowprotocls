@@ -266,6 +266,19 @@
   to = "/store-next/index.html"
   status = 200
 
+# Glow Merch uses a dedicated page, before affiliate storefront matching.
+[[redirects]]
+  from = "/store-next/merch"
+  to = "/store-next/merch.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/store-next/merch/"
+  to = "/store-next/merch.html"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/store-next/:affiliate"
   to = "/store-next/index.html"
