@@ -41,5 +41,13 @@ export default async (_request, context) => {
       productImageHelper
     );
 
+
+  // Seasonal accents are scoped to Glow domains and leave all other brands unchanged.
+  const glowHosts = new Set(["glowglps.com","www.glowglps.com","glowlabprotocols.com","www.glowlabprotocols.com","glps.shop","www.glps.shop"]);
+  if (glowHosts.has(new URL(_request.url).hostname) && !html.includes('id="glow-halloween-styles"')) {
+    html = html.replace(/<\/head>/i, '<link id="glow-halloween-styles" rel="stylesheet" href="/store-next/halloween.css"></head>');
+    html = html.replace(/<\/body>/i, "<div class=\"glow-season-corner\" aria-hidden=\"true\"><svg class=\"season-bat\" viewBox=\"0 0 100 65\" fill=\"currentColor\" focusable=\"false\" aria-hidden=\"true\"><path d=\"M0 13 16 25 23 0 39 23 46 20 48 11 52 20 59 23 76 0 84 25 100 13 87 46 72 36 62 49 50 65 38 49 27 36 13 46Z\"/></svg></div><div class=\"glow-season-footer\" aria-hidden=\"true\"><svg class=\"season-bat\" viewBox=\"0 0 100 65\" fill=\"currentColor\" focusable=\"false\" aria-hidden=\"true\"><path d=\"M0 13 16 25 23 0 39 23 46 20 48 11 52 20 59 23 76 0 84 25 100 13 87 46 72 36 62 49 50 65 38 49 27 36 13 46Z\"/></svg><svg viewBox=\"0 0 64 58\" fill=\"none\" focusable=\"false\" aria-hidden=\"true\"><path d=\"M31 13c0-7 3-10 8-11\" stroke=\"#9c7432\" stroke-width=\"5\" stroke-linecap=\"round\"/><path d=\"M33 14c14-8 27 2 27 18 0 17-12 25-28 23C14 57 4 48 4 33 4 17 18 7 33 14Z\" fill=\"#ede1c8\" stroke=\"#aa8040\" stroke-width=\"2\"/><ellipse cx=\"25\" cy=\"34\" rx=\"12\" ry=\"21\" stroke=\"#b89153\" stroke-width=\"2\"/><ellipse cx=\"39\" cy=\"34\" rx=\"12\" ry=\"21\" stroke=\"#b89153\" stroke-width=\"2\"/><path d=\"M32 14v41\" stroke=\"#b89153\" stroke-width=\"2\"/></svg><svg class=\"season-bat\" viewBox=\"0 0 100 65\" fill=\"currentColor\" focusable=\"false\" aria-hidden=\"true\"><path d=\"M0 13 16 25 23 0 39 23 46 20 48 11 52 20 59 23 76 0 84 25 100 13 87 46 72 36 62 49 50 65 38 49 27 36 13 46Z\"/></svg></div>" + '</body>');
+  }
+
   return new Response(html, response);
 };

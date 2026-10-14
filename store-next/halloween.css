@@ -1,0 +1,14 @@
+/* Halloween accents for Glow Lab. Decorative and never interactive. */
+.glow-season-footer{display:flex;justify-content:center;align-items:center;gap:16px;max-width:280px;margin:24px auto 8px;padding:12px;color:#9c7432;pointer-events:none;user-select:none}
+.glow-season-footer svg{width:38px;height:34px;overflow:visible}.glow-season-footer .season-bat{width:30px;height:22px;color:#242225;transform:rotate(-12deg)}
+.glow-season-corner{position:fixed;top:160px;right:14px;width:42px;height:34px;color:#242225;opacity:.7;pointer-events:none;user-select:none;z-index:1;transform:rotate(-16deg)}
+.glow-season-corner svg{display:block;width:100%;height:100%}
+body:has(.glow-season-footer) main h1::after{content:"";display:inline-block;width:38px;height:24px;margin-left:14px;vertical-align:middle;background:currentColor;opacity:.85;clip-path:polygon(0 18%,16% 36%,23% 2%,39% 34%,46% 30%,48% 17%,52% 30%,59% 34%,76% 2%,84% 36%,100% 18%,87% 69%,72% 54%,62% 74%,50% 100%,38% 74%,27% 54%,13% 69%);transform:rotate(-10deg)}
+body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-banner{content:url('/img/glow-halloween-hero-2026.webp')}
+body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-brand{top:42%}
+body:has(.glow-season-footer) .collection-shortcuts a:hover{border-color:#b88443}
+body:has(.glow-season-footer) .merch-coming,body:has(.glow-season-footer) .merch-feature{border-color:#d7bf92}
+body:has(#receipt,#checkout,#login,#staff-reset,#staff-setup,#customer-setup,.tabs) .glow-season-corner{display:none}
+body:has(#receipt,#checkout,#login,#staff-setup,#customer-setup,.tabs) main h1::after{display:none}
+@media(max-width:740px){.glow-season-corner{display:none}.glow-season-footer{margin-top:18px}body:has(.glow-season-footer) main h1::after{width:26px;height:18px;margin-left:10px}body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-brand{top:42%}}
+@media print{.glow-season-footer,.glow-season-corner{display:none!important}body:has(.glow-season-footer) main h1::after{display:none}body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-banner{content:normal}}
