@@ -15,6 +15,6 @@ body:has(#receipt,#checkout,#login,#staff-setup,#customer-setup,.tabs) main h1::
 /* The hat is anchored above the G, while the real logo stays intact. */
 body:has(.glow-season-footer) .brand{position:relative}
 body:has(.glow-season-footer) .brand::after{content:"";position:absolute;left:-4px;top:-10px;width:31px;height:27px;background:url('/img/glow-witch-hat.svg') center/contain no-repeat;transform:rotate(-18deg);pointer-events:none}
-body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-brand::before{content:"";position:absolute;left:14%;top:-11%;width:36%;aspect-ratio:1.2;background:url('/img/glow-witch-hat.svg') center/contain no-repeat;transform:rotate(-18deg);pointer-events:none}
-@media(max-width:740px){body:has(.glow-season-footer) .brand::after{width:25px;height:22px;left:-2px;top:-9px}body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-brand::before{top:-15%;left:13%;width:38%}}
+body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-brand::before{content:"";position:absolute;left:5%;top:-24%;width:36%;aspect-ratio:1.2;background:url('/img/glow-witch-hat.svg') center/contain no-repeat;transform:rotate(-18deg);pointer-events:none}
+@media(max-width:740px){body:has(.glow-season-footer) .brand::after{width:25px;height:22px;left:-2px;top:-9px}body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-brand::before{top:-28%;left:5%;width:38%}}
 @media print{body:has(.glow-season-footer) .brand::after,body:has(.glow-season-footer) .hero-brand::before{display:none!important}}
