@@ -25,3 +25,10 @@ body:has(.glow-season-footer) .collection .vial-photo-card:has(>img.product-imag
 @media(max-width:1000px) and (min-width:741px){body:has(.glow-season-footer) .collection .vial-photo-card{--season-photo-height:260px}}
 @media(max-width:740px){body:has(.glow-season-footer) .collection .vial-photo-card{--season-photo-height:240px;--season-photo-pad:24px}body:has(.glow-season-footer) .collection .vial-photo-card:has(>img.product-image)::after{left:10px;width:108px;height:82px;top:calc(var(--season-photo-pad) + var(--season-photo-height) - 82px)}}
 @media print{body:has(.glow-season-footer) .collection .vial-photo-card::after{display:none!important}}
+
+body:has(.glow-season-footer) .collection .vial-photo-card::after{display:none}
+body:has(.glow-season-footer) .vial-photo-frame{position:relative;width:fit-content;max-width:100%;margin:0 auto 12px}
+body:has(.glow-season-footer) .vial-photo-frame>.product-image{display:block;width:auto;max-width:100%;height:260px;object-fit:contain;margin:0}
+body:has(.glow-season-footer) .vial-photo-frame::after{content:"";position:absolute;left:-26px;bottom:-5px;width:108px;height:76px;background:url('/img/glow-pumpkin-corner.webp') left bottom/contain no-repeat;pointer-events:none;user-select:none}
+@media(max-width:740px){body:has(.glow-season-footer) .vial-photo-frame>.product-image{height:240px}body:has(.glow-season-footer) .vial-photo-frame::after{left:-18px;width:94px;height:67px}}
+@media print{body:has(.glow-season-footer) .vial-photo-frame::after{display:none!important}}
