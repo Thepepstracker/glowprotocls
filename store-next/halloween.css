@@ -12,9 +12,9 @@ body:has(#receipt,#checkout,#login,#staff-reset,#staff-setup,#customer-setup,.ta
 body:has(#receipt,#checkout,#login,#staff-setup,#customer-setup,.tabs) main h1::after{display:none}
 @media(max-width:740px){.glow-season-corner{display:none}.glow-season-footer{margin-top:18px}body:has(.glow-season-footer) main h1::after{width:26px;height:18px;margin-left:10px}body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-brand{top:42%}}
 @media print{.glow-season-footer,.glow-season-corner{display:none!important}body:has(.glow-season-footer) main h1::after{display:none}body:has(.glow-season-footer) .storefront-hero:not(.brand-hero) .hero-banner{content:normal}}
-/* Approved pumpkin garland frames the top and upper sides of the whole vial card. */
+/* Approved pumpkin garland frames the top and upper sides of the whole product card. */
 body:has(.glow-season-footer) .collection .vial-photo-card{position:relative;isolation:isolate;padding:70px 32px 32px;border:1px solid #e3c58e;border-radius:12px;background:#fff}
-body:has(.glow-season-footer) .collection .vial-photo-card::before{content:"";position:absolute;inset:0 0 auto;height:70%;background:url('/img/glow-real-pumpkin-garland-2026.webp') center top/100% 100% no-repeat;pointer-events:none;user-select:none;z-index:1;border-radius:inherit}
+body:has(.glow-season-footer) .collection .vial-photo-card::before{content:"";position:absolute;inset:0 0 auto;height:70%;max-height:350px;background:url('/img/glow-real-pumpkin-garland-2026.webp') center top/100% 100% no-repeat;pointer-events:none;user-select:none;z-index:1;border-radius:inherit}
 body:has(.glow-season-footer) .vial-photo-frame{position:relative;width:fit-content;max-width:76%;margin:0 auto 12px}
 body:has(.glow-season-footer) .vial-photo-frame>.product-image{display:block;width:auto;max-width:100%;height:260px;object-fit:contain;margin:0}
 @media(max-width:740px){body:has(.glow-season-footer) .collection .vial-photo-card{padding:56px 24px 24px}body:has(.glow-season-footer) .vial-photo-frame>.product-image{height:240px}}
