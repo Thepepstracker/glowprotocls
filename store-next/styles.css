@@ -28,3 +28,6 @@ main:has(.storefront-hero){max-width:none;padding:0}.storefront-hero{position:re
 
 /* shipping status for customers */
 .ship-track{border:1px solid var(--line);background:var(--cream);border-radius:10px;padding:20px 22px;margin:0 0 22px}.ship-track h2{margin-top:0}.ship-steps{list-style:none;padding:0;margin:14px 0;display:flex;flex-wrap:wrap;gap:8px}.ship-steps li{flex:1 1 140px;padding:10px 12px;border-radius:7px;background:#fff;border:1px solid var(--line);color:var(--muted);font-size:15px}.ship-steps li.done{background:#e4f2e9;border-color:#bfe0cb;color:#23553a;font-weight:600}.ship-steps li span{margin-right:6px}.track-button{display:inline-block;background:#1b1b1b;color:#fff;text-decoration:none;padding:13px 20px;border-radius:7px;font-weight:bold;min-height:44px;box-sizing:border-box}footer nav{flex-wrap:wrap;row-gap:6px}
+
+/* Order detail links navigate to a dedicated management page. */
+a[data-order-link]{display:inline-block;background:var(--gold);color:#181a20;border-radius:7px;padding:11px 17px;font-weight:bold;text-decoration:none}a[data-order-link]:hover{filter:brightness(1.1)}
