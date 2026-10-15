@@ -3,7 +3,7 @@ const crypto=require('node:crypto');
 let processor;
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
 function configureImageProcessor(factory){processor=factory}
-function eligible(p){return !!p&&/^(merch-|cosmetic-|protocol-|cu-hair-|glow-eyes|rose-recovery-)/i.test(p.sku||'')&&!/eloralintide|ly3841136/i.test((p.name||'')+' '+(p.sku||''))}
+function eligible(p){return !!p?.sku&&!/information-|eloralintide|ly3841136/i.test((p.sku||'')+' '+(p.name||''))}
 async function encodePhoto(photo){
  const formats={'image/jpeg':'jpeg','image/png':'png','image/webp':'webp'};
  if(!photo||!formats[photo.mime]||typeof photo.file!=='string'||photo.file.length>4200000||!/^[A-Za-z0-9+/]+={0,2}$/.test(photo.file))fail('Choose a still JPG, PNG, or WebP photo, up to 3 MB.');
@@ -21,7 +21,7 @@ const imageUrl=id=>'/.netlify/functions/store-next?route='+encodeURIComponent('/
 async function applyPhotoUpdate(s,product,update){
  if(update===undefined)return product;
  if(update?.expected_revision!==undefined&&update.expected_revision!==(product.photo_revision||0))fail('Photos changed since you opened this product. Refresh and try again.',409);
- if(!eligible(product))fail('Photo uploads are available for apparel and cosmetic listings.');
+ if(!eligible(product))fail('Photo uploads are unavailable for reference-only items.');
  if(!update||typeof update!=='object'||Array.isArray(update))fail('Invalid photo update.');
  const existing=[...new Set([product.image,...(product.additional_images||[])].filter(Boolean))];
  const keep=update.keep===undefined?[...(product.additional_images||[])]:update.keep;
