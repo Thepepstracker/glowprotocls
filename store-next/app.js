@@ -56,7 +56,7 @@ const merchChoices={};
 function merchProductCard(key){
  const variants=state.catalog.products.filter(p=>p.merch_design===key);if(!variants.length)return '';
  const pick=merchChoices[key]||{},selected=variants.find(p=>p.color===pick.color&&p.size===pick.size);
- const shown=selected||variants.find(p=>p.color===pick.color)||variants[0];
+ const shown=selected||variants.find(p=>p.color===pick.color)||variants.find(p=>p.color===(key==='pep-ho-for-life'?'White':'Purple'))||variants[0];
  const name=key==='glowlab-og'?'Glowlab OG Club Tee':'Pep Ho for Life Tee';
  const words=key==='glowlab-og'?'I am part of the Glowlab OG Club · Educate · Inspire · Empower':'Pep Ho for Life · GLOWGLPS.COM';
  const photoNote='Model shown in '+shown.model_color+'.'+(pick.color&&pick.color!==shown.model_color?' Selected shirt color: '+pick.color+'.':'');
