@@ -10,6 +10,7 @@ const accounts=require('./customer-accounts.cjs');
 const adjustments=require('./order-adjustments.cjs');
 const emails=require('./store-email.cjs');
 const staff=require('./staff-accounts.cjs');
+const {ensureMerchCatalog}=require('./merch-catalog.cjs');
 const {withProductPhotos}=require('./product-photos.cjs');const brands=require('./brands.cjs');
 const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
 const clock=()=>Math.floor(Date.now()/1000),hash=s=>crypto.createHash('sha256').update(s).digest('hex');
@@ -123,6 +124,7 @@ async function handle({path,method='GET',headers={},body={}}){
   const settings=await s.get('settings','main');if(!settings)fail('Store data has not been initialized.',503);if(settings.demo===false&&settings.payment_links?.zelle==='9742418176'&&!await s.get('migrations','zelle-recipient-20261007')){settings.payment_links.zelle='943-241-8176';settings.zelle_recipient_name='Heather Zader';await s.put('settings','main',settings);await s.put('migrations','zelle-recipient-20261007',{applied:clock()});await audit(s,'zelle_recipient_corrected');}if(settings.demo===false&&String(settings.payment_links?.zelle||'').replace(/\D/g,'')==='9432418176'&&!settings.zelle_recipient_name){settings.zelle_recipient_name='Heather Zader';await s.put('settings','main',settings);}await expire(s);
   if(!await s.get('migrations','nad-promo-excluded-20261014')){const nad=await s.get('products',7);if(nad&&nad.sku==='nad-500-mg'&&brands.productBrand(nad)==='glow'){nad.promo_excluded=true;await s.put('products',nad.id,nad);await s.put('migrations','nad-promo-excluded-20261014',{applied:clock(),product_id:nad.id});await audit(s,'nad_promo_exclusion_enabled');}}
   if(reqBrand.id==='zader')await brands.ensureZaderCatalog(s,validSlug);
+  await ensureMerchCatalog(s);
   if(path==='/catalog'&&method==='GET')return{products:(await s.list('products')).filter(p=>p.active&&brands.productBrand(p)===reqBrand.id).map(withProductPhotos).map(p=>brands.publicProduct(p,settings.demo===false)),brand:brands.publicBrand(reqBrand),settings:{...settings,email_enabled:emails.configuration().ready,...(reqBrand.waitlist?{checkout_enabled:false,waitlist:true}:{})}};
   const referral=path.match(/^\/referrals\/([^/]+)$/);
   if(referral&&method==='GET'){let code;try{code=decodeURIComponent(referral[1])}catch{fail('Affiliate referral is unavailable.',404)}const a=await resolveReferral(s,code);if(!a)fail('Affiliate referral is unavailable.',404);return{slug:a.slug,name:a.name,bio:a.bio,photo_url:await s.get('affiliate_photos',a.slug)?photoUrl(a.slug):null}}
@@ -294,6 +296,7 @@ async function handle({path,method='GET',headers={},body={}}){
  return{status:result?._status||(method==='POST'&&path==='/orders'?201:200),headers:setCookie?{'Set-Cookie':setCookie}:{},body:result?._error?{error:result._error}:result};
 }
 module.exports={handle,quote,shipmentPayload,publicOrder};
+
 
 
 
