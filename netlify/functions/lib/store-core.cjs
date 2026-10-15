@@ -11,6 +11,7 @@ const adjustments=require('./order-adjustments.cjs');
 const emails=require('./store-email.cjs');
 const staff=require('./staff-accounts.cjs');
 const catalogPhotos=require('./catalog-photo-upload.cjs');
+const businessReports=require('./business-reports.cjs');
 const {ensureMerchCatalog}=require('./merch-catalog.cjs');
 const {withProductPhotos}=require('./product-photos.cjs');const brands=require('./brands.cjs');
 const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
@@ -190,6 +191,9 @@ async function handle({path,method='GET',headers={},body={}}){
   if(path.startsWith('/admin/')){
    const sessionId=await session(s,h);
    const owner=!(await s.get('sessions',sessionId)).staff_id;
+   if(path==='/admin/reports'&&method==='POST')return businessReports.build(s,body);
+   if(path==='/admin/reports/cost'&&method==='POST'){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const result=await businessReports.saveCost(s,body,actor);await audit(s,'report_product_cost_saved',result.id);return result}
+   if(path==='/admin/reports/expense'&&method==='POST'){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const result=await businessReports.saveExpense(s,body,actor);await audit(s,body.voided?'report_expense_voided':'report_expense_recorded',result.id);return result}
    if(path==='/admin/checkout-context'&&method==='GET')return{can_order_for_customer:true};
    if(path==='/admin/staff/invite'&&method==='POST'){if(!owner)fail('Only the owner can manage staff access.',403);const r=await staff.invite(s,body);emailJob=r.job;await audit(s,'staff_invited',r.staff.email);return{ok:true,staff:r.staff}}
    if(path==='/admin/staff/revoke'&&method==='POST'){if(!owner)fail('Only the owner can manage staff access.',403);const a=await s.get('staff',text(body.id||'',64));if(!a)fail('Staff member not found.',404);a.active=false;a.auth_version++;delete a.setup;await s.put('staff',a.id,a);await audit(s,'staff_access_revoked',a.email);return{ok:true}}
@@ -310,6 +314,7 @@ async function handle({path,method='GET',headers={},body={}}){
  return{status:result?._status||(method==='POST'&&path==='/orders'?201:200),headers:setCookie?{'Set-Cookie':setCookie}:{},body:result?._error?{error:result._error}:result};
 }
 module.exports={handle,quote,shipmentPayload,publicOrder};
+
 
 
 
