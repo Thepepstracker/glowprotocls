@@ -17,3 +17,14 @@ test('Saving photos does not replenish units sold while the editor was open',asy
 test('Staff can create a new cosmetic listing with its featured photo in one save',async()=>{const r=await admin('/admin/product',{...base,sku:'cosmetic-new-photo',photo_update:{hero:photo,add:[],keep:[]}});const p=await transaction(s=>s.get('products',r.body.id));assert.equal(p.category,'cosmetic');assert.match(p.image,/product-images/);});
 test('Shirt design photos update all its existing variants without altering individual stock',async()=>{const ps=(await admin('/admin/data')).body.products.filter(p=>p.merch_design==='glowlab-og');const p=ps[0],other=ps[1];await transaction(async s=>{const row=await s.get('products',other.id);row.stock=7;await s.put('products',other.id,row)});await admin('/admin/product',{...p,expected_stock:p.stock,photo_update:{hero:photo,add:[photo],keep:[],apply_design:true}});const fresh=(await admin('/admin/data')).body.products;assert.equal(fresh.find(x=>x.id===other.id).stock,7);assert.equal(fresh.find(x=>x.id===other.id).image,fresh.find(x=>x.id===p.id).image);assert.equal(fresh.find(x=>x.id===other.id).additional_images.length,1);});
 test('A saved gallery photo can become featured, and removed images stay off the listing',async()=>{const p=await transaction(s=>s.get('products',1));const chosen=p.additional_images[0];await admin('/admin/product',{...p,promo_excluded:Number(!!p.promo_excluded),photo_update:{expected_revision:p.photo_revision,featured_existing:chosen,keep:[]}});const updated=await transaction(s=>s.get('products',1));assert.equal(updated.image,chosen);assert.deepEqual(updated.additional_images,[]);});
+
+test('every real catalog product can receive photo uploads; only the storefront reference card is excluded',()=>{
+ const {eligible}=require('../../netlify/functions/lib/catalog-photo-upload.cjs');
+ for(const p of [{sku:'bpc-157-10mg',name:'BPC-157'},{sku:'eloralintide-5mg',name:'Eloralintide 5 mg'},{sku:'LY3841136',name:'LY3841136'},{sku:'bundle-737-metabolic',name:'Bundle'},{sku:'merch-tee-black-m',name:'Tee'},{sku:'cosmetic-serum',name:'Serum'},{sku:'zdr-reta-20',name:'Zader',brand:'zader'},{sku:'',name:'No SKU yet'}])assert.equal(eligible(p),true,p.sku);
+ assert.equal(eligible({sku:'information-eloralintide'}),false);
+});
+test('uploaded gallery photos are kept when a built-in fallback hero is shown',()=>{
+ const {withProductPhotos}=require('../../netlify/functions/lib/product-photos.cjs');
+ assert.deepEqual(withProductPhotos({sku:'bundle-751-x',image:'',additional_images:['/u1']}).additional_images,['/u1']);
+ assert.equal(withProductPhotos({sku:'bundle-751-x',image:'/mine'}).image,'/mine');
+});
