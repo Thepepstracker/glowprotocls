@@ -89,3 +89,5 @@ a[data-order-link]{display:inline-block;background:var(--gold);color:#181a20;bor
 .poe-october-sale .poe-sale-terms{font-size:11px;color:#e4dbc9;margin:14px 0 0;letter-spacing:.04em}
 @media(max-width:700px){.poe-october-sale{min-height:290px;padding:26px 16px;background-position:22% center}.poe-october-sale::before{background:#10101499}.poe-october-sale h2{font-size:66px}.poe-sale-code code{font-size:21px}}
 @media print{.poe-october-sale{display:none!important}}
+
+.collection .information-label{display:inline-block;align-self:flex-start;margin:6px 0 10px;padding:5px 10px;border:1px solid #ded7c9;border-radius:4px;color:#5d5548;font-size:12px;font-weight:600}.collection .informational-image-card .muted{font-size:14px;line-height:1.6}
