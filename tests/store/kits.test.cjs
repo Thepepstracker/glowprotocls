@@ -38,3 +38,7 @@ test('management order edit counts kits as 10 vials each',async()=>{const o=awai
  await admin('/admin/status',{id:r.id,status:'canceled'});assert.deepEqual(await group(),[23,23])});
 
 test('units cannot change while the kit has reserved orders',async()=>{const o=await order([{id:kit.id,quantity:1}]);await assert.rejects(admin('/admin/product',{id:kit.id,name:kit.name,sku:kit.sku,price:kit.price,stock:13,expected_stock:13,stock_pool:'kit-test',active:1,promo_excluded:0,units:5}),/units/);await admin('/admin/status',{id:o.order.id,status:'canceled'});assert.deepEqual(await group(),[23,23])});
+
+test('a new kit can join a stock group that has reserved orders, and never resets its count',async()=>{const o=await order([{id:single.id,quantity:2}]);assert.deepEqual(await group(),[21,21]);
+ await admin('/admin/product',{name:'Test Vial · 10 mg · Kit of 10 (b)',sku:'kit-test-10mg-kit-b',price:37999,stock:999,stock_pool:'kit-test',active:1,units:10});
+ assert.deepEqual(await group(),[21,21,21]);await admin('/admin/status',{id:o.order.id,status:'canceled'});assert.deepEqual(await group(),[23,23,23])});
