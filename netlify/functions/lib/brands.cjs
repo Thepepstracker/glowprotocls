@@ -4,7 +4,7 @@
 // Management area. Rows without a brand field belong to Glow, so every existing record keeps working.
 const BRANDS={
  glow:{id:'glow',name:'Glow Lab',legal_name:'Glow Lab Protocols',hosts:['glowglps.com','www.glowglps.com','glowlabprotocols.com','www.glowlabprotocols.com'],dev_hosts:[],origin:'',order_prefix:'GLP',rewards:true,affiliates:true,waitlist:false,accent:'#c9a24b',email_from_env:''},
- zader:{id:'zader',name:'Zader Health',legal_name:'Zader Health',hosts:['zaderhealth.com','www.zaderhealth.com'],dev_hosts:['zader.localhost'],origin:'https://zaderhealth.com',order_prefix:'ZDR',rewards:false,affiliates:false,waitlist:false,accent:'#03b9d5',email_from_env:'STORE_EMAIL_FROM_ZADER'},
+ zader:{id:'zader',name:'Zader Health',legal_name:'Zader Health',hosts:['zaderhealth.com','www.zaderhealth.com'],dev_hosts:['zader.localhost'],origin:'https://zaderhealth.com',order_prefix:'ZDR',rewards:true,affiliates:false,waitlist:false,accent:'#03b9d5',email_from_env:'STORE_EMAIL_FROM_ZADER'},
  peppuppy:{id:'peppuppy',name:'Pep Puppy',legal_name:'Pep Puppy',hosts:['peppuppy.com','www.peppuppy.com'],dev_hosts:['peppuppy.localhost'],origin:'https://peppuppy.com',order_prefix:'PEP',rewards:false,affiliates:false,waitlist:true,accent:'#5d399d',email_from_env:'STORE_EMAIL_FROM_PEPPUPPY'}
 };
 const ids=Object.keys(BRANDS);
@@ -23,7 +23,9 @@ function publicBrand(b){return{id:b.id,name:b.name,legal_name:b.legal_name,rewar
 // Customers never see exact counts. The server still enforces real stock at checkout.
 const PUBLIC_STOCK=99;
 // Live stores hide exact counts; preview/test mode keeps them so staff can check reservations.
-function publicProduct(p,hide=true){return hide?{...p,stock:p.stock>0?PUBLIC_STOCK:0,in_stock:p.stock>0}:{...p,in_stock:p.stock>0}}
+const units=p=>Math.max(1,Number.isSafeInteger(p&&p.units)?p.units:1);
+// A kit's stock is how many whole kits its stock group can fill (e.g. 23 vials = 2 kits of 10).
+function publicProduct(p,hide=true){const n=Math.floor((p.stock||0)/units(p));return hide?{...p,stock:n>0?PUBLIC_STOCK:0,in_stock:n>0}:{...p,stock:n,in_stock:n>0}}
 function emailFrom(b,fallback){return (b.email_from_env&&process.env[b.email_from_env])||fallback}
 
 // Zader Health catalog. Each row shares one stock count with its Glow counterpart (same vial),
@@ -103,4 +105,4 @@ async function ensureZaderCatalog(s,validSlug){
  await ensureZaderPhotos(s);
  return true;
 }
-module.exports={BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ZADER_PHOTOS,ensureZaderCatalog,ensureZaderPhotos,hostOf};
+module.exports={BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,units,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ZADER_PHOTOS,ensureZaderCatalog,ensureZaderPhotos,hostOf};

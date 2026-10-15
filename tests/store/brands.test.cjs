@@ -25,7 +25,7 @@ test('Glow catalog is unchanged until Zader is visited; Zader catalog is created
  const glowBefore=(await call('/catalog',undefined,GLOW)).body;
  assert.equal(glowBefore.brand.id,'glow');assert.ok(glowBefore.products.every(p=>brands.productBrand(p)==='glow'));
  const z=(await call('/catalog',undefined,ZADER)).body;
- assert.equal(z.brand.name,'Zader Health');assert.equal(z.brand.rewards,false);
+ assert.equal(z.brand.name,'Zader Health');assert.equal(z.brand.rewards,true,'Zader has the same accounts and points as Glow');
  assert.ok(z.products.length>=30);assert.ok(z.products.every(p=>p.brand==='zader'&&p.sku.startsWith('zdr-')));
  const again=(await call('/catalog',undefined,ZADER)).body;assert.equal(again.products.length,z.products.length,'migration is idempotent');
  const glowAfter=(await call('/catalog',undefined,GLOW)).body;assert.equal(glowAfter.products.length,glowBefore.products.length,'Zader rows never show on Glow');
@@ -40,16 +40,16 @@ test('carts cannot mix brands; coupons belong to one brand',async()=>{
  await assert.rejects(call('/quote',{items:[{id:gp.id,quantity:1}]},ZADER),/unavailable/);
  await assert.rejects(call('/quote',{items:[{id:zp.id,quantity:1}],coupon:'DEMO20'},ZADER),/Coupon/);
  await admin('/admin/coupon',{code:'ZADER10',kind:'percent',value:10,brand:'zader'});
- const q=(await call('/quote',{items:[{id:zp.id,quantity:1}],coupon:'ZADER10'},ZADER)).body;assert.equal(q.coupon_discount,699);assert.equal(q.brand,'zader');assert.equal(q.points_to_earn,0);
+ const q=(await call('/quote',{items:[{id:zp.id,quantity:1}],coupon:'ZADER10'},ZADER)).body;assert.equal(q.coupon_discount,699);assert.equal(q.brand,'zader');assert.equal(q.points_to_earn,Math.floor((q.subtotal-q.discount)/100),'1 point per whole $1 after discounts, same as Glow');
  await assert.rejects(call('/quote',{items:[{id:gp.id,quantity:1}],coupon:'ZADER10'},GLOW),/Coupon/);
  await assert.rejects(call('/quote',{items:[{id:zp.id,quantity:1}],affiliate:'sarah'},ZADER),/Affiliate/);
  await assert.rejects(admin('/admin/coupon',{code:'BAD',kind:'percent',value:10,brand:'nope'}),/brand/);
 });
 
-test('a Zader order uses ZDR-, takes stock from the shared count, earns no Glow rewards',async()=>{
+test('a Zader order uses ZDR-, takes stock from the shared count, earns points like Glow',async()=>{
  const d=(await admin('/admin/data')).body;const zp=d.products.find(p=>p.sku==='zdr-nad-500-mg'),gp=d.products.find(p=>p.sku==='nad-500-mg');const before=gp.stock;
  const r=(await call('/orders',orderBody([{id:zp.id,quantity:2}]),ZADER)).body;
- assert.match(r.order.id,/^ZDR-[0-9A-F]{10}$/);assert.equal(r.order.brand,'zader');assert.equal(r.order.points_to_earn,0);
+ assert.match(r.order.id,/^ZDR-[0-9A-F]{10}$/);assert.equal(r.order.brand,'zader');assert.ok(r.order.points_to_earn>0,'Zader orders earn points like Glow');
  const after=(await admin('/admin/data')).body;
  assert.equal(after.products.find(p=>p.id===gp.id).stock,before-2,'Glow count drops when Zader sells');
  assert.equal(after.products.find(p=>p.id===zp.id).stock,before-2);

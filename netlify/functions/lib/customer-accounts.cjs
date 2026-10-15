@@ -1,6 +1,6 @@
 'use strict';
 const crypto=require('node:crypto'),{promisify}=require('node:util'),scrypt=promisify(crypto.scrypt),{transaction}=require('./store-db.cjs');
-const emails=require('./store-email.cjs');
+const emails=require('./store-email.cjs');const brands=require('./brands.cjs');
 const now=()=>Math.floor(Date.now()/1000),hash=v=>crypto.createHash('sha256').update(String(v)).digest('hex');
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
 function email(v){if(typeof v!=='string'||v.length>150||!/^\S+@[^\s@]+\.[^\s@]+$/.test(v.trim())||v.trim().split('@').length!==2)fail('Enter a valid email address.');return v.trim().toLowerCase()}
@@ -28,7 +28,7 @@ async function authRoute(path,body,h,method){
   const job=await transaction(async s=>{
    const id=hash(address);let a=await s.get('customers',id);if(!a&&register){a={id,email:address,name,created:now(),verified:false,auth_version:0,password:null};await s.put('customers',id,a)}
    const held=await s.get('rewards_imports',id);if(!emails.configuration().ready||!a||held?.held||address.endsWith('@gmail.coml')||(register&&a.verified)||(a.last_setup_email||0)>now()-300)return null;
-   const link=await issueSetup(s,id);a=await s.get('customers',id);a.last_setup_email=now();await s.put('customers',id,a);return emails.queueSetup(s,link,a.verified);
+   const link=await issueSetup(s,id);a=await s.get('customers',id);a.last_setup_email=now();await s.put('customers',id,a);return emails.queueSetup(s,link,a.verified,brands.fromHeaders(h).id);
   });
   await emails.safeDispatch(job);
   return{status:200,headers:{},body:{ok:true,message:emails.configuration().ready?'If this address is eligible, a private setup or reset link will arrive shortly. Check your inbox and spam folder.':'Your request has been received. Contact the store for a private setup/reset link sent to your email. Automatic email delivery is not enabled yet.'}};
