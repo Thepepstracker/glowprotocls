@@ -3,7 +3,7 @@ const crypto=require('node:crypto');
 let processor;
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
 function configureImageProcessor(factory){processor=factory}
-function eligible(p){return !!p?.sku&&!/^information-/i.test(p.sku)}
+function eligible(p){return !!p&&!/^information-/i.test(p.sku||'')}
 async function encodePhoto(photo){
  const formats={'image/jpeg':'jpeg','image/png':'png','image/webp':'webp'};
  if(!photo||!formats[photo.mime]||typeof photo.file!=='string'||photo.file.length>4200000||!/^[A-Za-z0-9+/]+={0,2}$/.test(photo.file))fail('Choose a still JPG, PNG, or WebP photo, up to 3 MB.');

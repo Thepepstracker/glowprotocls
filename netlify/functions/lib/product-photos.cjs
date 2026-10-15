@@ -9,7 +9,9 @@ const bundles={
 function withProductPhotos(product){
  const key=String(product.bundle||((product.sku||'').match(/^bundle-(\d+)-/)||[])[1]||'');
  const images=product.sku==='glp-2t-60-mg'?['/product-images/glp-2t-60mg.webp']:bundles[key];
+ // Built-in photos are only a fallback: anything uploaded in Management always wins.
  if(!images||product.image&&!product.image.includes('product-placeholder.svg'))return product;
- return {...product,image:images[0],additional_images:images.slice(1)};
+ const uploaded=product.additional_images||[];
+ return {...product,image:images[0],additional_images:uploaded.length?uploaded:images.slice(1)};
 }
 module.exports={withProductPhotos};
