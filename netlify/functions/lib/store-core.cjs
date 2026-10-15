@@ -10,6 +10,7 @@ const accounts=require('./customer-accounts.cjs');
 const adjustments=require('./order-adjustments.cjs');
 const emails=require('./store-email.cjs');
 const staff=require('./staff-accounts.cjs');
+const catalogPhotos=require('./catalog-photo-upload.cjs');
 const {ensureMerchCatalog}=require('./merch-catalog.cjs');
 const {withProductPhotos}=require('./product-photos.cjs');const brands=require('./brands.cjs');
 const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
@@ -73,6 +74,8 @@ async function handle({path,method='GET',headers={},body={}}){
   if(h['sec-fetch-site']==='cross-site')fail('Cross-site request denied.',403);
   if(!body||typeof body!=='object'||Array.isArray(body))fail('Invalid request.');
  }
+ const catalogImage=path.match(/^\/product-images\/([a-f0-9]{32})$/);
+ if(catalogImage&&method==='GET'){const image=await transaction(s=>s.get('catalog_images',catalogImage[1]));if(!image)fail('Image not found.',404);return{status:200,headers:{'Cache-Control':'public, max-age=31536000, immutable'},body:{_binary:image.data,_type:image.mime}}}
  const staffAuth=await staff.authRoute(path,body,h,method);if(staffAuth)return staffAuth;
  const accountAuth=await accounts.authRoute(path,body,h,method);if(accountAuth)return accountAuth;
  if(path==='/admin/email/retry'&&method==='POST'){
@@ -255,7 +258,15 @@ async function handle({path,method='GET',headers={},body={}}){
     const all=await s.list('products'),id=body.id?int(body.id,1):Math.max(0,...all.map(p=>p.id))+1;const old=body.id?await s.get('products',id):{};if(!old)fail('Product not found.',404);
     const stockPool=text(body.stock_pool??old.stock_pool??'',60,false);if(stockPool&&!validSlug(stockPool))fail('Use a lowercase stock group name with letters, numbers and hyphens.');
     const affectedIds=new Set([id,...all.filter(x=>x.stock_pool&&[old.stock_pool,stockPool].includes(x.stock_pool)).map(x=>x.id)]);if((old.stock_pool||'')!==stockPool&&(await s.list('orders')).some(o=>['order_received','awaiting_payment','payment_submitted'].includes(o.status)&&o.items.some(i=>affectedIds.has(i.id))))fail('Finish or cancel the affected products’ reserved orders before changing the stock group.',409);
-    const p={...old,id,name:text(body.name||'',150),sku:text(body.sku||'',60),price:int(body.price),stock:int(body.stock),stock_pool:stockPool,active:int(body.active??1,0,1),promo_excluded:int(body.promo_excluded??Number(!!old.promo_excluded),0,1)===1,brand:brands.validId(body.brand??old.brand??'glow')};if(all.some(x=>x.id!==id&&x.sku.toLowerCase()===p.sku.toLowerCase()))fail('That SKU already exists.',409);await setStock(s,p,p.stock);await audit(s,'product_saved');return{ok:true};
+    if(body.expected_stock!==undefined&&body.id&&body.stock!==body.expected_stock&&old.stock!==body.expected_stock)fail('Inventory changed while you were editing. Refresh before changing the quantity.',409);
+    const p={...old,id,name:text(body.name||'',150),sku:text(body.sku||'',60),price:int(body.price),stock:body.id&&body.expected_stock!==undefined&&body.stock===body.expected_stock?old.stock:int(body.stock),stock_pool:stockPool,active:int(body.active??1,0,1),promo_excluded:int(body.promo_excluded??Number(!!old.promo_excluded),0,1)===1,brand:brands.validId(body.brand??old.brand??'glow')};if(all.some(x=>x.id!==id&&x.sku.toLowerCase()===p.sku.toLowerCase()))fail('That SKU already exists.',409);
+    if(/^merch-/i.test(p.sku))p.category='merch';else if(/^cosmetic-/i.test(p.sku))p.category='cosmetic';
+    const saved=await catalogPhotos.applyPhotoUpdate(s,p,body.photo_update);
+    const group=body.photo_update?.apply_design===true&&p.merch_design?all.filter(x=>x.merch_design===p.merch_design&&x.brand===p.brand&&x.id!==p.id):[];
+    if(body.photo_update?.apply_design===true&&!p.merch_design)fail('Choose an existing shirt design before applying photos to all variants.');
+    await setStock(s,saved,saved.stock);
+    for(const member of group){const current=await s.get('products',member.id);if(!catalogPhotos.eligible(current))continue;await s.put('products',member.id,{...current,image:saved.image,additional_images:saved.additional_images,...(saved.model_color===''?{model_color:''}:{}),photo_revision:(member.photo_revision||0)+1})}
+    await audit(s,body.photo_update?'product_photos_saved':'product_saved');return{ok:true,id};
    }
    if(path==='/admin/coupon'&&method==='POST'){
     const code=text(body.code||'',40).toUpperCase(),kind=body.kind;if(!['fixed','percent'].includes(kind))fail('Invalid discount type.');const old=await s.get('coupons',code),owner=text(body.affiliate??old?.affiliate??'',60,false).toLowerCase(),active=int(body.active??1,0,1);if(owner){const a=validSlug(owner)?await s.get('affiliates',owner):null;if(!a||!a.goaffpro_id||(active&&!a.active))fail('Choose an active affiliate connected to GoAffPro.');}const c={code,kind,brand:brands.validId(body.brand??old?.brand??'glow'),affiliate:owner||null,value:int(body.value,1,kind==='percent'?100:1000000),minimum:int(body.minimum??0),max_uses:int(body.max_uses??100,1),used:old?.used||0,expires:int(body.expires??0,0,9999999999),active:int(body.active??1,0,1)};await s.put('coupons',code,c);await audit(s,'coupon_saved');return{ok:true};
@@ -296,6 +307,7 @@ async function handle({path,method='GET',headers={},body={}}){
  return{status:result?._status||(method==='POST'&&path==='/orders'?201:200),headers:setCookie?{'Set-Cookie':setCookie}:{},body:result?._error?{error:result._error}:result};
 }
 module.exports={handle,quote,shipmentPayload,publicOrder};
+
 
 
 

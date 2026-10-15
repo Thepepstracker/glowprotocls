@@ -4,10 +4,12 @@ import {getDatabase} from '@netlify/database';
 import sharp from 'sharp';
 import photos from './lib/affiliate-photos.cjs';
 import receipts from './lib/payment-receipts.cjs';
+import catalogPhotos from './lib/catalog-photo-upload.cjs';
 
 database.configureHostedDatabase(getDatabase);
 photos.configureImageProcessor(sharp);
 receipts.configureImageProcessor(sharp);
+catalogPhotos.configureImageProcessor(sharp);
 
 // The modern runtime supplies Netlify.env, including the branch database URL.
 export default async function store(request) {
@@ -23,3 +25,4 @@ export default async function store(request) {
   status:result.statusCode,headers:result.headers
  });
 }
+

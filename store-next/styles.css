@@ -91,3 +91,10 @@ a[data-order-link]{display:inline-block;background:var(--gold);color:#181a20;bor
 @media print{.poe-october-sale{display:none!important}}
 
 .collection .information-label{display:inline-block;align-self:flex-start;margin:6px 0 10px;padding:5px 10px;border:1px solid #ded7c9;border-radius:4px;color:#5d5548;font-size:12px;font-weight:600}.collection .informational-image-card .muted{font-size:14px;line-height:1.6}
+
+
+/* Self-service apparel and cosmetic photo editor. */
+.product-photo-editor{min-width:0;margin:24px 0;padding:20px;border:1px solid var(--line);border-radius:8px;background:var(--cream)}
+.product-photo-editor legend{font-family:var(--serif);font-size:25px;font-weight:600;padding:0 8px}.product-photo-editor input[type=file]{background:#fff;padding:12px;max-width:100%;font-size:13px}.product-photo-editor input[type=file]::file-selector-button{font:inherit;border:1px solid #c9b885;padding:9px 12px;background:#fffaf0;color:#403721;cursor:pointer;margin-right:12px;border-radius:3px}
+.product-photo-preview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}.product-photo-preview figure{margin:0;padding:10px;background:#fff;border:1px solid var(--line);border-radius:6px;min-width:0}.product-photo-preview img{width:100%;height:150px;object-fit:contain}.product-photo-preview figcaption{font-size:12px;color:var(--muted);margin:8px 0}.product-photo-preview button{min-height:36px;padding:6px 9px;font-size:12px}.product-photo-editor #apply-shirt-photos{display:flex;align-items:start;gap:10px}.product-photo-editor #apply-shirt-photos[hidden]{display:none}.product-photo-editor input[type=checkbox]{width:auto;margin-top:5px}
+@media(max-width:480px){.product-photo-editor{padding:14px}.product-photo-preview{grid-template-columns:1fr 1fr;gap:8px}}
