@@ -78,3 +78,14 @@ a[data-order-link]{display:inline-block;background:var(--gold);color:#181a20;bor
 @media(max-width:1000px){.merch-product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.merch-product-grid{grid-template-columns:1fr}.merch-product-grid .merch-photos{grid-template-columns:1.1fr 1fr}.merch-product-grid .merch-photos img{height:300px}.merch-product-grid .merch-photos img.merch-design{height:260px}}
 @media(max-width:420px){.merch-product-grid .merch-photos img{height:240px}.merch-product-grid .merch-photos img.merch-design{height:210px}}
+
+/* Raven-and-moonlight October announcement, with accessible live text. */
+.poe-october-sale{position:relative;isolation:isolate;min-height:300px;display:grid;place-items:center;overflow:hidden;background:#141315 url('/img/glow-poe-october-2026.webp') center top/cover no-repeat;color:#fff5e2;text-align:center;border-block:1px solid #a17e4266;padding:30px 22px}
+.poe-october-sale::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#11101405 12%,#111014a6 35%,#111014c9 50%,#11101485 68%,#1110140d);z-index:-1;pointer-events:none}
+.poe-sale-copy{max-width:560px;text-shadow:0 2px 15px #000b}.poe-october-sale .poe-sale-eyebrow{margin:0 0 4px;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:#e4c58f}
+.poe-october-sale h2{font-family:var(--serif);font-size:clamp(60px,6vw,86px);font-weight:500;line-height:1;margin:4px 0 8px;color:#f1d299}
+.poe-october-sale .poe-sale-code{margin:0 0 17px;font-size:19px;color:#fff5e2}.poe-sale-code code{font-family:Inter,sans-serif;letter-spacing:.12em;text-transform:none;font-size:22px;font-weight:600;color:#fff5e2;margin-left:7px}
+.poe-sale-link{display:inline-flex;align-items:center;gap:16px;min-height:44px;border:1px solid #d8b77a;padding:10px 22px;color:#fff5e2;text-decoration:none;font-size:13px;background:#11101470}.poe-sale-link:hover,.poe-sale-link:focus-visible{background:#e4c58f;color:#171318;text-shadow:none;outline-offset:4px}
+.poe-october-sale .poe-sale-terms{font-size:11px;color:#e4dbc9;margin:14px 0 0;letter-spacing:.04em}
+@media(max-width:700px){.poe-october-sale{min-height:290px;padding:26px 16px;background-position:22% center}.poe-october-sale::before{background:#10101499}.poe-october-sale h2{font-size:66px}.poe-sale-code code{font-size:21px}}
+@media print{.poe-october-sale{display:none!important}}
