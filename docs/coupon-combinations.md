@@ -9,9 +9,9 @@ Management → Coupons → Edit → **Can this coupon be used with other offers?
 - Existing product promo exclusions apply to every coupon; shipping and tax are not discounted.
 - The rule controls coupon combinations. It does not infer or alter sale prices already entered on products.
 
-Customers apply codes one at a time in the bag and can remove individual codes. Up to five distinct codes are supported. Applying an incompatible code keeps the previous valid cart and displays an error.
+Customers apply codes one at a time in the bag and can remove individual codes. No more than two distinct codes are allowed per order, enforced in the bag and on the server. Rewards points do not count toward this limit. Applying an incompatible code keeps the previous valid cart and displays an error.
 
-Percentage discounts are applied sequentially (not added), sorted by code for deterministic rounding; fixed-dollar discounts follow, sorted by code. Each step rounds down to whole cents and is capped at the remaining eligible product amount. For example, $100 eligible products with 20% off, then 10% off, then $5 off gives $67 in products before shipping, tax or rewards.
+Percentage discounts are applied sequentially (not added), sorted by code for deterministic rounding; fixed-dollar discounts follow, sorted by code. Each step rounds down to whole cents and is capped at the remaining eligible product amount. For example, $100 eligible products with 20% off, then $5 off gives $75 in products before shipping, tax or rewards.
 
 Every coupon must separately pass store, active, expiry, minimum and usage checks. Coupons belonging to different affiliates cannot combine; same-affiliate or general coupons may combine when permitted. Attribution is assigned server-side. GoAffPro receives the full code list.
 
