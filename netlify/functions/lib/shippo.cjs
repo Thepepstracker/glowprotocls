@@ -72,6 +72,25 @@ async function buy(id){
  await transaction(async s=>{const c=await s.get('outbox',key);if(c?.lease!==q.lease)return;Object.assign(c,{status:outcome.status,message:outcome.message||'',lease_until:0,checked_at:now(),next_attempt:now()+Math.min(3600,60*2**Math.min(c.attempts,6))});await s.put('outbox',key,c);const stored=await s.get('orders',id);if(stored&&stored.status==='paid'){stored.shippo_status=outcome.status;stored.shippo_message=outcome.message||'';if(outcome.status==='needs_review')stored.shippo_needs_review=true;await s.put('orders',id,stored)}});
  return outcome;
 }
+// Dry run: everything up to the purchase, for every waiting paid order. Rates only; nothing is bought and no order changes.
+async function dryRun(limit=25){
+ const{cfg,orders}=await transaction(async s=>{const st=status(await s.get('integrations','shippo'));if(!st.connected)fail('Check the Shippo connection first.',409);if(!st.carrier_account)fail('Choose the UPS account first.',409);return{cfg:st,orders:(await s.list('orders')).filter(eligible).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit)}});
+ let labels=[];for(let page=1;page<=3;page++){const r=await request('/transactions/?results=100&page='+page);if(!Array.isArray(r.results))break;labels=labels.concat(r.results);if(!r.next)break}
+ const out=[];
+ for(const o of orders){const row={id:o.id,name:o.customer?.name||'',city:o.customer?.city||'',state:o.customer?.state||'',zip:o.customer?.zip||''};
+  try{const own=require('./own-contact.cjs').match(o.customer);if(own){row.result='would_stop';row.message='Ship-to '+own+' is Glow Lab’s own.';out.push(row);continue}
+   const have=labels.filter(t=>t.metadata===tag(o.id)&&t.status==='SUCCESS');if(have.length){row.result='label_exists';row.message='Shippo already has '+have.length+' label(s); the store would reuse it, not buy.';row.tracking=have[0].tracking_number;out.push(row);continue}
+   const shipment=await request('/shipments/',shipmentBody(o,cfg));const rates=Array.isArray(shipment.rates)?shipment.rates:[];
+   const rate=rates.find(r=>r.servicelevel?.token===cfg.servicelevel&&(!r.carrier_account||r.carrier_account===cfg.carrier_account));
+   const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);
+   if(!rate){row.result='would_stop';row.message='No '+cfg.servicelevel.replace(/_/g,' ')+' rate.'+(why?' Shippo: '+why:'');row.services=rates.map(r=>r.servicelevel?.token).filter(Boolean);out.push(row);continue}
+   const cents=Math.round(Number(rate.amount)*100);row.cents=cents;row.days=rate.estimated_days??rate.days??null;row.service=(rate.provider||'UPS')+' '+(rate.servicelevel?.name||'');
+   row.result=cents>0&&cents<=cfg.max_label_cents?'would_buy':'would_stop';if(row.result==='would_stop')row.message='$'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit.';if(why)row.note=why;
+  }catch(e){row.result='error';row.message=e.message}
+  out.push(row)}
+ const buy=out.filter(r=>r.result==='would_buy');
+ return{checked_at:now(),enabled:cfg.enabled,servicelevel:cfg.servicelevel,parcel:cfg.parcel,from:{city:fromAddress()?.city,state:fromAddress()?.state,zip:fromAddress()?.zip},orders:out,would_buy:buy.length,total_cents:buy.reduce((n,r)=>n+r.cents,0)};
+}
 // Staff checked the order (address fixed, or the label confirmed in Shippo): look for a label once more, then allow a new purchase.
 async function retry(id){await transaction(async s=>{const o=await s.get('orders',id);if(!o)fail('Order not found.');o.shippo_needs_review=false;o.shippo_message='';o.shippo_status='queued';await s.put('orders',id,o);const q=await s.get('outbox','shippo-'+id);if(q){q.purchase_started=false;q.status='failed';q.next_attempt=0;q.lease_until=0;await s.put('outbox',q.id,q)}});return buy(id)}
 async function enabled(){return transaction(async s=>status(await s.get('integrations','shippo')).enabled)}
@@ -79,4 +98,4 @@ async function pending(limit=3){
  const batch=await transaction(async s=>{if(!status(await s.get('integrations','shippo')).enabled)return[];const outbox=await s.list('outbox');return(await s.list('orders')).filter(eligible).filter(o=>{const q=outbox.find(x=>x.id==='shippo-'+o.id);return !(q?.purchase_started&&q.status!=='failed')&&(q?.next_attempt||0)<=now()}).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit).map(o=>o.id)});
  const results=[];for(const id of batch)results.push(await buy(id));return{processed:batch.length,results};
 }
-module.exports={configured,status,check,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
+module.exports={configured,status,check,dryRun,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};

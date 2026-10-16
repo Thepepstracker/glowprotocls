@@ -89,6 +89,7 @@ async function handle({path,method='GET',headers={},body={}}){
   const id=text(body.id||'',200);await transaction(async s=>{await session(s,h);const j=await s.get('email_outbox',id);if(!j)fail('Email not found.',404);if(j.status==='rejected')await emails.prepareRetry(s,j)});
   return{status:200,headers:{},body:await emails.dispatch(id)};
  }
+ if(path==='/admin/shippo/dryrun'&&method==='POST'){await transaction(s=>session(s,h));const result=await shippo.dryRun();await transaction(s=>audit(s,'shippo_dry_run'));return{status:200,headers:{},body:result}}
  if(['/admin/shippo/check','/admin/shippo/buy','/admin/shippo/retry'].includes(path)&&method==='POST'){
   await transaction(s=>session(s,h));let result;
   if(path.endsWith('/check')){const checked=await shippo.check();await transaction(async s=>{const old=await s.get('integrations','shippo');const keep=old?.fingerprint===checked.fingerprint;await s.put('integrations','shippo',{...old,...checked,enabled:keep&&old?.enabled===true,carrier_account:checked.accounts.some(a=>a.id===old?.carrier_account)?old.carrier_account:(checked.accounts[0]?.id||'')});await audit(s,'shippo_checked')});result={ok:true,accounts:checked.accounts};}
