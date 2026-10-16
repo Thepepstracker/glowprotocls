@@ -7,7 +7,7 @@ function payload(o){
  const sum=o.items.reduce((n,i)=>n+i.amount,0);if(sum!==o.subtotal||o.discount<0||o.discount>sum||o.total!==sum-o.discount+o.shipping+o.tax)fail('Order totals require review before reporting.');
  const discounts=o.items.map((i,index)=>({index,cents:sum?Number(BigInt(i.amount)*BigInt(o.discount)/BigInt(sum)):0,remainder:sum?BigInt(i.amount)*BigInt(o.discount)%BigInt(sum):0n}));
  let extra=o.discount-discounts.reduce((n,d)=>n+d.cents,0);for(const d of [...discounts].sort((a,b)=>a.remainder===b.remainder?a.index-b.index:a.remainder>b.remainder?-1:1))if(extra-->0)d.cents++;
- return{affiliate_id:o.goaffpro_affiliate_id,order:{id:'glow-store-'+o.id,number:o.id,total:o.total/100,subtotal:(o.subtotal-o.discount)/100,discount:o.discount/100,shipping:o.shipping/100,tax:o.tax/100,currency:'USD',date:new Date(o.paid*1000).toISOString(),status:'approved',is_paid:true,forceSDK:true,customer:{email:o.customer.email},coupons:o.coupon?[o.coupon]:[],line_items:o.items.map((i,index)=>({product_id:'glow-store-product-'+i.id,sku:i.sku,name:i.name,quantity:i.quantity,price:i.price/100,discount:discounts[index].cents/100,tax:0}))}};
+ return{affiliate_id:o.goaffpro_affiliate_id,order:{id:'glow-store-'+o.id,number:o.id,total:o.total/100,subtotal:(o.subtotal-o.discount)/100,discount:o.discount/100,shipping:o.shipping/100,tax:o.tax/100,currency:'USD',date:new Date(o.paid*1000).toISOString(),status:'approved',is_paid:true,forceSDK:true,customer:{email:o.customer.email},coupons:require('./coupon-rules.cjs').codes(o),line_items:o.items.map((i,index)=>({product_id:'glow-store-product-'+i.id,sku:i.sku,name:i.name,quantity:i.quantity,price:i.price/100,discount:discounts[index].cents/100,tax:0}))}};
 }
 async function findRemote(o){
  const data=await api.request('/admin/orders?number='+encodeURIComponent(o.id)+'&fields=id,number,affiliate_id,total,subtotal,status&limit=100');
@@ -50,4 +50,5 @@ async function report(id){
  return outcome;
 }
 module.exports={report,payload,eligible};
+
 
