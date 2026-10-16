@@ -2,6 +2,7 @@
 const accounts=require('./customer-accounts.cjs');
 const brands=require('./brands.cjs');
 const lineUnits=l=>Math.max(1,Number.isSafeInteger(l&&l.units)?l.units:1);
+const lineDraws=l=>Array.isArray(l&&l.draws)&&l.draws.length?l.draws:[{id:l.id,qty:lineUnits(l)}];
 const now=()=>Math.floor(Date.now()/1000);
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};
 const integer=(v,min=0,max=10000000)=>{if(!Number.isSafeInteger(v)||v<min||v>max)fail('Enter valid whole numbers for quantities and cents.');return v};
@@ -11,8 +12,8 @@ async function edit(s,o,b,actor,setStock){
  check(o,b);if(!Array.isArray(b.items)||!b.items.length||b.items.length>100)fail('Keep at least one product on the order.');
  const seen=new Set(),items=[],changes=new Map();let subtotal=0;
  const group=(p,delta)=>{const key=p.stock_pool?'pool:'+p.stock_pool:'product:'+p.id;const c=changes.get(key)||{p,delta:0};c.delta+=delta;changes.set(key,c)};
- for(const line of o.items){const p=await s.get('products',line.id);if(!p)fail('An original product is missing. Review inventory first.',409);group(p,line.quantity*lineUnits(line))}
- for(const line of b.items){integer(line.id,1);if(seen.has(line.id))fail('Duplicate product on the order.');seen.add(line.id);const quantity=integer(line.quantity,1,100),price=integer(line.price);const p=await s.get('products',line.id),previous=o.items.find(i=>i.id===line.id);if(!p||(!p.active&&!previous))fail('A product is unavailable.',409);const amount=quantity*price,u=previous?lineUnits(previous):brands.units(p);subtotal+=amount;items.push({id:p.id,name:previous?.name||p.name,sku:previous?.sku||p.sku,quantity,price,amount,...(u>1?{units:u}:{})});group(p,-quantity*u)}
+ for(const line of o.items)for(const d of lineDraws(line)){const p=await s.get('products',d.id);if(!p)fail('An original product is missing. Review inventory first.',409);group(p,line.quantity*d.qty)}
+ for(const line of b.items){integer(line.id,1);if(seen.has(line.id))fail('Duplicate product on the order.');seen.add(line.id);const quantity=integer(line.quantity,1,100),price=integer(line.price);const p=await s.get('products',line.id),previous=o.items.find(i=>i.id===line.id);if(!p||(!p.active&&!previous))fail('A product is unavailable.',409);const amount=quantity*price,u=previous?lineUnits(previous):brands.units(p),bundle=!previous&&Array.isArray(p.components)&&p.components.length>0,draws=previous?(Array.isArray(previous.draws)&&previous.draws.length?previous.draws:null):(bundle?p.components.map(c=>({id:c.id,qty:c.qty})):null);subtotal+=amount;items.push({id:p.id,name:previous?.name||p.name,sku:previous?.sku||p.sku,quantity,price,amount,...(u>1?{units:u}:{}),...(draws?{draws}:{})});for(const d of draws||[{id:p.id,qty:u}]){const x=d.id===p.id?p:await s.get('products',d.id);if(!x)fail('A product inside a bundle is missing. Review inventory first.',409);group(x,-quantity*d.qty)}}
  integer(subtotal);const coupon_discount=integer(b.coupon_discount),shipping=integer(b.shipping),tax=integer(b.tax),rewards_discount=o.rewards_discount||0,discount=coupon_discount+rewards_discount;
  if(discount>subtotal)fail('Discounts cannot exceed the product subtotal. Reduce the promo discount or keep enough products for the reserved rewards.');
  const total=integer(subtotal-discount+shipping+tax);for(const {p,delta} of changes.values())if(p.stock+delta<0)fail('Not enough available stock for '+p.name+'.',409);
