@@ -6,7 +6,7 @@
 //  - if a purchase may have reached Shippo but the answer was lost, the order stops for review.
 // Secrets live only in Netlify: SHIPPO_API_TOKEN and the ship-from address SHIPPO_FROM_*.
 const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs'),emails=require('./store-email.cjs'),tracker=require('./order-tracking.cjs');
-const now=()=>Math.floor(Date.now()/1000),fail=(m,extra={})=>{throw Object.assign(new Error(m),extra)};
+const now=()=>Math.floor(Date.now()/1000),fail=(m,extra={})=>{throw Object.assign(new Error(m),{status:502},extra)}; // status: show the reason to staff instead of a generic error
 const API='https://api.goshippo.com';
 const DEFAULTS={servicelevel:'ups_second_day_air',parcel:{length:8,width:6,height:4,weight_lb:1},max_label_cents:6000,daily_limit:60};
 const configured=()=>!!process.env.SHIPPO_API_TOKEN&&!!fromAddress();
