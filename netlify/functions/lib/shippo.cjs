@@ -9,16 +9,19 @@ const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs'),emai
 const now=()=>Math.floor(Date.now()/1000),fail=(m,extra={})=>{throw Object.assign(new Error(m),{status:502},extra)}; // status: show the reason to staff instead of a generic error
 const API='https://api.goshippo.com';
 const DEFAULTS={servicelevel:'ups_second_day_air',parcel:{length:8,width:6,height:4,weight_lb:1},max_label_cents:6000,daily_limit:60};
-const configured=()=>!!process.env.SHIPPO_API_TOKEN&&!!fromAddress();
-const fingerprint=()=>crypto.createHash('sha256').update(process.env.SHIPPO_API_TOKEN||'').digest('hex');
-const testToken=()=>/^shippo_test_/.test(process.env.SHIPPO_API_TOKEN||'');
+// The saved value may have extra text pasted around the token; use only the token itself.
+const token=()=>{const v=process.env.SHIPPO_API_TOKEN||'';const m=v.match(/shippo_(?:live|test)_[A-Za-z0-9]{20,}/);if(m)return m[0];const t=v.trim();return /^[\x21-\x7e]{8,300}$/.test(t)?t:''};
+const tokenProblem=()=>{const v=process.env.SHIPPO_API_TOKEN||'';if(!v)return '';if(token())return '';return 'SHIPPO_API_TOKEN in Netlify does not hold a Shippo token (it is '+v.length+' characters and has no shippo_live_ key in it). Replace its value with only the API token from Shippo > Settings > API.'};
+const configured=()=>!!token()&&!!fromAddress();
+const fingerprint=()=>crypto.createHash('sha256').update(token()).digest('hex');
+const testToken=()=>/^shippo_test_/.test(token());
 const tag=id=>'GLOW:'+id;
 function fromAddress(){const e=process.env;if(!e.SHIPPO_FROM_STREET1||!e.SHIPPO_FROM_CITY||!e.SHIPPO_FROM_STATE||!e.SHIPPO_FROM_ZIP)return null;return{name:e.SHIPPO_FROM_NAME||'Glow Lab',...(e.SHIPPO_FROM_COMPANY?{company:e.SHIPPO_FROM_COMPANY}:{}),street1:e.SHIPPO_FROM_STREET1,...(e.SHIPPO_FROM_STREET2?{street2:e.SHIPPO_FROM_STREET2}:{}),city:e.SHIPPO_FROM_CITY,state:e.SHIPPO_FROM_STATE,zip:e.SHIPPO_FROM_ZIP,country:'US',phone:e.SHIPPO_FROM_PHONE||'',email:e.SHIPPO_FROM_EMAIL||''}}
 function settings(r){const p=r?.parcel||{};return{servicelevel:r?.servicelevel||DEFAULTS.servicelevel,carrier_account:r?.carrier_account||'',parcel:{length:p.length||DEFAULTS.parcel.length,width:p.width||DEFAULTS.parcel.width,height:p.height||DEFAULTS.parcel.height,weight_lb:p.weight_lb||DEFAULTS.parcel.weight_lb},max_label_cents:r?.max_label_cents||DEFAULTS.max_label_cents,daily_limit:r?.daily_limit||DEFAULTS.daily_limit}}
-function status(r){const ok=configured(),same=ok&&r?.fingerprint===fingerprint();return{configured:ok,token_saved:!!process.env.SHIPPO_API_TOKEN,from_saved:!!fromAddress(),test_mode:testToken(),connected:same,enabled:same&&r?.enabled===true&&!!r?.carrier_account&&(r.accounts||[]).some(a=>a.id===r.carrier_account),accounts:same?r.accounts||[]:[],checked_at:r?.checked_at||null,...settings(r)}}
+function status(r){const ok=configured(),same=ok&&r?.fingerprint===fingerprint();return{configured:ok,token_saved:!!process.env.SHIPPO_API_TOKEN,token_problem:tokenProblem(),from_saved:!!fromAddress(),test_mode:testToken(),connected:same,enabled:same&&r?.enabled===true&&!!r?.carrier_account&&(r.accounts||[]).some(a=>a.id===r.carrier_account),accounts:same?r.accounts||[]:[],checked_at:r?.checked_at||null,...settings(r)}}
 async function request(route,body){
- if(!process.env.SHIPPO_API_TOKEN)fail('Save SHIPPO_API_TOKEN privately in Netlify first.');
- let r;try{r=await fetch(API+route,{method:body?'POST':'GET',headers:{Authorization:'ShippoToken '+process.env.SHIPPO_API_TOKEN,'Content-Type':'application/json','Shippo-API-Version':'2018-02-08'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)})}catch(e){fail('Shippo could not be reached ('+String(e?.cause?.code||e?.name||'error')+': '+String(e?.cause?.message||e?.message||'').slice(0,120)+'). Check status before retrying.',{uncertain:true})}
+ if(!process.env.SHIPPO_API_TOKEN)fail('Save SHIPPO_API_TOKEN privately in Netlify first.');if(tokenProblem())fail(tokenProblem());
+ let r;try{r=await fetch(API+route,{method:body?'POST':'GET',headers:{Authorization:'ShippoToken '+token(),'Content-Type':'application/json','Shippo-API-Version':'2018-02-08'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)})}catch(e){fail('Shippo could not be reached ('+String(e?.cause?.code||e?.name||'error')+': '+String(e?.cause?.message||e?.message||'').slice(0,120)+'). Check status before retrying.',{uncertain:true})}
  let data=null;try{data=await r.json()}catch{}
  if(!r.ok){const detail=data&&(data.detail||data.message||JSON.stringify(data).slice(0,200));fail('Shippo returned HTTP '+r.status+(detail?': '+detail:''),{definite:r.status>=400&&r.status<500})}
  if(!data)fail('Shippo returned an unexpected response.',{uncertain:true});return data;
