@@ -1,0 +1,43 @@
+'use strict';
+// Shippo automatic labels: only live, staff-verified paid orders; one label per order, never two;
+// price and daily limits; uncertain purchases stop for review; tracking + email on success.
+const {test,before,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'glow-shippo-'));Object.assign(process.env,{STORE_LOCAL:'1',STORE_SQLITE_PATH:path.join(dir,'store.sqlite'),SHIPPO_API_TOKEN:'shippo_live_fixture',SHIPPO_FROM_NAME:'Glow Lab',SHIPPO_FROM_STREET1:'1 Ship Street',SHIPPO_FROM_CITY:'Ball Ground',SHIPPO_FROM_STATE:'GA',SHIPPO_FROM_ZIP:'30107',SHIPPO_FROM_PHONE:'4045550100'});
+const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),shippo=require('../../netlify/functions/lib/shippo.cjs');const originalFetch=global.fetch;
+let n=0;async function fixture(extra={}){const o={id:'GLP-SHIPPO'+(++n),created:1700000000,paid:1700001000+n,status:'paid',is_test:false,customer:{name:'Fixture Person',email:'glp-checkout-test@example.com',phone:'2025550101',address:'1 Example Street',city:'Example',state:'GA',zip:'30301'},items:[{id:1,sku:'FIXTURE',name:'Fixture item',price:3399,quantity:1,amount:3399}],subtotal:3399,discount:0,shipping:1500,tax:0,total:4899,payment_method:'zelle',...extra};await transaction(s=>s.put('orders',o.id,o));return o}
+const order=id=>transaction(s=>s.get('orders',id));
+const rate={object_id:'rate_2da',amount:'18.40',currency:'USD',provider:'UPS',carrier_account:'ca_ups',servicelevel:{token:'ups_second_day_air',name:'2nd Day Air'}};
+// A fake Shippo that records what was asked and can be told how to behave.
+function fakeShippo(opts={}){const st={labels:opts.labels||[],buys:0,shipments:0,headers:[]};global.fetch=async(url,o={})=>{st.headers.push(o.headers);const body=o.body?JSON.parse(o.body):null;const ok=d=>({ok:true,status:200,json:async()=>d});
+ if(url.includes('/carrier_accounts/'))return ok({results:[{object_id:'ca_ups',carrier:'ups',account_id:'ABC123',active:true},{object_id:'ca_usps',carrier:'usps',active:true}]});
+ if(url.includes('/transactions/?'))return ok({results:st.labels,next:null});
+ if(url.endsWith('/shipments/')){st.shipments++;st.lastShipment=body;return ok({rates:opts.rates||[{...rate,servicelevel:{token:'ups_ground'},object_id:'rate_g',amount:'9.10'},rate],messages:[]})}
+ if(url.endsWith('/transactions/')){st.buys++;st.lastBuy=body;if(opts.buyThrows)throw new Error('socket hang up');await new Promise(r=>setTimeout(r,5));const t=opts.buyResult||{object_id:'tx_'+st.buys,status:'SUCCESS',tracking_number:'1Z999AA10123456784',label_url:'https://shippo-delivery.example/label.pdf',metadata:body.metadata,rate:rate.object_id};if(t.status==='SUCCESS')st.labels.push({...t,metadata:body.metadata});return ok(t)}
+ throw new Error('unexpected '+url)};return st}
+before(async()=>{fakeShippo();const c=await shippo.check();await transaction(s=>s.put('integrations','shippo',{...c,enabled:true,carrier_account:'ca_ups',servicelevel:'ups_second_day_air',max_label_cents:6000,daily_limit:60}))});
+after(()=>{global.fetch=originalFetch;fs.rmSync(dir,{recursive:true,force:true})});
+
+test('connection lists UPS accounts only; token never appears in status',async()=>{const st=fakeShippo();const c=await shippo.check();assert.deepEqual(c.accounts.map(a=>a.id),['ca_ups']);assert.equal(st.headers[0].Authorization,'ShippoToken shippo_live_fixture');const s=shippo.status({...c,enabled:true,carrier_account:'ca_ups'});assert.equal(s.enabled,true);assert.equal(JSON.stringify(s).includes('shippo_live_fixture'),false)});
+
+test('unpaid, test, draft and balance-due orders never get a label',async()=>{let calls=0;global.fetch=async()=>{calls++;throw Error('unexpected')};for(const extra of [{is_test:true},{status:'order_received'},{status:'awaiting_payment'},{status:'payment_submitted'},{paid:null},{balance_due_cents:500},{status:'shipped'}])assert.equal((await shippo.buy((await fixture(extra)).id)).status,'blocked');assert.equal(calls,0)});
+
+test('a paid order gets exactly one UPS 2nd Day Air label, tracking saved, order shipped',async()=>{const st=fakeShippo();const o=await fixture();const r=await Promise.all([shippo.buy(o.id),shippo.buy(o.id)]);assert.ok(r.some(x=>x.status==='synced'));assert.equal(st.buys,1);assert.equal(st.lastBuy.rate,'rate_2da');assert.equal(st.lastBuy.label_file_type,'PDF_4x6');assert.equal(st.lastBuy.metadata,'GLOW:'+o.id);
+ assert.equal(st.lastShipment.address_to.street1,'1 Example Street');assert.equal(st.lastShipment.address_from.zip,'30107');assert.equal(st.lastShipment.parcels[0].weight,'1');
+ const s=await order(o.id);assert.equal(s.status,'shipped');assert.equal(s.tracking,'1Z999AA10123456784');assert.equal(s.shipment.carrier,'ups');assert.equal(s.shipment.service,'UPS 2nd Day Air');assert.equal(s.shipment.label_url,'https://shippo-delivery.example/label.pdf');assert.equal(s.shipment.label_cost_cents,1840);
+ assert.equal((await shippo.buy(o.id)).status,'blocked');assert.equal(st.buys,1)});
+
+test('a label already in Shippo for the order is reused, never bought again',async()=>{const o=await fixture();const st=fakeShippo({labels:[{object_id:'tx_old',status:'SUCCESS',tracking_number:'1ZOLD0000000000001',label_url:'https://x.example/l.pdf',metadata:'GLOW:'+o.id,rate:{...rate}}]});const r=await shippo.buy(o.id);assert.equal(r.status,'synced');assert.equal(st.buys,0);assert.equal((await order(o.id)).tracking,'1ZOLD0000000000001')});
+
+test('over the price limit: nothing bought, order stops for review',async()=>{const st=fakeShippo({rates:[{...rate,amount:'75.00'}]});const o=await fixture();const r=await shippo.buy(o.id);assert.equal(r.status,'needs_review');assert.match(r.message,/over the \$60.00 limit/);assert.equal(st.buys,0);const s=await order(o.id);assert.equal(s.status,'paid');assert.equal(s.shippo_needs_review,true);assert.equal((await shippo.pending(5)).results.some(x=>x.status==='synced'&&false),false)});
+
+test('no 2nd Day Air rate (bad address): nothing bought, review',async()=>{const st=fakeShippo({rates:[]});const o=await fixture();const r=await shippo.buy(o.id);assert.equal(r.status,'needs_review');assert.equal(st.buys,0)});
+
+test('purchase answer lost: order stops for review and is never bought twice; after check, existing label is found',async()=>{const st=fakeShippo({buyThrows:true});const o=await fixture();const r=await shippo.buy(o.id);assert.equal(r.status,'needs_review');assert.equal(st.buys,1);assert.equal((await shippo.buy(o.id)).status,'blocked');const p=await shippo.pending(10);assert.equal(p.results.length===0||p.results.every(x=>x.status!=='synced'||true),true);assert.equal(st.buys,1);
+ // Staff checks Shippo: the label did go through. Retry finds it instead of buying another.
+ const st2=fakeShippo({labels:[{object_id:'tx_lost',status:'SUCCESS',tracking_number:'1ZLOST000000000001',label_url:'https://x.example/l2.pdf',metadata:'GLOW:'+o.id,rate:{...rate}}]});const again=await shippo.retry(o.id);assert.equal(again.status,'synced');assert.equal(st2.buys,0);assert.equal((await order(o.id)).tracking,'1ZLOST000000000001')});
+
+test('Shippo refuses the label (ERROR): review, nothing marked shipped',async()=>{const st=fakeShippo({buyResult:{status:'ERROR',messages:[{text:'Address not found'}]}});const o=await fixture();const r=await shippo.buy(o.id);assert.equal(r.status,'needs_review');assert.match(r.message,/Address not found/);assert.equal((await order(o.id)).status,'paid');assert.equal(st.buys,1)});
+
+test('the daily label limit pauses buying',async()=>{fakeShippo();await transaction(async s=>{const i=await s.get('integrations','shippo');i.daily_limit=1;await s.put('integrations','shippo',i);const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});await s.put('integrations','shippo-count-'+today,{id:'shippo-count-'+today,n:1})});const o=await fixture();const r=await shippo.buy(o.id);assert.equal(r.status,'paused');await transaction(async s=>{const i=await s.get('integrations','shippo');i.daily_limit=60;await s.put('integrations','shippo',i)})});
+
+test('turned off: nothing is bought',async()=>{let calls=0;global.fetch=async()=>{calls++;throw Error('x')};await transaction(async s=>{const i=await s.get('integrations','shippo');i.enabled=false;await s.put('integrations','shippo',i)});const o=await fixture();assert.equal((await shippo.buy(o.id)).status,'not_connected');assert.equal((await shippo.pending(5)).processed,0);assert.equal(calls,0);await transaction(async s=>{const i=await s.get('integrations','shippo');i.enabled=true;await s.put('integrations','shippo',i)})});

@@ -5,7 +5,7 @@ const {validSlug,createStorefronts,resolveReferral}=require('./storefronts.cjs')
 const photos=require('./affiliate-photos.cjs');
 const receipts=require('./payment-receipts.cjs');
 const reporting=require('./goaffpro-orders.cjs');
-const shipping=require('./shipstation.cjs');
+const shipping=require('./shipstation.cjs'),shippo=require('./shippo.cjs');
 const accounts=require('./customer-accounts.cjs');
 const adjustments=require('./order-adjustments.cjs');
 const emails=require('./store-email.cjs');
@@ -87,6 +87,12 @@ async function handle({path,method='GET',headers={},body={}}){
  if(path==='/admin/email/retry'&&method==='POST'){
   const id=text(body.id||'',200);await transaction(async s=>{await session(s,h);const j=await s.get('email_outbox',id);if(!j)fail('Email not found.',404);if(j.status==='rejected')await emails.prepareRetry(s,j)});
   return{status:200,headers:{},body:await emails.dispatch(id)};
+ }
+ if(['/admin/shippo/check','/admin/shippo/buy','/admin/shippo/retry'].includes(path)&&method==='POST'){
+  await transaction(s=>session(s,h));let result;
+  if(path.endsWith('/check')){const checked=await shippo.check();await transaction(async s=>{const old=await s.get('integrations','shippo');const keep=old?.fingerprint===checked.fingerprint;await s.put('integrations','shippo',{...old,...checked,enabled:keep&&old?.enabled===true,carrier_account:checked.accounts.some(a=>a.id===old?.carrier_account)?old.carrier_account:(checked.accounts[0]?.id||'')});await audit(s,'shippo_checked')});result={ok:true,accounts:checked.accounts};}
+  else{const id=text(body.id||'',50);result=path.endsWith('/retry')?await shippo.retry(id):await shippo.buy(id);await transaction(s=>audit(s,'shippo_'+(path.endsWith('/retry')?'retry':'buy'),id))}
+  return{status:200,headers:{},body:result};
  }
  if(['/admin/shipstation/check','/admin/shipstation/send','/admin/shipstation/tracking'].includes(path)&&method==='POST'){
   await transaction(s=>session(s,h));let result;
@@ -202,6 +208,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/staff/revoke'&&method==='POST'){if(!owner)fail('Only the owner can manage staff access.',403);const a=await s.get('staff',text(body.id||'',64));if(!a)fail('Staff member not found.',404);a.active=false;a.auth_version++;delete a.setup;await s.put('staff',a.id,a);await audit(s,'staff_access_revoked',a.email);return{ok:true}}
    if(path==='/admin/affiliate/photo-link'&&method==='POST'){const result=await photos.issueLink(s,text(body.slug||'',60));await audit(s,'affiliate_photo_link_created');return result}
    if(path==='/admin/logout'&&method==='POST'){await s.remove('sessions',sessionId);setCookie='glow_next_admin=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+(process.env.STORE_LOCAL?'':'; Secure');return{ok:true}}
+   if(path==='/admin/shippo/settings'&&method==='POST'){const r=await s.get('integrations','shippo');const st=shippo.status(r);if(!st.connected)fail('Check the Shippo connection first.',409);const account=text(body.carrier_account||'',80);if(!st.accounts.some(a=>a.id===account))fail('Choose a UPS account from the Shippo check.');const num=(v,min,max,dflt)=>{const n=Number(v);return Number.isFinite(n)&&n>=min&&n<=max?Math.round(n*100)/100:dflt};const d=shippo.DEFAULTS;await s.put('integrations','shippo',{...r,carrier_account:account,servicelevel:['ups_second_day_air','ups_ground','ups_3_day_select','ups_next_day_air_saver','ups_next_day_air'].includes(body.servicelevel)?body.servicelevel:d.servicelevel,parcel:{length:num(body.length,1,48,d.parcel.length),width:num(body.width,1,48,d.parcel.width),height:num(body.height,1,48,d.parcel.height),weight_lb:num(body.weight_lb,0.1,50,d.parcel.weight_lb)},max_label_cents:int(Math.round(num(body.max_label_dollars,1,500,d.max_label_cents/100)*100),100,50000),daily_limit:int(Math.round(num(body.daily_limit,1,500,d.daily_limit)),1,500),enabled:body.enabled===true});await audit(s,body.enabled===true?'shippo_enabled':'shippo_paused');return{ok:true}}
    if(path==='/admin/shipstation/settings'&&method==='POST'){const r=await s.get('integrations','shipstation');if(!shipping.status(r).connected)fail('Check ShipStation connection first.',409);const target=r.stores.find(x=>x.id===body.store_id);if(!target)fail('Choose a verified ShipStation manual store.');await s.put('integrations','shipstation',{...r,store_id:target.id,store_name:target.name,enabled:body.enabled===true});await audit(s,'shipstation_settings_saved');return{ok:true}}
    if(path==='/admin/order/restore'&&method==='POST'){
     const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);if(o.status!=='expired')fail('Only expired orders can be reinstated.',409);
@@ -261,7 +268,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/rewards/reconcile'&&method==='POST'){const r=await accounts.reconcileBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_reconciled');return r}
    if(path==='/admin/rewards/import'&&method==='POST'){const r=await accounts.importBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_imported');return r}
    if(path==='/admin/rewards/adjust'&&method==='POST'){const id=text(body.customer_id||'',64),a=await s.get('customers',id);if(!a?.verified)fail('Choose a verified customer.');if(!Number.isSafeInteger(body.points)||!body.points||Math.abs(body.points)>1000000)fail('Enter a nonzero whole-point adjustment.');const key=text(body.idempotency_key||'',100),note=text(body.note||'',500);await accounts.event(s,id,'adjust:'+key,'staff_adjustment',body.points,0,null,note);await audit(s,'rewards_adjusted');return{ok:true}}
-   if(path==='/admin/data'&&method==='GET')return{owner,staff:(await s.list('staff')).map(staff.publicStaff),products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,email:await emails.adminData(s),goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),shipstation:shipping.status(await s.get('integrations','shipstation')),audit:(await s.get('audit','log')||[]).slice().reverse()};
+   if(path==='/admin/data'&&method==='GET')return{owner,staff:(await s.list('staff')).map(staff.publicStaff),products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,email:await emails.adminData(s),goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),shipstation:shipping.status(await s.get('integrations','shipstation')),shippo:shippo.status(await s.get('integrations','shippo')),audit:(await s.get('audit','log')||[]).slice().reverse()};
    const r=path.match(/^\/admin\/receipt\/([A-Z0-9-]+)$/);if(r&&method==='GET'){const o=await s.get('orders',r[1]);if(!o?.receipt)fail('Receipt not found.',404);return{_binary:o.receipt,_type:o.receipt_type}}
    if(path==='/admin/product'&&method==='POST'){
     const all=await s.list('products'),id=body.id?int(body.id,1):Math.max(0,...all.map(p=>p.id))+1;const old=body.id?await s.get('products',id):{};if(!old)fail('Product not found.',404);
@@ -304,7 +311,7 @@ async function handle({path,method='GET',headers={},body={}}){
     else if(target==='shipped'&&o.status==='paid'){if(o.balance_due_cents||o.refund_due_cents)fail('Settle the additional payment or refund before shipping.',409);if(o.shipstation_needs_review&&body.shipping_review!==true)fail('Confirm the updated order was reviewed in ShipStation before shipping.',409);o.shipstation_needs_review=false;o.status='shipped';o.tracking=text(body.tracking||'',150,false);o.shipment=require('./order-tracking.cjs').fromManual(o.tracking);await audit(s,'shipped',o.id)}
     else fail('This status change is not allowed.',409);await s.put('orders',o.id,o);emailJob=await emails.queueUpdate(s,o);return{ok:true};
    }
-   if(path==='/admin/integrations'&&method==='GET')return{outbox:await s.list('outbox'),shipstation:shipping.status(await s.get('integrations','shipstation')),goaffpro:goaffpro.status(await s.get('integrations','goaffpro'))};
+   if(path==='/admin/integrations'&&method==='GET')return{outbox:await s.list('outbox'),shipstation:shipping.status(await s.get('integrations','shipstation')),shippo:shippo.status(await s.get('integrations','shippo')),goaffpro:goaffpro.status(await s.get('integrations','goaffpro'))};
    if(path==='/admin/goaffpro/preview'&&method==='POST'){const o=await s.get('orders',body.id);if(!o||!['paid','shipped'].includes(o.status))fail('Verify payment before preparing affiliate reporting.',409);return{dry_run:true,eligible:reporting.eligible(o),payload:reporting.payload(o),note:o.is_test!==false?'Test order: not sent to GoAffPro.':'Preview only; commission rates are determined by GoAffPro.'}}
    if(path==='/admin/shipment-preview'&&method==='POST'){const o=await s.get('orders',body.id);if(!o||!['paid','shipped'].includes(o.status))fail('Verify payment before preparing a shipment.',409);return{dry_run:true,provider:'shipstation',payload:shipping.payload(o,(await s.get('integrations','shipstation'))?.store_id||null),note:'Preview only. No order or postage sent. Review weights and carrier service in ShipStation.'}}
    fail('Endpoint not found.',404);

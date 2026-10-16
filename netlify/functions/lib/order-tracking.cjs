@@ -11,7 +11,7 @@ const CARRIERS={
  usps:{name:'USPS',url:t=>'https://tools.usps.com/go/TrackConfirmAction?tLabels='+encodeURIComponent(t)},
  dhl:{name:'DHL',url:t=>'https://www.dhl.com/us-en/home/tracking/tracking-express.html?tracking-id='+encodeURIComponent(t)}
 };
-const SERVICES={ups_ground:'UPS Ground',ups_2nd_day_air:'UPS 2nd Day Air',ups_2nd_day_air_am:'UPS 2nd Day Air A.M.',ups_3_day_select:'UPS 3 Day Select',ups_next_day_air:'UPS Next Day Air',ups_next_day_air_saver:'UPS Next Day Air Saver',ups_next_day_air_early_am:'UPS Next Day Air Early',ups_ground_saver:'UPS Ground Saver',fedex_ground:'FedEx Ground',fedex_home_delivery:'FedEx Home Delivery',fedex_2day:'FedEx 2Day',fedex_2day_one_rate:'FedEx 2Day One Rate',fedex_express_saver:'FedEx Express Saver',fedex_express_saver_one_rate:'FedEx Express Saver One Rate',usps_priority_mail:'USPS Priority Mail',usps_ground_advantage:'USPS Ground Advantage',usps_priority_mail_express:'USPS Priority Mail Express'};
+const SERVICES={ups_second_day_air:'UPS 2nd Day Air',ups_second_day_air_am:'UPS 2nd Day Air A.M.',ups_ground:'UPS Ground',ups_2nd_day_air:'UPS 2nd Day Air',ups_2nd_day_air_am:'UPS 2nd Day Air A.M.',ups_3_day_select:'UPS 3 Day Select',ups_next_day_air:'UPS Next Day Air',ups_next_day_air_saver:'UPS Next Day Air Saver',ups_next_day_air_early_am:'UPS Next Day Air Early',ups_ground_saver:'UPS Ground Saver',fedex_ground:'FedEx Ground',fedex_home_delivery:'FedEx Home Delivery',fedex_2day:'FedEx 2Day',fedex_2day_one_rate:'FedEx 2Day One Rate',fedex_express_saver:'FedEx Express Saver',fedex_express_saver_one_rate:'FedEx Express Saver One Rate',usps_priority_mail:'USPS Priority Mail',usps_ground_advantage:'USPS Ground Advantage',usps_priority_mail_express:'USPS Priority Mail Express'};
 
 function cleanTracking(v){return String(v||'').replace(/\s+/g,'').toUpperCase().slice(0,60)}
 function carrierOf(code,tracking){
@@ -131,4 +131,6 @@ async function refreshDue(limit=8){
 }
 // "Label made but UPS never scanned it" is how parcels got left behind in September. Staff see it.
 const noScan=o=>o?.status==='shipped'&&o.shipment?.carrier==='ups'&&!o.delivery?.first_scan_at&&(o.shipment.label_created_at||0)<now()-26*3600;
-module.exports={CARRIERS,carrierOf,serviceName,cleanTracking,fromShipStation,fromManual,upsConfigured,upsTrack,readUps,applyUps,refreshOne,refreshDue,trackable,noScan,viewLink,longDate,_reset:()=>{upsToken=null}};
+// From a label bought through Shippo (shippo.cjs passes the carrier, service token and label details).
+const fromShippo=(carrier,service,tracking,extra={})=>shipment(carrier,service,tracking,extra);
+module.exports={CARRIERS,carrierOf,serviceName,cleanTracking,fromShipStation,fromManual,fromShippo,upsConfigured,upsTrack,readUps,applyUps,refreshOne,refreshDue,trackable,noScan,viewLink,longDate,_reset:()=>{upsToken=null}};
