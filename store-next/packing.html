@@ -83,7 +83,7 @@ td.n{text-align:right;font-weight:800;font-size:20px;width:90px}
   </div>
   <div class="tools tabs">
     <button data-view="todo" aria-pressed="true">To check</button>
-    <button data-view="done" aria-pressed="false">Checked</button>
+    <button data-view="done" aria-pressed="false">Checked</button><button data-view="skipped" aria-pressed="false">Skipped</button>
     <button data-view="all" aria-pressed="false">All paid</button>
     <button data-view="pick" aria-pressed="false">Pick list</button>
   </div>
@@ -96,7 +96,9 @@ td.n{text-align:right;font-weight:800;font-size:20px;width:90px}
 var KEY='glp_packing_v1',orders=[],view='todo',query='',justDone={},history=[],lastTarget='';
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return{}}}
 function save(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
-var saved=load();
+var saved=load(),SKIP='glp_packing_skip_v1',skipped=(function(){try{return JSON.parse(localStorage.getItem(SKIP)||'{}')}catch(e){return{}}})();
+function saveSkip(){try{localStorage.setItem(SKIP,JSON.stringify(skipped))}catch(e){}}
+function isSkipped(o){return !!skipped[o.id]}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function fp(o){return (o.items||[]).map(function(i){return i.id+':'+i.quantity}).join(',')+'|'+(o.revision||0)}
 function units(o){return (o.items||[]).reduce(function(n,i){return n+i.quantity},0)}
@@ -116,22 +118,22 @@ function when(sec){return sec?new Date(sec*1000).toLocaleString('en-US',{month:'
 function matches(o){if(!query)return true;var q=query.toLowerCase();return (o.id||'').toLowerCase().indexOf(q)>=0||((o.customer&&o.customer.name)||'').toLowerCase().indexOf(q)>=0}
 function render(){
   var paid=orders.filter(matches),done=orders.filter(isDone).length;
-  document.getElementById('count').textContent=done+' of '+orders.length+' orders checked';
+  var sk=orders.filter(isSkipped).length;document.getElementById('count').textContent=done+' of '+orders.length+' orders checked'+(sk?' · '+sk+' skipped':'');
   document.getElementById('bar').style.width=(orders.length?Math.round(done*100/orders.length):0)+'%';
   var out=document.getElementById('out');
   if(view==='pick'){out.innerHTML=pickList();return}
-  var list=paid.filter(function(o){return view==='all'?true:view==='done'?isDone(o):(!isDone(o)||justDone[o.id])});
+  var list=paid.filter(function(o){return view==='all'?true:view==='skipped'?isSkipped(o):view==='done'?isDone(o):(!isSkipped(o)&&(!isDone(o)||justDone[o.id]))});
   if(!orders.length){out.innerHTML='<div class="msg">No orders waiting to be packed right now.</div>';return}
-  if(!list.length){out.innerHTML='<div class="msg">'+(view==='todo'?'Every order is checked. ✅':'Nothing here yet.')+'</div>';return}
+  if(!list.length){out.innerHTML='<div class="msg">'+(view==='todo'?'Every order is checked'+(orders.some(isSkipped)?' (skipped ones are in the Skipped tab)':'')+'. ✅':view==='skipped'?'No skipped orders.':'Nothing here yet.')+'</div>';return}
   out.innerHTML=list.map(card).join('');
   markTarget(list);
 }
 function target(list){
-  for(var a=0;a<list.length;a++){var o=list[a];if(isDone(o))continue;var t=ticks(o);
+  for(var a=0;a<list.length;a++){var o=list[a];if(isDone(o)||isSkipped(o))continue;var t=ticks(o);
     for(var i=0;i<(o.items||[]).length;i++){for(var u=0;u<o.items[i].quantity;u++){var k=i+'-'+u;if(!t[k])return{o:o,k:k,item:o.items[i],unit:u}}}}
   return null;
 }
-function visibleList(){return view==='pick'?[]:orders.filter(matches).filter(function(o){return view==='all'?true:view==='done'?isDone(o):(!isDone(o)||justDone[o.id])})}
+function visibleList(){return view==='pick'?[]:orders.filter(matches).filter(function(o){return view==='all'?true:view==='skipped'?isSkipped(o):view==='done'?isDone(o):(!isSkipped(o)&&(!isDone(o)||justDone[o.id]))})}
 function markTarget(list){
   var now=document.getElementById('now'),x=target(list);
   if(!x){now.hidden=true;lastTarget='';return}
@@ -170,16 +172,16 @@ function card(o){
   }).join('');
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o);
-  return '<section class="order'+(done?' done':'')+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+brand+(done?'<span class="tag done">CHECKED</span>':'')+(o.replacement?'<span class="tag" style="background:#fde7c8;color:#7a4b00">REPLACEMENT</span>':'')+(hasLabel(o)?'<span class="tag">LABEL READY</span>':'')+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div></div><div class="small">Paid '+esc(when(o.paid))+'<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
+  return '<section class="order'+(done?' done':'')+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+brand+(done?'<span class="tag done">CHECKED</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(o.replacement?'<span class="tag" style="background:#fde7c8;color:#7a4b00">REPLACEMENT</span>':'')+(hasLabel(o)?'<span class="tag">LABEL READY</span>':'')+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div></div><div class="small">Paid '+esc(when(o.paid))+'<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
-    +(hasLabel(o)?'<div class="small">'+esc((o.shipment.service||'UPS')+(o.tracking?' · '+o.tracking:''))+' · <a href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">Print label</a></div>':'')+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(done?'✅ All '+u+' in the bag. '+(hasLabel(o)?'Put the label on.':'Ready for its label.'):n+' of '+u+' checked')+'</span>'+(n?'<button data-reset="'+esc(o.id)+'">Start this order over</button>':'')+'</div></section>';
+    +(hasLabel(o)?'<div class="small">'+esc((o.shipment.service||'UPS')+(o.tracking?' · '+o.tracking:''))+' · <a href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">Print label</a></div>':'')+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(done?'✅ All '+u+' in the bag. '+(hasLabel(o)?'Put the label on.':'Ready for its label.'):n+' of '+u+' checked')+'</span>'+'<span>'+(n?'<button data-reset="'+esc(o.id)+'">Start this order over</button> ':'')+'<button data-skip="'+esc(o.id)+'">'+(isSkipped(o)?'Un-skip':'Skip for now')+'</button></span></div></section>';
 }
 function pickList(){
-  var totals={};orders.forEach(function(o){(o.items||[]).forEach(function(i){var k=i.name;totals[k]=(totals[k]||0)+i.quantity})});
+  var totals={};orders.filter(function(o){return !isSkipped(o)}).forEach(function(o){(o.items||[]).forEach(function(i){var k=i.name;totals[k]=(totals[k]||0)+i.quantity})});
   var rows=Object.keys(totals).sort(function(a,b){return totals[b]-totals[a]||a.localeCompare(b)});
   if(!rows.length)return '<div class="msg">No orders waiting to be packed.</div>';
-  return '<p class="small">Everything you need to pull for the '+orders.length+' orders waiting to be packed.</p><table><tbody>'+rows.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="n">'+totals[k]+'</td></tr>'}).join('')+'</tbody></table>';
+  return '<p class="small">Everything you need to pull for the '+orders.filter(function(o){return !isSkipped(o)}).length+' orders waiting to be packed'+(orders.some(isSkipped)?' (skipped orders left out)':'')+'.</p><table><tbody>'+rows.map(function(k){return '<tr><td>'+esc(k)+'</td><td class="n">'+totals[k]+'</td></tr>'}).join('')+'</tbody></table>';
 }
 function fetchOrders(){
   var out=document.getElementById('out');
@@ -189,13 +191,14 @@ function fetchOrders(){
     return r.json();
   }).then(function(d){
     orders=(d.orders||[]).filter(needsPacking).concat(replacementCards(d.orders||[])).sort(function(a,b){return (a.paid||a.created||0)-(b.paid||b.created||0)});
-    var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);
+    var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);var ks={};orders.forEach(function(o){if(skipped[o.id])ks[o.id]=skipped[o.id]});skipped=ks;saveSkip();
     render();
   }).catch(function(e){if(e!==0)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
 }
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
   if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';var was=isDone(o);setTick(o,b.dataset.k,on);if(on)history.push({id:o.id,k:b.dataset.k});if(isDone(o)){justDone[o.id]=1;if(!was)celebrate(o)}b.blur();render();return}
+  if(b.dataset.skip){if(skipped[b.dataset.skip])delete skipped[b.dataset.skip];else skipped[b.dataset.skip]=Date.now();saveSkip();b.blur();render();return}
   if(b.dataset.reset){delete saved[b.dataset.reset];delete justDone[b.dataset.reset];save(saved);render();return}
   if(b.dataset.view){view=b.dataset.view;document.querySelectorAll('[data-view]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});render();return}
   if(b.id==='refresh'){justDone={};document.getElementById('out').innerHTML='<div class="msg">Loading paid orders…</div>';fetchOrders()}
