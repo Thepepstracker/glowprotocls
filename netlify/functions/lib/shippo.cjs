@@ -129,4 +129,6 @@ async function pending(limit=3){
  const batch=await transaction(async s=>{if(!status(await s.get('integrations','shippo')).enabled)return[];const outbox=await s.list('outbox');return(await s.list('orders')).filter(eligible).filter(o=>{const q=outbox.find(x=>x.id==='shippo-'+o.id);return !(q?.purchase_started&&q.status!=='failed')&&(q?.next_attempt||0)<=now()}).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit).map(o=>o.id)});
  const results=[];for(const id of batch)results.push(await buy(id));return{processed:batch.length,results};
 }
-module.exports={configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
+// Refund (void) an unused label. Shippo answers QUEUED/PENDING and settles the refund within days.
+async function voidLabel(transactionId){const t=String(transactionId||'').replace(/[^A-Za-z0-9_]/g,'').slice(0,64);if(t.length<4)fail('No Shippo label on this order.',{definite:true});const r=await request('/refunds/',{transaction:t,async:false});return{status:String(r.status||'').toUpperCase(),object_id:String(r.object_id||''),transaction:t}}
+module.exports={voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};

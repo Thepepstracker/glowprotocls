@@ -55,3 +55,19 @@ test('replacement label: one extra label to the same address, order untouched, d
  const again=await shippo.replacement(o.id,{note:'1 AICAR missing',key:'click-abc-123'});assert.equal(again.status,'already_bought');assert.equal(st.buys,1);
  await assert.rejects(shippo.replacement(o.id,{note:'',key:'click-def-456'}),/Say what is being replaced/);
  await transaction(async x=>{const i=await x.get('integrations','shippo');i.enabled=false;await x.put('integrations','shippo',i)});try{const r2=await shippo.replacement(o.id,{note:'second box',key:'click-ghi-789'});assert.equal(r2.n,2);assert.equal(st.buys,2)}finally{await transaction(async x=>{const i=await x.get('integrations','shippo');i.enabled=true;await x.put('integrations','shippo',i)})}});
+
+test('cancel duplicate: voids the label, cancels, returns stock, no customer email; refused without confirm or after a UPS scan',async()=>{
+ const core=require('../../netlify/functions/lib/store-core.cjs');const call=(p,body,h={})=>core.handle({path:p,method:'POST',headers:{'x-store-request':'1',...h},body});
+ process.env.STORE_ADMIN_PASSWORD=process.env.STORE_ADMIN_PASSWORD||'test-password-123';process.env.STORE_SESSION_SECRET=process.env.STORE_SESSION_SECRET||'test-session-secret-at-least-thirty-two-characters';process.env.STORE_ORIGIN=process.env.STORE_ORIGIN||'http://127.0.0.1:8787';
+ await transaction(require('../../tools/store/seed-data.cjs').seed);const cookie=(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD})).headers['Set-Cookie'].split(';')[0];
+ const prod=await transaction(async s=>(await s.list('products'))[0]);const before=prod.stock;
+ const o=await fixture({status:'shipped',items:[{id:prod.id,sku:prod.sku,name:prod.name,price:prod.price,quantity:1,amount:prod.price}],shippo_transaction_id:'tx_dup1',tracking:'1Z999'});
+ const st=fakeShippo();let refunds=0;const inner=global.fetch;global.fetch=async(url,opt)=>{if(url.endsWith('/refunds/')){refunds++;assert.equal(JSON.parse(opt.body).transaction,'tx_dup1');return{ok:true,status:200,json:async()=>({object_id:'rf_1',status:'QUEUED'})}}return inner(url,opt)};
+ const mails=await transaction(async s=>(await s.list('email_outbox')).length);
+ await assert.rejects(call('/admin/order/cancel-duplicate',{id:o.id},{cookie}),/Type the order number/);assert.equal(refunds,0);
+ const r=await call('/admin/order/cancel-duplicate',{id:o.id,confirm:o.id},{cookie});assert.equal(r.body.ok,true);assert.equal(r.body.label_refund.status,'QUEUED');assert.equal(refunds,1);
+ const after=await order(o.id);assert.equal(after.status,'canceled');assert.equal(after.canceled_reason,'duplicate');assert.equal(after.shippo_status,'label_refund_queued');
+ assert.equal((await transaction(s=>s.get('products',prod.id))).stock,before+1);assert.equal(await transaction(async s=>(await s.list('email_outbox')).length),mails);
+ await assert.rejects(call('/admin/order/cancel-duplicate',{id:o.id,confirm:o.id},{cookie}),/Only paid or labeled/);assert.equal(refunds,1);
+ const scanned=await fixture({status:'shipped',shippo_transaction_id:'tx_dup2',delivery:{first_scan_at:1}});await assert.rejects(call('/admin/order/cancel-duplicate',{id:scanned.id,confirm:scanned.id},{cookie}),/already scanned/);assert.equal(refunds,1);
+ void st});
