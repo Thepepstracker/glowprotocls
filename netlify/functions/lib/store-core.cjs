@@ -89,6 +89,7 @@ async function handle({path,method='GET',headers={},body={}}){
   const id=text(body.id||'',200);await transaction(async s=>{await session(s,h);const j=await s.get('email_outbox',id);if(!j)fail('Email not found.',404);if(j.status==='rejected')await emails.prepareRetry(s,j)});
   return{status:200,headers:{},body:await emails.dispatch(id)};
  }
+ if(path==='/admin/shippo/replacement'&&method==='POST'){await transaction(s=>session(s,h));const id=text(body.id||'',50);const result=await shippo.replacement(id,{note:body.note,key:body.key});await transaction(s=>audit(s,'shippo_replacement',id));return{status:200,headers:{},body:result}}
  if(path==='/admin/shippo/dryrun'&&method==='POST'){await transaction(s=>session(s,h));const result=await shippo.dryRun();await transaction(s=>audit(s,'shippo_dry_run'));return{status:200,headers:{},body:result}}
  if(['/admin/shippo/check','/admin/shippo/buy','/admin/shippo/retry'].includes(path)&&method==='POST'){
   await transaction(s=>session(s,h));let result;

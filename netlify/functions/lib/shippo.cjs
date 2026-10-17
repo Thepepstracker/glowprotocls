@@ -91,6 +91,37 @@ async function dryRun(limit=25){
  const buy=out.filter(r=>r.result==='would_buy');
  return{checked_at:now(),enabled:cfg.enabled,servicelevel:cfg.servicelevel,parcel:cfg.parcel,from:{city:fromAddress()?.city,state:fromAddress()?.state,zip:fromAddress()?.zip},orders:out,would_buy:buy.length,total_cents:buy.reduce((n,r)=>n+r.cents,0)};
 }
+// Replacement label: one extra UPS label to the order's ship-to, for a missing or damaged item.
+// Staff only. It never changes the order's status or emails the customer. The click key makes a
+// double click buy one label, not two. Works while automatic buying is paused (connection must be checked).
+async function replacement(id,{note='',key=''}={}){
+ note=String(note||'').trim().slice(0,140);key=String(key||'').replace(/[^A-Za-z0-9-]/g,'').slice(0,64);
+ if(!note)fail('Say what is being replaced (for example "1 AICAR missing").',400);if(key.length<8)fail('Missing click key.',400);
+ const okey='shippo-repl-'+key;
+ const claim=await transaction(async s=>{
+  const st=status(await s.get('integrations','shippo'));if(!st.connected||!st.carrier_account)fail('Check the Shippo connection and choose the UPS account first.',409);
+  const o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(o.is_test!==false)fail('Test orders cannot get a replacement label.',409);
+  const own=require('./own-contact.cjs').match(o.customer);if(own)fail('The ship-to '+own+' is Glow Lab’s own. Fix the customer’s '+own+' first.',409);
+  const prior=await s.get('outbox',okey);if(prior){if(prior.status==='synced')return{done:prior.result};fail('This replacement is already being bought or needs a check in Shippo. Nothing more was bought.',409)}
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}),count=await s.get('integrations','shippo-count-'+today)||{n:0};if(count.n>=st.daily_limit)fail('Daily label limit reached ('+st.daily_limit+').',409);
+  const n=(o.replacements||[]).length+1;await s.put('outbox',okey,{id:okey,provider:'shippo',order_id:id,status:'sending',started:now(),n});
+  return{o,cfg:st,n,today};
+ });
+ if(claim.done)return{...claim.done,status:'already_bought'};
+ const{o,cfg,n,today}=claim,meta=tag(id)+':R'+n;let started=false;
+ try{
+  const body=shipmentBody(o,cfg);body.metadata=meta;
+  const shipment=await request('/shipments/',body);const rates=Array.isArray(shipment.rates)?shipment.rates:[];
+  const rate=rates.find(r=>r.servicelevel?.token===cfg.servicelevel&&(!r.carrier_account||r.carrier_account===cfg.carrier_account));
+  if(!rate)fail('No '+cfg.servicelevel.replace(/_/g,' ')+' rate for this address.',{definite:true});
+  const cents=Math.round(Number(rate.amount)*100);if(!(cents>0)||cents>cfg.max_label_cents)fail('Label price $'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit.',{definite:true});
+  started=true;const t=await request('/transactions/',{rate:rate.object_id,label_file_type:'PDF_4x6',metadata:meta,async:false});
+  if(t.status!=='SUCCESS'||!t.tracking_number)fail('Shippo could not buy the label: '+((t.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300)||t.status||'no reason given'),{definite:t.status==='ERROR'});
+  const result={order_id:id,n,note,tracking:String(t.tracking_number),label_url:t.label_url||'',label_cost_cents:cents,service:'UPS '+(rate.servicelevel?.name||''),shippo_transaction_id:t.object_id,created:now()};
+  await transaction(async s=>{const stored=await s.get('orders',id);stored.replacements=[...(stored.replacements||[]),result];await s.put('orders',id,stored);const q=await s.get('outbox',okey);q.status='synced';q.result=result;await s.put('outbox',okey,q);const k='shippo-count-'+today,c=await s.get('integrations',k)||{id:k,n:0};c.n++;await s.put('integrations',k,c)});
+  return{...result,status:'label_bought'};
+ }catch(e){await transaction(async s=>{const q=await s.get('outbox',okey);if(!q)return;if(!started||e.definite){await s.remove('outbox',okey)}else{q.status='needs_review';q.message=e.message;await s.put('outbox',okey,q)}});throw e}
+}
 // Staff checked the order (address fixed, or the label confirmed in Shippo): look for a label once more, then allow a new purchase.
 async function retry(id){await transaction(async s=>{const o=await s.get('orders',id);if(!o)fail('Order not found.');o.shippo_needs_review=false;o.shippo_message='';o.shippo_status='queued';await s.put('orders',id,o);const q=await s.get('outbox','shippo-'+id);if(q){q.purchase_started=false;q.status='failed';q.next_attempt=0;q.lease_until=0;await s.put('outbox',q.id,q)}});return buy(id)}
 async function enabled(){return transaction(async s=>status(await s.get('integrations','shippo')).enabled)}
@@ -98,4 +129,4 @@ async function pending(limit=3){
  const batch=await transaction(async s=>{if(!status(await s.get('integrations','shippo')).enabled)return[];const outbox=await s.list('outbox');return(await s.list('orders')).filter(eligible).filter(o=>{const q=outbox.find(x=>x.id==='shippo-'+o.id);return !(q?.purchase_started&&q.status!=='failed')&&(q?.next_attempt||0)<=now()}).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit).map(o=>o.id)});
  const results=[];for(const id of batch)results.push(await buy(id));return{processed:batch.length,results};
 }
-module.exports={configured,status,check,dryRun,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
+module.exports={configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
