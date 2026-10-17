@@ -108,6 +108,10 @@ function isDoneWith(o,s){var n=0;Object.keys(s.t).forEach(function(k){if(s.t[k])
 // To pack: paid orders, plus orders whose label is bought but UPS has not scanned the box yet (last 7 days).
 function hasLabel(o){return !!(o.shipment&&o.shipment.label_url)}
 function needsPacking(o){if(o.is_test===true)return false;if(o.status==='paid')return true;var sh=o.shipment||{},dl=o.delivery||{};return o.status==='shipped'&&hasLabel(o)&&!dl.first_scan_at&&!dl.delivered&&(sh.label_created_at||0)>Date.now()/1000-7*86400}
+// Replacement boxes (missing or wrong items) from the last 4 days show as their own cards.
+function replacementCards(all){var out=[],cut=Date.now()/1000-4*86400;all.forEach(function(o){(o.replacements||[]).forEach(function(r){if((r.created||0)<cut)return;
+  out.push({id:o.id+'-R'+r.n,brand:o.brand,customer:o.customer,paid:r.created,created:r.created,revision:0,replacement:r.note||'Replacement',
+    items:(r.items&&r.items.length)?r.items:[{id:'note',name:r.note||'Replacement items',quantity:1}],shipment:{label_url:r.label_url,service:r.service,label_created_at:r.created},tracking:r.tracking})})});return out}
 function when(sec){return sec?new Date(sec*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}
 function matches(o){if(!query)return true;var q=query.toLowerCase();return (o.id||'').toLowerCase().indexOf(q)>=0||((o.customer&&o.customer.name)||'').toLowerCase().indexOf(q)>=0}
 function render(){
@@ -166,8 +170,8 @@ function card(o){
   }).join('');
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o);
-  return '<section class="order'+(done?' done':'')+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+brand+(done?'<span class="tag done">CHECKED</span>':'')+(hasLabel(o)?'<span class="tag">LABEL READY</span>':'')+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div></div><div class="small">Paid '+esc(when(o.paid))+'<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
-    +'<ul class="items">'+rows+'</ul>'
+  return '<section class="order'+(done?' done':'')+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+brand+(done?'<span class="tag done">CHECKED</span>':'')+(o.replacement?'<span class="tag" style="background:#fde7c8;color:#7a4b00">REPLACEMENT</span>':'')+(hasLabel(o)?'<span class="tag">LABEL READY</span>':'')+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div></div><div class="small">Paid '+esc(when(o.paid))+'<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
+    +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
     +(hasLabel(o)?'<div class="small">'+esc((o.shipment.service||'UPS')+(o.tracking?' · '+o.tracking:''))+' · <a href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">Print label</a></div>':'')+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(done?'✅ All '+u+' in the bag. '+(hasLabel(o)?'Put the label on.':'Ready for its label.'):n+' of '+u+' checked')+'</span>'+(n?'<button data-reset="'+esc(o.id)+'">Start this order over</button>':'')+'</div></section>';
 }
@@ -184,7 +188,7 @@ function fetchOrders(){
     if(!r.ok){out.innerHTML='<div class="msg">The store did not answer ('+r.status+'). Tap Refresh orders to try again.</div>';throw 0}
     return r.json();
   }).then(function(d){
-    orders=(d.orders||[]).filter(needsPacking).sort(function(a,b){return (a.paid||a.created||0)-(b.paid||b.created||0)});
+    orders=(d.orders||[]).filter(needsPacking).concat(replacementCards(d.orders||[])).sort(function(a,b){return (a.paid||a.created||0)-(b.paid||b.created||0)});
     var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);
     render();
   }).catch(function(e){if(e!==0)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});

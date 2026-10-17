@@ -89,6 +89,11 @@ async function handle({path,method='GET',headers={},body={}}){
   const id=text(body.id||'',200);await transaction(async s=>{await session(s,h);const j=await s.get('email_outbox',id);if(!j)fail('Email not found.',404);if(j.status==='rejected')await emails.prepareRetry(s,j)});
   return{status:200,headers:{},body:await emails.dispatch(id)};
  }
+ if(path==='/admin/order/replacement-items'&&method==='POST'){const result=await transaction(async s=>{await session(s,h);const id=text(body.id||'',50),n=int(body.n);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);const r=(o.replacements||[]).find(x=>x.n===n);if(!r)fail('Replacement not found.',404);if(!Array.isArray(body.items)||!body.items.length||body.items.length>20)fail('List what goes in the replacement box.');
+  const lines=[];for(const it of body.items){const p=await s.get('products',int(it.id));const q=int(it.quantity);if(!p)fail('Product not found.');if(!(q>=1&&q<=20))fail('Quantity must be 1 to 20.');lines.push({id:p.id,name:p.name,quantity:q,units:Number.isInteger(p.units)?p.units:1,...(isBundle(p)?{draws:p.components.map(c=>({id:c.id,qty:c.qty}))}:{})})}
+  for(const l of (r.items||[]))if(r.stock_taken)await moveStock(s,l,1);
+  for(const l of lines){for(const d of lineDraws(l)){const p=await s.get('products',d.id);if(!p||p.stock<l.quantity*d.qty)fail('Not enough stock for '+(p?p.name:'a product')+' ('+(p?p.stock:0)+' left).',409)}await moveStock(s,l,-1)}
+  r.items=lines;r.stock_taken=true;await s.put('orders',id,o);await audit(s,'replacement_items',id);return{ok:true,items:lines.map(l=>({id:l.id,name:l.name,quantity:l.quantity}))}});return{status:200,headers:{},body:result}}
  if(path==='/admin/shippo/replacement'&&method==='POST'){await transaction(s=>session(s,h));const id=text(body.id||'',50);const result=await shippo.replacement(id,{note:body.note,key:body.key});await transaction(s=>audit(s,'shippo_replacement',id));return{status:200,headers:{},body:result}}
  if(path==='/admin/shippo/dryrun'&&method==='POST'){await transaction(s=>session(s,h));const result=await shippo.dryRun();await transaction(s=>audit(s,'shippo_dry_run'));return{status:200,headers:{},body:result}}
  if(['/admin/shippo/check','/admin/shippo/buy','/admin/shippo/retry'].includes(path)&&method==='POST'){
