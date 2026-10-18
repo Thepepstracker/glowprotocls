@@ -71,3 +71,13 @@ test('cancel duplicate: voids the label, cancels, returns stock, no customer ema
  await assert.rejects(call('/admin/order/cancel-duplicate',{id:o.id,confirm:o.id},{cookie}),/Only paid or labeled/);assert.equal(refunds,1);
  const scanned=await fixture({status:'shipped',shippo_transaction_id:'tx_dup2',delivery:{first_scan_at:1}});await assert.rejects(call('/admin/order/cancel-duplicate',{id:scanned.id,confirm:scanned.id},{cookie}),/already scanned/);assert.equal(refunds,1);
  void st});
+
+test('void extra label: refunds it, keeps the order as paid with no label, and auto-buy never re-buys it',async()=>{
+ const core=require('../../netlify/functions/lib/store-core.cjs');const call=(p,body,h={})=>core.handle({path:p,method:'POST',headers:{'x-store-request':'1',...h},body});
+ const cookie=(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD})).headers['Set-Cookie'].split(';')[0];
+ const o=await fixture({status:'shipped',shippo_transaction_id:'tx_void1',tracking:'1ZVOID',shipment:{tracking:'1ZVOID',label_url:'https://x.example/l.pdf'}});
+ fakeShippo();let refunds=0;const inner=global.fetch;global.fetch=async(url,opt)=>{if(url.endsWith('/refunds/')){refunds++;return{ok:true,status:200,json:async()=>({object_id:'rf_v',status:'PENDING'})}}return inner(url,opt)};
+ await assert.rejects(call('/admin/shippo/void-label',{id:o.id},{cookie}),/Type the order number/);assert.equal(refunds,0);
+ const r=await call('/admin/shippo/void-label',{id:o.id,confirm:o.id},{cookie});assert.equal(r.body.status,'paid');assert.equal(refunds,1);
+ const after=await order(o.id);assert.equal(after.status,'paid');assert.equal(after.tracking,'');assert.equal(after.shipment,undefined);assert.equal(after.label_refund.tracking,'1ZVOID');assert.equal(shippo.eligible(after),false);
+ await assert.rejects(call('/admin/shippo/void-label',{id:o.id,confirm:o.id},{cookie}),/no unused Shippo label/);assert.equal(refunds,1)});
