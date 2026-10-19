@@ -113,7 +113,7 @@ async function handle({path,method='GET',headers={},body={}}){
  if(['/admin/shippo/check','/admin/shippo/buy','/admin/shippo/retry'].includes(path)&&method==='POST'){
   await transaction(s=>session(s,h));let result;
   if(path.endsWith('/check')){const checked=await shippo.check();await transaction(async s=>{const old=await s.get('integrations','shippo');const keep=old?.fingerprint===checked.fingerprint;await s.put('integrations','shippo',{...old,...checked,enabled:keep&&old?.enabled===true,carrier_account:checked.accounts.some(a=>a.id===old?.carrier_account)?old.carrier_account:(checked.accounts[0]?.id||'')});await audit(s,'shippo_checked')});result={ok:true,accounts:checked.accounts};}
-  else{const id=text(body.id||'',50);const opts={manual:true,servicelevel:text(body.servicelevel||'',40)};result=path.endsWith('/retry')?await shippo.retry(id,opts):await shippo.buy(id,opts);await transaction(s=>audit(s,'shippo_'+(path.endsWith('/retry')?'retry':'buy'),id))}
+  else{const id=text(body.id||'',50);const opts={manual:true,servicelevel:text(body.servicelevel||'',40,false)};result=path.endsWith('/retry')?await shippo.retry(id,opts):await shippo.buy(id,opts);await transaction(s=>audit(s,'shippo_'+(path.endsWith('/retry')?'retry':'buy'),id))}
   return{status:200,headers:{},body:result};
  }
  if(['/admin/shipstation/check','/admin/shipstation/send','/admin/shipstation/tracking'].includes(path)&&method==='POST'){
