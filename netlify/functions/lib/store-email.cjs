@@ -33,6 +33,44 @@ if(o.status==='shipped'){const sh=o.shipment||(o.tracking?{tracking:o.tracking}:
  return enqueue(s,{id:'order-shipped-'+o.id,kind:'order_shipped',brand:o.brand,to:o.customer.email,related_id:o.id,subject:'Your shipping label has been created · Glow Lab '+o.id,content:template('Your shipping label has been created.',['Hi '+firstName(o)+',','Your order '+o.id+' is packed and its shipping label was created'+(sh?.ship_date?' on '+shipDay(sh.ship_date):'')+'.',...(sh?[sh.service||sh.carrier_name?'Carrier: '+(sh.service||sh.carrier_name):null,'Tracking number: '+sh.tracking].filter(Boolean):['Reply to this email and we will send your tracking details.']),shipToLine(o),...itemLines(o),ups?'Tracking updates start once UPS scans your package. We will email you the delivery date as soon as UPS has it.':(sh?.tracking_url?'Use the button below to follow your package.':'')].filter(Boolean),sh?.tracking_url||null,'Track your package',viewLink(o),'View your order')})}
 if(o.status==='canceled')return enqueue(s,{id:'order-canceled-'+o.id,kind:'order_canceled',brand:o.brand,to:o.customer.email,related_id:o.id,subject:'Glow Lab '+o.id+' · canceled',content:template('Order '+o.id,['Your order has been canceled. Reserved stock and rewards points have been released.','If you already sent payment, reply to this email so staff can review it.','Order total: '+money(o.total)],null,null)});
 return null}
+// Staff alert: one email per new real order to the shop's own inbox(es), so nobody has to sit on the dashboard.
+// Recipients: STORE_ORDER_ALERT_TO (comma separated, up to 5) or jonah@glowglps.com. Never includes the customer's email, phone or street.
+function alertRecipients(){return [...new Set(String(process.env.STORE_ORDER_ALERT_TO||'jonah@glowglps.com').split(/[,;\s]+/).map(x=>x.trim().toLowerCase()).filter(address))].slice(0,5)}
+const ordinal=n=>n+(['th','st','nd','rd'][((n%100)-20)%10]||['th','st','nd','rd'][n%100]||'th');
+function alertContent(o,B,day){const c=o.customer||{},origin=configuration().origin,n=(o.items||[]).reduce((a,i)=>a+(i.quantity||0),0),where=[c.city,c.state].filter(Boolean).join(', '),when=new Date((o.submitted_at||o.created||now())*1000).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',weekday:'short',month:'short',day:'numeric'}),
+  pay=String(o.payment_method||'').replace(/^./,m=>m.toUpperCase())||'Not chosen yet',accent=B.accent||'#c9a24b',big=o.total>=25000?'🔥 BIG ORDER':o.total>=10000?'💰 NICE ORDER':'🛒 NEW ORDER',
+  admin=origin+'/store-next/admin?order='+encodeURIComponent(o.id),pack=origin+'/store-next/packing.html';
+ const text=[big+' · '+money(o.total),'Order '+o.id+(B.id!=='glow'?' ('+B.name+')':''),(c.name||'Customer')+(where?' · '+where:''),'Items ('+n+'):',...itemLines(o).map(l=>'  • '+l),'Payment: '+pay+(o.receipt?' · receipt uploaded':''),'Placed: '+when+' ET','Today: '+ordinal(day.count)+' order · '+money(day.total)+' so far','Open in Management: '+admin,'Packing Check: '+pack].join('\n');
+ const rows=(o.items||[]).map(i=>`<tr><td style="padding:10px 0;border-bottom:1px solid #2a2a2a;font-size:16px;color:#f5f1e8">${esc(i.name)}</td><td align="right" style="padding:10px 0;border-bottom:1px solid #2a2a2a"><span style="display:inline-block;min-width:34px;text-align:center;background:${accent};color:#111;font-weight:800;border-radius:999px;padding:4px 10px;font-size:15px">×${esc(i.quantity)}</span></td></tr>`).join('');
+ const html=`<!doctype html><html><body style="margin:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+<div style="max-width:560px;margin:0 auto;padding:22px 14px">
+ <div style="background:#141414;border:1px solid #2a2a2a;border-radius:22px;overflow:hidden">
+  <div style="background-color:${accent};background:linear-gradient(135deg,${accent} 0%,#f3d58b 55%,${accent} 100%);padding:22px 26px;color:#111">
+   <div style="font-size:12px;font-weight:800;letter-spacing:4px">${esc(big)} · ${esc(B.name.toUpperCase())}</div>
+   <div style="font-size:52px;line-height:1.05;font-weight:900;letter-spacing:-1px;margin-top:6px">${esc(money(o.total))}</div>
+   <div style="font-size:15px;font-weight:700;margin-top:6px">${esc(ordinal(day.count))} order today · ${esc(money(day.total))} so far</div>
+  </div>
+  <div style="padding:22px 26px">
+   <div style="font-size:24px;font-weight:800;color:#fff">${esc(c.name||'New customer')}</div>
+   <div style="font-size:15px;color:#9a9385;margin-top:2px">${esc(where||'')}${where?' · ':''}${esc(when)} ET</div>
+   <div style="margin-top:14px"><span style="display:inline-block;background:#222;color:#f3d58b;border:1px solid #3a3a3a;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700">${esc(o.id)}</span> <span style="display:inline-block;background:#222;color:#cfe9d6;border:1px solid #3a3a3a;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700">${esc(pay)}${o.receipt?' · receipt in':''}</span> <span style="display:inline-block;background:#222;color:#ddd;border:1px solid #3a3a3a;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700">${esc(n)} item${n===1?'':'s'}</span></div>
+   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:16px;border-collapse:collapse">${rows}</table>
+   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px"><tr>
+    <td style="padding-right:6px"><a href="${esc(admin)}" style="display:block;text-align:center;background:${accent};color:#111;text-decoration:none;font-weight:800;border-radius:14px;padding:14px 10px;font-size:16px">Open order →</a></td>
+    <td style="padding-left:6px"><a href="${esc(pack)}" style="display:block;text-align:center;background:#222;color:#fff;border:1px solid #3a3a3a;text-decoration:none;font-weight:800;border-radius:14px;padding:13px 10px;font-size:16px">📦 Packing Check</a></td>
+   </tr></table>
+  </div>
+ </div>
+ <div style="text-align:center;color:#5d584f;font-size:12px;margin-top:12px">Staff alert from your store · sent only to the shop's own inbox</div>
+</div></body></html>`;
+ return{text,html}}
+async function queueStaffAlert(s,o){if(!o||o.is_test!==false)return[];const B=brands.orderBrand(o),c=o.customer||{};
+ const etDay=t=>new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}),todayKey=etDay(o.created||now());
+ const today=(await s.list('orders')).filter(x=>x.id!==o.id).concat([o]).filter(x=>x.is_test===false&&!['canceled','expired'].includes(x.status)&&etDay(x.created||0)===todayKey&&(!x.proof_required||x.submitted_at||x.id===o.id));
+ const day={count:Math.max(1,today.length),total:today.reduce((a,x)=>a+(x.total||0),0)||o.total||0};
+ const out=[];for(const to of alertRecipients()){out.push(await enqueue(s,{id:'staff-new-order-'+o.id+'-'+hash(to).slice(0,10),kind:'staff_order_alert',brand:o.brand,to,related_id:o.id,expires:now()+6*3600,
+  subject:(o.total>=25000?'🔥':o.total>=10000?'💰':'🛒')+' '+money(o.total)+' · '+(c.name||'New order')+' · '+o.id,content:alertContent(o,B,day)}))}
+ return out.filter(Boolean)}
 async function queueReminder(s,o,token,id){const url=brandOrigin(o)+'/store-next/'+(o.affiliate||'')+'#order='+o.id+'.'+token;return enqueue(s,{id,kind:'payment_reminder',brand:o.brand,to:o.customer.email,related_id:o.id,subject:'Friendly payment reminder · Glow Lab '+o.id,content:template('A friendly reminder about your order.',['Hi '+o.customer.name+',','Thank you for your order! We have not yet confirmed receipt of your payment.','Order: '+o.id,'Order total: '+money(o.total),'Please use your invoice or the payment options on your order page to complete payment. Once we verify receipt, your order will be placed in queue.','If you have already paid, please do not pay again. Reply to this email with your payment details or upload your screenshot so we can locate and verify your payment.','Your private order link below expires in seven days.'],url,'View your order and payment options')})}
 function publicJob(j){return{id:j.id,kind:j.kind,to:j.to,related_id:j.related_id,status:j.status,attempts:j.attempts,created:j.created,accepted_at:j.accepted_at,message:j.message||'',provider_id:j.provider_id||null}}
 async function dispatch(id){
@@ -64,6 +102,6 @@ async function dispatchPending(limit=4,budgetMs=0){const started=Date.now();if(!
 async function prepareRetry(s,j){const cfg=configuration();if(!cfg.ready)throw Object.assign(new Error('Connect email settings first.'),{status:503});const payload=open(j.payload);payload.from=`${brands.get(j.brand).name} <${brands.emailFrom(brands.get(j.brand),cfg.from)}>`;payload.reply_to=cfg.reply;j.payload=seal(payload);j.status='pending';j.retry_generation=(j.retry_generation||0)+1;j.send_key=j.id+'-retry-'+j.retry_generation;delete j.key_fingerprint;delete j.first_attempt;await s.put('email_outbox',j.id,j)}
 async function safeDispatch(id){if(!id)return;try{return await dispatch(id)}catch{return{status:'retry',message:'Order/account saved. Email sending needs another attempt.'}}}
 async function adminData(s){return{...status(),jobs:(await s.list('email_outbox')).sort((a,b)=>b.created-a.created).slice(0,100).map(publicJob)}}
-module.exports={brandOrigin,viewLink,configuration,status,template,enqueue,queueSetup,queueOrder,queueSubmitted,queueUpdate,queueReminder,dispatch,dispatchPending,safeDispatch,prepareRetry,adminData,publicJob};
+module.exports={brandOrigin,viewLink,configuration,status,template,enqueue,queueSetup,queueOrder,queueSubmitted,queueStaffAlert,queueUpdate,queueReminder,dispatch,dispatchPending,safeDispatch,prepareRetry,adminData,publicJob};
 
 

@@ -203,7 +203,7 @@ async function handle({path,method='GET',headers={},body={}}){
    const beneficiary=assisted?await s.get('customers',accounts.hash(accounts.email(customer.email))):a;
    o.is_test=settings.demo!==false;o.customer_id=beneficiary?.verified&&reqBrand.rewards?beneficiary.id:null;if(assisted){const actor=await s.get('sessions',staffSession);o.created_by_staff=actor.staff_id||'owner';o.order_for_customer=true}o.points_earned=0;if(o.proof_required){o.expires=clock()+7*86400;o.payment_window_days=7}await accounts.reserve(s,o);
    for(const item of q.items)await moveStock(s,item,-1);await couponRules.reserve(s,q,1);
-   await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);emailJob=await emails.queueOrder(s,o,token);return{order:publicOrder(o),token};
+   await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);emailJob=await emails.queueOrder(s,o,token);if(!o.proof_required)await emails.queueStaffAlert(s,o);return{order:publicOrder(o),token};
   }
   const edit=path.match(/^\/orders\/([A-Z0-9-]+)\/(edit-context|edit-quote|edit)$/);
   if(edit){const o=await orderAuth(s,edit[1],h);editable(o);const available=await editStore(s,o);
@@ -226,7 +226,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(!['order_received','awaiting_payment','payment_submitted'].includes(o.status))fail('This order no longer accepts receipts.',409);
    if((o.revision||0)>0&&body.expected_revision!==o.revision)fail('This checkout changed. Refresh your order and check the latest total before submitting payment proof.',409);
    if(!o.customer.phone)o.customer.phone=contactPhone(body.phone);
-   const method=text(body.payment_method??o.payment_method,20);if(!['venmo','paypal','cashapp','zelle'].includes(method)||o.is_test===false&&!settings.payment_links?.[method])fail('Choose an available payment method.');const reference=text(body.reference||'',100,false);o.payment_method=method;o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
+   const method=text(body.payment_method??o.payment_method,20);if(!['venmo','paypal','cashapp','zelle'].includes(method)||o.is_test===false&&!settings.payment_links?.[method])fail('Choose an available payment method.');const reference=text(body.reference||'',100,false);o.payment_method=method;o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);await emails.queueStaffAlert(s,o);await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
   }fail('Endpoint not found.',404)}
   if(path==='/admin/login'&&method==='POST'){
    if(!process.env.STORE_ADMIN_PASSWORD||process.env.STORE_ADMIN_PASSWORD.length<12)fail('Admin password is not configured.',503);

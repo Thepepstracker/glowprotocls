@@ -33,3 +33,15 @@ test('a Zader customer gets a Zader account email that opens zaderhealth.com, an
  await call('/account/register',{name:'Gail Glow',email:'gail-glow@example.com'},{host:'glowglps.com','x-forwarded-for':'glow-register-fixture'});
  assert.equal(messages.length,2);assert.match(messages[1].subject,/Glow Lab/);assert.match(messages[1].text,/http:\/\/127\.0\.0\.1:8787\/store-next\/account-setup#/);
 });
+test('every new live order sends one staff alert to the shop inbox, never to the customer, and never twice',async()=>{ready();delete process.env.STORE_ORDER_ALERT_TO;global.fetch=async()=>({ok:true,status:200,json:async()=>({id:'alert'})});
+ const r=await call('/orders',orderBody({idempotency_key:crypto.randomUUID()}));const id=r.body.order.id;
+ let jobs=await transaction(async s=>(await s.list('email_outbox')).filter(j=>j.kind==='staff_order_alert'&&j.related_id===id));
+ if(r.body.order.proof_required){assert.equal(jobs.length,0,'a saved-but-unsubmitted checkout is not an order yet')}
+ else{assert.equal(jobs.length,1);assert.equal(jobs[0].to,'jonah@glowglps.com');assert.notEqual(jobs[0].to,'orders@example.com');
+  await transaction(s=>emails.queueStaffAlert(s,{...r.body.order,is_test:false,customer:{name:'Email Test',city:'Test',state:'GA'},items:[{name:'X',quantity:1}],total:100}));
+  jobs=await transaction(async s=>(await s.list('email_outbox')).filter(j=>j.kind==='staff_order_alert'&&j.related_id===id));assert.equal(jobs.length,1,'no duplicate alert')}
+ process.env.STORE_ORDER_ALERT_TO='a@example.com, b@example.com,not-an-email';
+ const ids=await transaction(s=>emails.queueStaffAlert(s,{id:'GLP-ALERTTEST',is_test:false,brand:'glow',created:Math.floor(Date.now()/1000),total:12345,customer:{name:'Pat',email:'pat@example.com',address:'9 Secret Rd',city:'Atlanta',state:'GA'},items:[{name:'BAC Water · 10 mL',quantity:2}],payment_method:'venmo'}));
+ assert.equal(ids.length,2);const job=await transaction(s=>s.get('email_outbox',ids[0]));assert.match(job.to,/^[ab]@example\.com$/);
+ assert.equal((await transaction(s=>emails.queueStaffAlert(s,{id:'GLP-T',is_test:true,customer:{},items:[]}))).length,0,'test orders never alert');
+ delete process.env.STORE_ORDER_ALERT_TO});

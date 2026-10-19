@@ -106,7 +106,29 @@ tr.out td{opacity:.6;text-decoration:line-through}
 .toast.show{opacity:1}
 .keys{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:18px}
 .keys kbd{font:700 12px/1 ui-monospace,Menlo,monospace;border:1px solid var(--muted);border-bottom-width:2px;border-radius:5px;padding:2px 6px;background:#fff;color:var(--ink)}
-@media (prefers-reduced-motion:reduce){.tap.next{animation:none}}
+.feed{position:fixed;top:14px;right:14px;z-index:70;display:flex;flex-direction:column;gap:12px;width:min(380px,calc(100vw - 28px));pointer-events:none}
+.ping{pointer-events:auto;cursor:pointer;background:#141414;color:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.45),0 0 0 1px #2a2a2a;transform:translateX(120%) scale(.9);opacity:0;transition:transform .55s cubic-bezier(.2,1.4,.4,1),opacity .3s}
+.ping.in{transform:none;opacity:1}
+.ping.out{transform:translateX(120%);opacity:0;transition:transform .35s ease-in,opacity .35s}
+.ping .top{background:linear-gradient(135deg,#c9a24b,#f3d58b 55%,#c9a24b);background-size:200% 200%;animation:shine 2.4s linear infinite;color:#111;padding:14px 18px;position:relative}
+.ping .eyebrow{font-size:11px;font-weight:900;letter-spacing:.32em}
+.ping .amt{font-size:40px;font-weight:900;letter-spacing:-1px;line-height:1.05;margin-top:2px}
+.ping .day{font-size:13px;font-weight:800;opacity:.85}
+.ping .x{position:absolute;top:8px;right:12px;font-size:20px;font-weight:900;opacity:.6;background:none;border:0;padding:4px;color:#111}
+.ping .body{padding:12px 18px 14px}
+.ping .nm{font-size:19px;font-weight:800}
+.ping .where{font-size:13px;color:#9a9385}
+.ping .its{margin:8px 0 0;padding:0;list-style:none;font-size:14px;color:#e9e3d6}
+.ping .its li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px solid #262626}
+.ping .its b{background:#c9a24b;color:#111;border-radius:999px;padding:0 8px;font-size:12px}
+.ping .chips{margin:10px 0 0;display:flex;gap:6px;flex-wrap:wrap}
+.ping .chips span{font-size:11px;font-weight:800;letter-spacing:.04em;background:#222;border:1px solid #3a3a3a;border-radius:999px;padding:3px 9px;color:#f3d58b}
+.ping .timer{height:3px;background:#c9a24b;transform-origin:left;animation:drain 14s linear forwards}
+.ping.big .top{background:linear-gradient(135deg,#ff6a3d,#ffd36e 55%,#ff6a3d);background-size:200% 200%}
+@keyframes shine{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes drain{to{transform:scaleX(0)}}
+.ticker{background:#2b2414;color:#f3d58b;border:1px solid #5a4a22}
+@media (prefers-reduced-motion:reduce){.tap.next{animation:none}.ping,.ping .top,.ping .timer{animation:none;transition:none}}
 @media (max-width:600px){.item{flex-wrap:wrap}.taps{width:100%;justify-content:flex-start}.oid{font-size:19px}.hide-sm{display:none}}
 @media print{header,.now,.tools,.chips,.alerts,.keys,.noprint,#confetti,.cheer,.toast,.foot .btns{display:none!important}body{background:#fff;font-size:13px}main{padding:0;max-width:none}table{border:1px solid #999}td,th{padding:5px 8px}.order{break-inside:avoid;border:1px solid #999}}
 </style>
@@ -115,18 +137,18 @@ tr.out td{opacity:.6;text-decoration:line-through}
 <header>
   <div class="row">
     <h1>Packing Check</h1>
-    <div class="hstats"><span class="count" id="count">0 of 0 orders checked</span><span class="pill hide-sm" id="left"></span><span class="pill hide-sm" id="today"></span><span class="pill hide-sm" id="synced"></span></div>
+    <div class="hstats"><span class="count" id="count">0 of 0 orders checked</span><span class="pill hide-sm" id="left"></span><span class="pill ticker" id="ticker" hidden></span><span class="pill hide-sm" id="today"></span><span class="pill hide-sm" id="synced"></span></div>
   </div>
   <div class="bar"><i id="bar"></i></div>
 </header>
 <div class="now" id="now" hidden><div class="in"><span class="key">SPACE</span><div><div class="what" id="nowWhat"></div><div class="sub" id="nowSub"></div><div class="warnline" id="nowWarn"></div></div></div></div>
-<canvas id="confetti"></canvas><div class="cheer" id="cheer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<canvas id="confetti"></canvas><div class="cheer" id="cheer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div><div class="feed" id="feed" aria-live="polite"></div>
 <main>
   <div class="tools">
     <input type="search" id="search" placeholder="Search order number, name, city or product   ( / )" autocomplete="off">
     <button id="refresh" class="primary">Refresh orders</button>
     <button id="printLabels" title="Opens every label for orders you have not checked yet">Open all labels</button>
-    <button id="sound" class="mini" aria-pressed="true" title="Ding when an order is complete">🔔 Sound on</button>
+    <button id="sound" class="mini" aria-pressed="true" title="Sounds for new orders and finished boxes">🔔 Sound on</button><button id="notify" class="mini" title="Pop-up on this computer when a new order comes in, even when this tab is in the background">🛎️ Turn on order pop-ups</button><button id="testPing" class="mini" title="Show what a new-order alert looks like">Test alert</button>
   </div>
   <div class="tools tabs">
     <button data-view="todo" aria-pressed="true">To check<span class="n" id="nTodo">0</span></button>
@@ -146,7 +168,7 @@ tr.out td{opacity:.6;text-decoration:line-through}
   <div class="alerts" id="alerts"></div>
   <div id="out"><div class="msg">Loading paid orders…</div></div>
   <div class="keys noprint"><span><kbd>Space</kbd> next vial in</span><span><kbd>⌫</kbd> undo</span><span><kbd>L</kbd> open this order's label</span><span><kbd>S</kbd> skip this order</span><span><kbd>R</kbd> refresh</span><span><kbd>/</kbd> search</span><span><kbd>1</kbd>–<kbd>6</kbd> tabs</span></div>
-  <p class="small">Shows every order marked <b>Paid</b>, plus orders whose label is printed but UPS has not scanned yet (last 7 days), oldest first. Press the <b>space bar</b> once for every vial as it goes in the bag (or tap the boxes). The gold box shows what to put in next. Your ticks, skips and "out of stock" marks are saved on this device only — nothing in the store changes. If an order is edited after you checked it, its ticks clear so you check it again. Orders refresh by themselves every 3 minutes while you are not typing.</p>
+  <p class="small">Shows every order marked <b>Paid</b>, plus orders whose label is printed but UPS has not scanned yet (last 7 days), oldest first. Press the <b>space bar</b> once for every vial as it goes in the bag (or tap the boxes). The gold box shows what to put in next. Your ticks, skips and "out of stock" marks are saved on this device only — nothing in the store changes. If an order is edited after you checked it, its ticks clear so you check it again. Orders refresh by themselves every minute while you are not typing — every new order pops up in the corner with a cha-ching (and on your computer, if order pop-ups are on).</p>
 </main>
 <script>
 (function(){
@@ -159,11 +181,11 @@ var BOX=10;               // the supplier sells in boxes of 10.
 var WINDOW_DAYS=14;       // sales rate = units sold in the last 14 days (or since the store opened, if shorter).
 var LATE_HOURS=48;        // paid this long ago and still waiting = late for 2-day shipping.
 var MIN_PER_ORDER=3;      // Jonah: one order takes under 3 minutes to pack.
-var AUTO_MS=180000;       // auto-refresh every 3 minutes.
+var AUTO_MS=60000;        // check for new orders every minute.
 var MADE_HERE=/^(glow (protocol|eyes|cpr)|cu-hair|recovery mist|glutathione serum)/i; // topicals made in-house: batch, not order.
 // ---------------------------------------------------------------------------
 var KEY='glp_packing_v1',SKIP='glp_packing_skip_v1',OUTK='glp_packing_out_v1',SEEN='glp_packing_seen_v1',SND='glp_packing_sound_v1';
-var orders=[],all=[],products=[],byId={},pools={},view='todo',chip='all',query='',justDone={},history=[],lastTarget='',lastLoad=0,lastKey=0,firstSale=0;
+var knownOrders=null,pingQueue=0,titleBase=document.title,titleTimer=null,orders=[],all=[],products=[],byId={},pools={},view='todo',chip='all',query='',justDone={},history=[],lastTarget='',lastLoad=0,lastKey=0,firstSale=0;
 function ls(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 var saved=ls(KEY,{}),skipped=ls(SKIP,{}),outMarks=ls(OUTK,{}),seen=ls(SEEN,{}),soundOn=ls(SND,true);
@@ -226,6 +248,7 @@ function render(){
   document.getElementById('left').textContent=todo.length?todo.length+' to go · '+leftUnits+' items · ~'+(todo.length*MIN_PER_ORDER)+' min':'All packed';
   var midnight=new Date();midnight.setHours(0,0,0,0);var packedToday=Object.keys(saved).filter(function(k){return saved[k].at&&saved[k].at>=midnight.getTime()}).length;
   document.getElementById('today').textContent=packedToday+' packed today';
+  var ts=todayStats(),tk=document.getElementById('ticker');tk.hidden=!all.length;tk.textContent='💸 Today: '+ts.count+' order'+(ts.count===1?'':'s')+' · '+money(ts.total);
   document.getElementById('synced').textContent=lastLoad?'Updated '+new Date(lastLoad).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'';
   document.getElementById('bar').style.width=(orders.length?Math.round(done*100/orders.length):0)+'%';
   document.getElementById('nTodo').textContent=todo.length;document.getElementById('nDone').textContent=done;document.getElementById('nSkip').textContent=sk;
@@ -277,6 +300,41 @@ function currentOrder(){var x=target(visibleList());return x?x.o:null}
 function tickTarget(){var x=target(visibleList());if(!x)return;setTick(x.o,x.k,true);history.push({id:x.o.id,k:x.k});if(isDone(x.o)){justDone[x.o.id]=1;celebrate(x.o)}render()}
 function undo(){var h=history.pop();if(!h)return;var o=orders.find(function(z){return z.id===h.id});if(!o)return;setTick(o,h.k,false);delete justDone[o.id];render()}
 var actx=null;function ding(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();var t=actx.currentTime;[880,1320].forEach(function(f,i){var o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t+i*.12);g.gain.exponentialRampToValueAtTime(.18,t+i*.12+.02);g.gain.exponentialRampToValueAtTime(.0001,t+i*.12+.35);o.connect(g);g.connect(actx.destination);o.start(t+i*.12);o.stop(t+i*.12+.4)})}catch(e){}}
+function chaChing(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();var t=actx.currentTime;
+  [[1568,0],[2093,.09],[2637,.18],[3136,.27]].forEach(function(n){var o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.value=n[0];g.gain.setValueAtTime(.0001,t+n[1]);g.gain.exponentialRampToValueAtTime(.22,t+n[1]+.01);g.gain.exponentialRampToValueAtTime(.0001,t+n[1]+.5);o.connect(g);g.connect(actx.destination);o.start(t+n[1]);o.stop(t+n[1]+.55)});
+  var len=actx.sampleRate*.12,buf=actx.createBuffer(1,len,actx.sampleRate),d=buf.getChannelData(0);for(var i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);var src=actx.createBufferSource(),f=actx.createBiquadFilter(),g2=actx.createGain();f.type='highpass';f.frequency.value=3000;g2.gain.value=.25;src.buffer=buf;src.connect(f);f.connect(g2);g2.connect(actx.destination);src.start(t)}catch(e){}}
+function money(c){return '$'+((c||0)/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+function etDay(t){return new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'})}
+function liveOrder(o){return o&&o.is_test===false&&['canceled','expired'].indexOf(o.status)<0&&(!o.proof_required||o.submitted_at||o.status!=='order_received')}
+function todayStats(){var k=etDay(nowS()),l=all.filter(function(o){return liveOrder(o)&&etDay(o.created||0)===k});return{count:l.length,total:l.reduce(function(a,o){return a+(o.total||0)},0)}}
+function ordinal(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+function statusWord(o){return {paid:'PAID',shipped:'SHIPPED',payment_submitted:'RECEIPT IN',awaiting_payment:'AWAITING PAYMENT',order_received:'NEW'}[o.status]||String(o.status||'').toUpperCase()}
+function ping(o,rank){var feed=document.getElementById('feed'),c=o.customer||{},st=todayStats(),big=(o.total||0)>=25000,el=document.createElement('div');
+  el.className='ping'+(big?' big':'');el.setAttribute('role','alert');
+  var its=(o.items||[]).slice(0,4).map(function(i){return '<li><span>'+esc(i.name)+'</span><b>×'+esc(i.quantity)+'</b></li>'}).join('')+((o.items||[]).length>4?'<li><span>+ '+((o.items||[]).length-4)+' more</span></li>':'');
+  el.innerHTML='<div class="top"><button class="x" aria-label="Dismiss">×</button><div class="eyebrow">'+(big?'🔥 BIG ORDER':(o.total||0)>=10000?'💰 NICE ORDER':'🛒 NEW ORDER')+'</div><div class="amt">'+money(o.total)+'</div><div class="day">'+ordinal(st.count)+' order today · '+money(st.total)+' so far</div></div>'
+   +'<div class="body"><div class="nm">'+esc(c.name||'New customer')+'</div><div class="where">'+esc([c.city,c.state].filter(Boolean).join(', '))+' · just now</div><ul class="its">'+its+'</ul><div class="chips"><span>'+esc(o.id)+'</span><span>'+statusWord(o)+'</span>'+(o.payment_method?'<span>'+esc(String(o.payment_method).toUpperCase())+'</span>':'')+(o.brand==='zader'?'<span>ZADER</span>':'')+'</div></div><div class="timer"></div>';
+  var gone=false,close=function(){if(gone)return;gone=true;el.classList.add('out');setTimeout(function(){el.remove()},400)};
+  el.addEventListener('click',function(e){if(e.target.closest('.x')){close();return}window.open('/store-next/admin?order='+encodeURIComponent(o.id),'_blank','noopener');close()});
+  feed.insertBefore(el,feed.firstChild);while(feed.children.length>4)feed.lastChild.remove();
+  setTimeout(function(){el.classList.add('in')},30+rank*140);setTimeout(close,14000+rank*400);
+  if(rank===0){chaChing();if(!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches))burst()}
+  desktop(o,st);flashTitle();
+}
+function burst(){var cv=document.getElementById('confetti'),ctx=cv.getContext('2d'),W=cv.width=innerWidth,H=cv.height=innerHeight,P=[],cols=['#c9a24b','#f3d58b','#5fc27e','#ffffff'];
+  for(var i=0;i<90;i++)P.push({x:W-120+(Math.random()-.5)*160,y:70,vx:(Math.random()-.7)*12,vy:-Math.random()*9-2,s:5+Math.random()*6,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[i%cols.length],coin:i%3===0});
+  var start=performance.now();(function frame(t){var e=t-start;ctx.clearRect(0,0,W,H);P.forEach(function(p){p.vy+=.3;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.globalAlpha=Math.max(0,1-e/2000);ctx.fillStyle=p.c;if(p.coin){ctx.beginPath();ctx.ellipse(0,0,p.s,p.s*.55,0,0,7);ctx.fill()}else ctx.fillRect(-p.s/2,-p.s/3,p.s,p.s*.66);ctx.restore()});if(e<2000)requestAnimationFrame(frame);else ctx.clearRect(0,0,W,H)})(start)}
+function desktop(o,st){try{if(!('Notification' in window)||Notification.permission!=='granted')return;var c=o.customer||{};var n=new Notification('🛒 '+money(o.total)+' · '+(c.name||'New order'),{body:(o.items||[]).map(function(i){return i.quantity+'× '+i.name}).slice(0,4).join(', ')+'\n'+ordinal(st.count)+' order today · '+money(st.total)+' so far',tag:'order-'+o.id,silent:true});n.onclick=function(){window.focus();window.open('/store-next/admin?order='+encodeURIComponent(o.id),'_blank','noopener');n.close()}}catch(e){}}
+function flashTitle(){pingQueue++;if(!document.hidden&&document.hasFocus()){pingQueue=0;return}if(titleTimer)return;var on=false;titleTimer=setInterval(function(){on=!on;document.title=on?'🛒 ('+pingQueue+') New order'+(pingQueue===1?'':'s')+'!':titleBase},900)}
+function stopFlash(){pingQueue=0;if(titleTimer){clearInterval(titleTimer);titleTimer=null}document.title=titleBase}
+window.addEventListener('focus',stopFlash);document.addEventListener('visibilitychange',function(){if(!document.hidden)stopFlash()});
+function detectNew(){var live=all.filter(liveOrder);
+  if(knownOrders===null){knownOrders={};live.forEach(function(o){knownOrders[o.id]=1});return}
+  var fresh=live.filter(function(o){return !knownOrders[o.id]}).sort(function(a,b){return (a.created||0)-(b.created||0)});
+  live.forEach(function(o){knownOrders[o.id]=1});
+  fresh.slice(-4).forEach(function(o,i,arr){ping(o,arr.length-1-i)});
+}
+function syncNotifyBtn(){var b=document.getElementById('notify');if(!('Notification' in window)){b.hidden=true;return}var p=Notification.permission;b.textContent=p==='granted'?'🛎️ Order pop-ups on':p==='denied'?'🛎️ Pop-ups blocked in Chrome':'🛎️ Turn on order pop-ups';b.disabled=p!=='default'}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show')},2600)}
 function celebrate(o){
   ding();
@@ -349,7 +407,7 @@ function fetchOrders(quiet){
     var fresh=hadData?orders.filter(function(o){return !before[o.id]}):[];
     if(!hadData){orders.forEach(function(o){seen[o.id]=1});lsSet(SEEN,seen)}
     lastLoad=Date.now();buildPools();render();
-    if(fresh.length){toast(fresh.length+' new order'+(fresh.length===1?'':'s')+' just came in');ding()}
+    detectNew();
     setTimeout(function(){orders.forEach(function(o){seen[o.id]=1});var s2={};orders.forEach(function(o){s2[o.id]=1});seen=s2;lsSet(SEEN,seen)},60000);
   }).catch(function(e){if(e!==0&&!quiet)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
 }
@@ -373,6 +431,8 @@ document.addEventListener('click',function(e){
   if(b.dataset.chip){setChip(b.dataset.chip);return}
   if(b.dataset.view){setView(b.dataset.view);return}
   if(b.id==='printPick'){window.print();return}
+  if(b.id==='notify'){try{Notification.requestPermission().then(function(){syncNotifyBtn();if(Notification.permission==='granted')toast('Order pop-ups are on for this computer')})}catch(e){}return}
+  if(b.id==='testPing'){var demo={id:'GLP-TEST',total:13798,status:'paid',payment_method:'venmo',customer:{name:'Test Customer',city:'Woodstock',state:'GA'},items:[{name:'GLP-3R · 10 mg',quantity:1},{name:'BAC Water · 10 mL',quantity:2},{name:'KPV · 10 mg',quantity:1}]};ping(demo,0);return}
   if(b.id==='printLabels'){openLabels();return}
   if(b.id==='sound'){soundOn=!soundOn;lsSet(SND,soundOn);b.setAttribute('aria-pressed',String(soundOn));b.textContent=soundOn?'🔔 Sound on':'🔕 Sound off';if(soundOn)ding();return}
   if(b.id==='refresh'){justDone={};document.getElementById('out').innerHTML='<div class="msg">Loading paid orders…</div>';fetchOrders()}
@@ -392,6 +452,7 @@ document.addEventListener('keydown',function(e){
   var tabs=['todo','done','skipped','all','pick','restock'];if(/^[1-6]$/.test(e.key)){setView(tabs[Number(e.key)-1])}
 });
 document.getElementById('search').addEventListener('input',function(e){query=e.target.value.trim();render()});
+syncNotifyBtn();
 (function(){var b=document.getElementById('sound');b.setAttribute('aria-pressed',String(soundOn));b.textContent=soundOn?'🔔 Sound on':'🔕 Sound off'})();
 setInterval(function(){if(document.hidden)return;if(Date.now()-lastKey<20000)return;fetchOrders(true)},AUTO_MS);
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&Date.now()-lastLoad>AUTO_MS)fetchOrders(true)});
