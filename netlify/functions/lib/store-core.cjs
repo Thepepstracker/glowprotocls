@@ -104,6 +104,13 @@ async function handle({path,method='GET',headers={},body={}}){
   for(const l of (r.items||[]))if(r.stock_taken)await moveStock(s,l,1);
   for(const l of lines){for(const d of lineDraws(l)){const p=await s.get('products',d.id);if(!p||p.stock<l.quantity*d.qty)fail('Not enough stock for '+(p?p.name:'a product')+' ('+(p?p.stock:0)+' left).',409)}await moveStock(s,l,-1)}
   r.items=lines;r.stock_taken=true;await s.put('orders',id,o);await audit(s,'replacement_items',id);return{ok:true,items:lines.map(l=>({id:l.id,name:l.name,quantity:l.quantity}))}});return{status:200,headers:{},body:result}}
+ // Packing Check: mark an order packed (or un-packed) so every device and Management see the same thing.
+ // fp is the packing page's item fingerprint; if the order's items change later the page treats it as not packed.
+ if(path==='/admin/order/packed'&&method==='POST'){const r=await transaction(async s=>{const sid=await session(s,h);const id=text(body.id||'',50);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(!['paid','shipped'].includes(o.status))fail('Only paid or shipped orders can be packed.',409);
+  if(body.packed===true){const rec=await s.get('sessions',sid);const st=rec?.staff_id?await s.get('staff',rec.staff_id):null;const who=String(st?.name||st?.email||'Owner').trim().split(/[\s@]+/)[0].slice(0,30);const secs=Number(body.seconds);
+   o.packed={at:clock(),by:who,fp:text(body.fp||'',500,false),seconds:Number.isFinite(secs)&&secs>0&&secs<36000?Math.round(secs):null};await audit(s,'packed',id)}
+  else{delete o.packed;await audit(s,'unpacked',id)}
+  await s.put('orders',id,o);return{ok:true,packed:o.packed||null}});return{status:200,headers:{},body:r}}
  // Extra label on a real order: void (refund) the unused Shippo label and keep the order. It goes back to "paid" with no label;
  // its old Shippo id stays on it so automatic buying never gets it a new label. Never emails the customer.
  if(path==='/admin/shippo/void-label'&&method==='POST'){const id=text(body.id||'',50);
