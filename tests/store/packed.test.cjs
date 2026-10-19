@@ -16,3 +16,12 @@ test('packed status is staff-only, paid/shipped only, shared through admin data,
  assert.equal((await admin('/admin/order/packed',{id:o.id,packed:true,seconds:999999})).body.packed.seconds,null,'silly timer values are dropped');
  await admin('/admin/order/packed',{id:o.id,packed:false});assert.equal((await admin('/admin/data')).body.orders.find(x=>x.id===o.id).packed,undefined);
  await assert.rejects(admin('/admin/order/packed',{id:'GLP-NOPE',packed:true}),e=>e.status===404)});
+test('a very long item list still packs (fingerprint is trimmed, not rejected)',async()=>{
+ const o=(await call('/orders',{items:[{id:1,quantity:1}],payment_method:'zelle',idempotency_key:crypto.randomUUID(),customer:{name:'Long Fp',email:'fp@example.com',phone:'2025550101',address:'1 Test St',city:'Test',state:'GA',zip:'30301'}})).body.order;
+ await transaction(async s=>{const x=await s.get('orders',o.id);x.status='paid';await s.put('orders',o.id,x)});
+ const r=(await admin('/admin/order/packed',{id:o.id,packed:true,fp:'x'.repeat(900),seconds:10})).body;assert.equal(r.packed.fp.length,900)});
+test('Order Bell never passes quotes, backslashes or control characters from a customer name to the shop computer',async()=>{
+ const o=(await call('/orders',{items:[{id:1,quantity:1}],payment_method:'zelle',idempotency_key:crypto.randomUUID(),customer:{name:'Bo"&quit&"\\\u001b[31m x',email:'bell@example.com',phone:'2025550101',address:'1 Test St',city:'Test',state:'GA',zip:'30301'}})).body.order;
+ await transaction(async s=>{const x=await s.get('orders',o.id);x.status='paid';await s.put('orders',o.id,x)});
+ const k=(await admin('/admin/order-bell-key',{})).body.key;const row=(await call('/order-bell',{k})).body.orders.find(x=>x.id===o.id);
+ assert.ok(row,'order listed');assert.doesNotMatch(row.first+row.state,/["\\\u0000-\u001f&]/);assert.equal(row.state,'GA');assert.match(row.first,/^Boquit/)});

@@ -68,6 +68,8 @@ function shipmentPayload(o){return shipping.payload(o,null)}
 function editable(o){if(!['order_received','awaiting_payment'].includes(o.status)||o.has_receipt||o.receipt)fail('This order has been submitted or closed. Contact the store to change it.',409)}
 function draftStore(s,o){const reserved=new Map();for(const line of o.items){reserved.set(line.id,(reserved.get(line.id)||0)+line.quantity*lineUnits(line))}return{...s,get:async(kind,key)=>{const r=await s.get(kind,key);if(!r)return r;if(kind==='products'){let qty=reserved.get(r.id)||0;if(r.stock_pool){qty=o.items.reduce((n,line)=>n+(line.stock_pool===r.stock_pool?line.quantity*lineUnits(line):0),0)}return{...r,stock:r.stock+qty}}if(kind==='coupons'&&couponRules.codes(o).includes(key))return{...r,used:Math.max(0,r.used-1)};if(kind==='rewards_wallets'&&key===o.customer_id&&o.is_test===false)return{...r,reserved:Math.max(0,r.reserved-(o.points_redeemed||0))};return r}}}
 async function editStore(s,o){const copy={...o,items:[]};for(const line of o.items)for(const d of lineDraws(line)){const p=await s.get('products',d.id);copy.items.push({id:d.id,quantity:line.quantity,units:d.qty,stock_pool:p?.stock_pool})}return draftStore(s,copy)}
+// Plain letters/digits/space/.'- only: these values end up in a Terminal window and a macOS notification on the shop's computer.
+const safeWord=(v,max)=>String(v||'').normalize('NFKC').replace(/[^\p{L}\p{N} .'-]/gu,'').replace(/\s+/g,' ').trim().slice(0,max);
 async function handle({path,method='GET',headers={},body={}}){
  const h=Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),v]));let setCookie,emailJob;
  if(!['GET','POST'].includes(method))fail('Method not allowed.',405);
@@ -93,7 +95,7 @@ async function handle({path,method='GET',headers={},body={}}){
   const etDay=t=>new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}),today=etDay(clock());
   const live=(await s.list('orders')).filter(o=>o.is_test===false&&!['canceled','expired'].includes(o.status)&&!(o.proof_required&&!o.submitted_at&&o.status==='order_received'));
   const todays=live.filter(o=>etDay(o.created||0)===today);
-  const recent=live.filter(o=>(o.created||0)>clock()-2*86400).sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,25).map(o=>({id:o.id,created:o.created||0,total:o.total||0,status:o.status,brand:o.brand||'glow',items:(o.items||[]).reduce((n,i)=>n+(i.quantity||0),0),first:String(o.customer?.name||'').trim().split(/\s+/)[0].slice(0,30),state:String(o.customer?.state||'').slice(0,20)}));
+  const recent=live.filter(o=>(o.created||0)>clock()-2*86400).sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,25).map(o=>({id:o.id,created:o.created||0,total:o.total||0,status:o.status,brand:o.brand||'glow',items:(o.items||[]).reduce((n,i)=>n+(i.quantity||0),0),first:safeWord(String(o.customer?.name||'').trim().split(/\s+/)[0],30),state:safeWord(o.customer?.state,20)}));
   return{now:clock(),today:{count:todays.length,total:todays.reduce((n,o)=>n+(o.total||0),0)},orders:recent}});return{status:200,headers:{},body:r}}
  if(path==='/admin/email/retry'&&method==='POST'){
   const id=text(body.id||'',200);await transaction(async s=>{await session(s,h);const j=await s.get('email_outbox',id);if(!j)fail('Email not found.',404);if(j.status==='rejected')await emails.prepareRetry(s,j)});
@@ -108,7 +110,7 @@ async function handle({path,method='GET',headers={},body={}}){
  // fp is the packing page's item fingerprint; if the order's items change later the page treats it as not packed.
  if(path==='/admin/order/packed'&&method==='POST'){const r=await transaction(async s=>{const sid=await session(s,h);const id=text(body.id||'',50);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(!['paid','shipped'].includes(o.status))fail('Only paid or shipped orders can be packed.',409);
   if(body.packed===true){const rec=await s.get('sessions',sid);const st=rec?.staff_id?await s.get('staff',rec.staff_id):null;const who=String(st?.name||st?.email||'Owner').trim().split(/[\s@]+/)[0].slice(0,30);const secs=Number(body.seconds);
-   o.packed={at:clock(),by:who,fp:text(body.fp||'',500,false),seconds:Number.isFinite(secs)&&secs>0&&secs<36000?Math.round(secs):null};await audit(s,'packed',id)}
+   o.packed={at:clock(),by:who,fp:String(body.fp||'').slice(0,2000),seconds:Number.isFinite(secs)&&secs>0&&secs<36000?Math.round(secs):null};await audit(s,'packed',id)}
   else{delete o.packed;await audit(s,'unpacked',id)}
   await s.put('orders',id,o);return{ok:true,packed:o.packed||null}});return{status:200,headers:{},body:r}}
  // Extra label on a real order: void (refund) the unused Shippo label and keep the order. It goes back to "paid" with no label;
