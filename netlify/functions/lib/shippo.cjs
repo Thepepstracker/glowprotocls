@@ -40,7 +40,9 @@ function record(o,t,rate){const amount=Math.round(Number(rate?.amount||0)*100);r
 async function finish(id,t,rate){let job=null;await transaction(async s=>{const stored=await s.get('orders',id);if(!stored||stored.status!=='paid')return;stored.status='shipped';stored.tracking=String(t.tracking_number).trim();stored.shipment=record(stored,t,rate);stored.shippo_status='label_bought';stored.shippo_message='';stored.shippo_transaction_id=t.object_id;stored.shippo_label_url=t.label_url||'';await s.put('orders',id,stored);job=await emails.queueUpdate(s,stored)});if(job)await emails.safeDispatch(job);return{status:'label_bought',tracking:t.tracking_number,label_url:t.label_url}}
 // manual:true is a staff click on one order. It works while automatic buying is paused, so staff can
 // pick which orders get labels; the every-minute worker still only buys when Shippo is turned on.
-async function buy(id,{manual=false}={}){
+const MANUAL_SERVICES=['ups_second_day_air','ups_ground','ups_ground_saver','ups_3_day_select','ups_next_day_air_saver','ups_next_day_air'];
+// servicelevel (manual only): buy this one label at another UPS service, e.g. Ground for nearby states.
+async function buy(id,{manual=false,servicelevel=''}={}){
  const claim=await transaction(async s=>{
   const integration=await s.get('integrations','shippo'),st=status(integration);if(!st.enabled&&!(manual&&st.connected&&st.carrier_account&&st.accounts.some(a=>a.id===st.carrier_account)))return{status:'not_connected',message:manual?'Check the Shippo connection and choose the UPS account first.':'Connect and turn on Shippo in Shipping first.'};
   const o=await s.get('orders',id);if(!eligible(o))return{status:'blocked',message:'Only live, staff-verified paid orders without a label can get one.'};
@@ -50,7 +52,7 @@ async function buy(id,{manual=false}={}){
   if(q.status==='synced')return{status:'synced'};if(q.lease_until>now())return{status:'sending'};
   if(q.purchase_started&&q.status!=='failed')return{status:'needs_review',message:'A label purchase may have reached Shippo. Nothing more is bought until it is checked.'};
   q.lease=crypto.randomBytes(16).toString('hex');q.lease_until=now()+120;q.status='sending';q.attempts++;q.account_fingerprint=fingerprint();await s.put('outbox',key,q);
-  return{o,q,key,cfg:st,today};
+  return{o,q,key,cfg:manual&&MANUAL_SERVICES.includes(servicelevel)?{...st,servicelevel}:st,today};
  });
  if(!claim.o)return claim;const{o,q,key,cfg,today}=claim;let outcome,started=false;
  const save=async patch=>transaction(async s=>{const c=await s.get('outbox',key);if(c?.lease!==q.lease)fail('Label attempt no longer active.');Object.assign(c,patch);await s.put('outbox',key,c)});
@@ -85,8 +87,9 @@ async function dryRun(limit=25){
    const shipment=await request('/shipments/',shipmentBody(o,cfg));const rates=Array.isArray(shipment.rates)?shipment.rates:[];
    const rate=rates.find(r=>r.servicelevel?.token===cfg.servicelevel&&(!r.carrier_account||r.carrier_account===cfg.carrier_account));
    const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);
-   if(!rate){row.result='would_stop';row.message='No '+cfg.servicelevel.replace(/_/g,' ')+' rate.'+(why?' Shippo: '+why:'');row.services=rates.map(r=>r.servicelevel?.token).filter(Boolean);out.push(row);continue}
+   if(!rate){row.result='would_stop';row.message='No '+cfg.servicelevel.replace(/_/g,' ')+' rate.'+(why?' Shippo: '+why:'');row.services=rates.map(r=>r.servicelevel?.token).filter(Boolean);row.ups=rates.filter(r=>/^ups_/.test(r.servicelevel?.token||'')).map(r=>({service:r.servicelevel.token,cents:Math.round(Number(r.amount)*100),days:r.estimated_days??r.days??null})).sort((a,b)=>a.cents-b.cents);out.push(row);continue}
    const cents=Math.round(Number(rate.amount)*100);row.cents=cents;row.days=rate.estimated_days??rate.days??null;row.service=(rate.provider||'UPS')+' '+(rate.servicelevel?.name||'');
+   row.ups=rates.filter(r=>/^ups_/.test(r.servicelevel?.token||'')).map(r=>({service:r.servicelevel.token,cents:Math.round(Number(r.amount)*100),days:r.estimated_days??r.days??null})).sort((a,b)=>a.cents-b.cents);
    row.result=cents>0&&cents<=cfg.max_label_cents?'would_buy':'would_stop';if(row.result==='would_stop')row.message='$'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit.';if(why)row.note=why;
   }catch(e){row.result='error';row.message=e.message}
   out.push(row)}
@@ -125,7 +128,7 @@ async function replacement(id,{note='',key=''}={}){
  }catch(e){await transaction(async s=>{const q=await s.get('outbox',okey);if(!q)return;if(!started||e.definite){await s.remove('outbox',okey)}else{q.status='needs_review';q.message=e.message;await s.put('outbox',okey,q)}});throw e}
 }
 // Staff checked the order (address fixed, or the label confirmed in Shippo): look for a label once more, then allow a new purchase.
-async function retry(id){await transaction(async s=>{const o=await s.get('orders',id);if(!o)fail('Order not found.');o.shippo_needs_review=false;o.shippo_message='';o.shippo_status='queued';await s.put('orders',id,o);const q=await s.get('outbox','shippo-'+id);if(q){q.purchase_started=false;q.status='failed';q.next_attempt=0;q.lease_until=0;await s.put('outbox',q.id,q)}});return buy(id)}
+async function retry(id,opts={}){await transaction(async s=>{const o=await s.get('orders',id);if(!o)fail('Order not found.');o.shippo_needs_review=false;o.shippo_message='';o.shippo_status='queued';await s.put('orders',id,o);const q=await s.get('outbox','shippo-'+id);if(q){q.purchase_started=false;q.status='failed';q.next_attempt=0;q.lease_until=0;await s.put('outbox',q.id,q)}});return buy(id,opts)}
 async function enabled(){return transaction(async s=>status(await s.get('integrations','shippo')).enabled)}
 async function pending(limit=3){
  const batch=await transaction(async s=>{if(!status(await s.get('integrations','shippo')).enabled)return[];const outbox=await s.list('outbox');return(await s.list('orders')).filter(eligible).filter(o=>{const q=outbox.find(x=>x.id==='shippo-'+o.id);return !(q?.purchase_started&&q.status!=='failed')&&(q?.next_attempt||0)<=now()}).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit).map(o=>o.id)});
