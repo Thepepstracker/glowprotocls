@@ -45,3 +45,12 @@ test('every new live order sends one staff alert to the shop inbox, never to the
  assert.equal(ids.length,2);const job=await transaction(s=>s.get('email_outbox',ids[0]));assert.match(job.to,/^[ab]@example\.com$/);
  assert.equal((await transaction(s=>emails.queueStaffAlert(s,{id:'GLP-T',is_test:true,customer:{},items:[]}))).length,0,'test orders never alert');
  delete process.env.STORE_ORDER_ALERT_TO});
+test('Order Bell: staff get a key, the key shows recent live orders with no contact details, wrong or rotated keys are refused',async()=>{
+ await assert.rejects(call('/admin/order-bell-key',{}),e=>e.status===401);
+ const k=(await admin('/admin/order-bell-key',{})).body.key;assert.match(k,/^ob1_/);
+ await call('/orders',orderBody({idempotency_key:crypto.randomUUID()}));
+ const r=(await call('/order-bell',{k})).body;assert.ok(r.orders.length>=1);assert.ok(r.today.count>=1);
+ const o=r.orders[0];assert.deepEqual(Object.keys(o).sort(),['brand','created','first','id','items','state','status','total']);assert.equal(o.first,'Email');assert.ok(!JSON.stringify(r).includes('orders@example.com'));assert.ok(!JSON.stringify(r).includes('1 Test St'));
+ await assert.rejects(call('/order-bell',{k:k+'x'}),e=>e.status===404);await assert.rejects(call('/order-bell',{}),e=>e.status===404);
+ const k2=(await admin('/admin/order-bell-key',{rotate:true})).body.key;assert.match(k2,/^ob2_/);
+ await assert.rejects(call('/order-bell',{k}),e=>e.status===404);assert.ok((await call('/order-bell',{k:k2})).body.orders.length>=1)});

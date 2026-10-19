@@ -86,6 +86,15 @@ async function handle({path,method='GET',headers={},body={}}){
  if(catalogImage&&method==='GET'){const image=await transaction(s=>s.get('catalog_images',catalogImage[1]));if(!image)fail('Image not found.',404);return{status:200,headers:{'Cache-Control':'public, max-age=31536000, immutable'},body:{_binary:image.data,_type:image.mime}}}
  const staffAuth=await staff.authRoute(path,body,h,method);if(staffAuth)return staffAuth;
  const accountAuth=await accounts.authRoute(path,body,h,method);if(accountAuth)return accountAuth;
+ // Order Bell: a private key lets a small script on the shop's own computer hear about new orders without a login.
+ // It returns order number, total, first name and state only (no email, phone or street). Rotating the key kills every old copy.
+ if(path==='/admin/order-bell-key'&&method==='POST'){const r=await transaction(async s=>{await session(s,h);const st=await s.get('settings','order_bell')||{id:'order_bell',v:1};if(body.rotate===true){st.v=(st.v||1)+1;await s.put('settings','order_bell',st);await audit(s,'order_bell_rotated')}return{key:'ob'+(st.v||1)+'_'+sign('order-bell:'+(st.v||1))}});return{status:200,headers:{},body:r}}
+ if(path==='/order-bell'&&method==='POST'){const k=String(body.k||'').slice(0,120);const r=await transaction(async s=>{const st=await s.get('settings','order_bell')||{v:1};if(!equal(k,'ob'+(st.v||1)+'_'+sign('order-bell:'+(st.v||1))))fail('Not found.',404);
+  const etDay=t=>new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}),today=etDay(clock());
+  const live=(await s.list('orders')).filter(o=>o.is_test===false&&!['canceled','expired'].includes(o.status)&&!(o.proof_required&&!o.submitted_at&&o.status==='order_received'));
+  const todays=live.filter(o=>etDay(o.created||0)===today);
+  const recent=live.filter(o=>(o.created||0)>clock()-2*86400).sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,25).map(o=>({id:o.id,created:o.created||0,total:o.total||0,status:o.status,brand:o.brand||'glow',items:(o.items||[]).reduce((n,i)=>n+(i.quantity||0),0),first:String(o.customer?.name||'').trim().split(/\s+/)[0].slice(0,30),state:String(o.customer?.state||'').slice(0,20)}));
+  return{now:clock(),today:{count:todays.length,total:todays.reduce((n,o)=>n+(o.total||0),0)},orders:recent}});return{status:200,headers:{},body:r}}
  if(path==='/admin/email/retry'&&method==='POST'){
   const id=text(body.id||'',200);await transaction(async s=>{await session(s,h);const j=await s.get('email_outbox',id);if(!j)fail('Email not found.',404);if(j.status==='rejected')await emails.prepareRetry(s,j)});
   return{status:200,headers:{},body:await emails.dispatch(id)};
