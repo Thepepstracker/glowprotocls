@@ -401,7 +401,7 @@ function slipHTML(list){
     var rows=items.map(function(i){var parts=String(i.name||'').split(' · '),nm=parts.shift(),det=parts.join(' · ');
       return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
     var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
-    var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer=o.packed&&o.packed.by?o.packed.by:'';
+    var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer='Jonah';
     var service=(o.shipment&&o.shipment.service)||(o.tracking?'UPS':'');
     // Footer: Glow orders invite the customer to their account. Points already credited say so; a guest is told how many
     // points are waiting and that creating an account with the order email adds them (the store claims them on sign-up).
@@ -421,7 +421,7 @@ function slipHTML(list){
      +'<div class="kv"><span>ORDERED</span><em>'+esc(when(o.created))+'</em><span>PACKED</span><em>'+esc(packed.toLocaleDateString('en-US',{month:'short',day:'numeric'}))+(packer?' · '+esc(packer):'')+'</em>'+(service?'<span>SHIP VIA</span><em>'+esc(service)+'</em>':'')+'<span>ITEMS</span><em>'+u+'</em></div></div>'
      +'<div class="sec"><span>IN THIS BOX</span><span>'+u+' ITEM'+(u===1?'':'S')+'</span></div>'
      +'<table class="'+(many?'many':'')+'">'+rows+'</table>'
-     +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by</span><span class="sig"></span></div>'
+     +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by <b>Jonah</b></span></div>'
      +'<div class="ft"><div class="qr">'+qrSvg(footUrl)+'</div><div class="fq">'+footText+(mail?'<span class="sm">Questions? '+esc(mail)+'</span>':'')+'</div></div>'
      +'<div class="thx">'+(z?'THANK YOU FOR CHOOSING ZADER HEALTH':'THANK YOU FOR GLOWING WITH US')+'</div></section>'}).join('');
   return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style></head><body>'+slips+'</body></html>';
