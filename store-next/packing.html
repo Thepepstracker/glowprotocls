@@ -377,17 +377,52 @@ function statsView(){var st=packStats(),left=orders.filter(function(o){return !i
 function toggleBig(){var on=!document.body.classList.contains('big');document.body.classList.toggle('big',on);lsSet('glp_packing_big',on);var b=document.getElementById('bigscreen');b.setAttribute('aria-pressed',String(on));b.textContent=on?'🖥️ Normal size':'🖥️ Big screen'}
 if(ls('glp_packing_big',false)){document.body.classList.add('big');setTimeout(function(){var b=document.getElementById('bigscreen');if(b){b.setAttribute('aria-pressed','true');b.textContent='🖥️ Normal size'}},0)}
 function qrSvg(text){try{var q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:3,margin:0,scalable:true})}catch(e){return ''}}
+// 4x6 packing slip for the thermal label printer: black only, big type, every line checkable.
+function slipHTML(list){
+  var CSS='@page{size:4in 6in;margin:.16in}*{box-sizing:border-box}body{margin:0;font-family:Helvetica,Arial,sans-serif;color:#000}'
+   +'.slip{height:5.66in;display:flex;flex-direction:column;page-break-after:always;overflow:hidden}.slip:last-child{page-break-after:auto}'
+   +'.hd{display:flex;align-items:center;gap:7px;padding-bottom:5px;border-bottom:3px solid #000}.mk{width:.42in;height:.36in;object-fit:contain;filter:grayscale(1) brightness(0)}'
+   +'.wm{flex:1;line-height:1}.wm b{display:block;font-size:13px;font-weight:900;letter-spacing:.14em}.wm i{display:block;font-style:normal;font-size:7px;letter-spacing:.24em;margin-top:3px}'
+   +'.on{text-align:right;line-height:1}.on small{display:block;font-size:7px;font-weight:700;letter-spacing:.2em}.on b{display:block;font:900 12px/1.1 Menlo,ui-monospace,monospace;margin-top:2px}'
+   +'h1{font:800 21px/1.05 Georgia,serif;margin:8px 0 2px}.lead{margin:0 0 7px;font-size:9.5px;line-height:1.35}'
+   +'.grid{display:flex;gap:8px;font-size:9.5px;line-height:1.35}.to{flex:1.15;border:1.5px solid #000;border-radius:5px;padding:5px 7px}.to b,.kv b{display:block;font-size:7px;font-weight:800;letter-spacing:.18em;margin-bottom:2px}'
+   +'.to .nm{font-size:11px;font-weight:800}.kv{flex:1;display:grid;grid-template-columns:auto 1fr;gap:1px 6px;align-content:start}.kv span{font-size:7px;font-weight:800;letter-spacing:.14em;padding-top:2px}.kv em{font-style:normal;font-weight:700}'
+   +'.sec{margin:8px 0 2px;font-size:7.5px;font-weight:900;letter-spacing:.22em;display:flex;justify-content:space-between}'
+   +'table{width:100%;border-collapse:collapse}td{padding:4px 2px;border-bottom:1px solid #000;vertical-align:middle}tr:last-child td{border-bottom:2px solid #000}'
+   +'.bx{width:15px}.bx i{display:block;width:11px;height:11px;border:1.5px solid #000;border-radius:2px}.q{width:30px;font-size:14px;font-weight:900}.pn{font-size:12.5px;font-weight:800}.pd{text-align:right;font-size:11px;font-weight:700;white-space:nowrap}'
+   +'.many td{padding:2px}.many .q{font-size:11.5px}.many .pn{font-size:10.5px}.many .pd{font-size:9.5px}'
+   +'.chk{display:flex;justify-content:space-between;align-items:center;font-size:9px;margin-top:4px}.chk b{font-size:10px}.sig{flex:0 0 1.3in;border-bottom:1px solid #000;height:12px}'
+   +'.pts{margin-top:6px;border:1.5px dashed #000;border-radius:5px;padding:4px 7px;font-size:9.5px;text-align:center}.pts b{font-size:11px}'
+   +'.ft{margin-top:auto;display:flex;gap:8px;align-items:center;border-top:3px solid #000;padding-top:6px}.qr{flex:0 0 .82in}.qr svg{width:.82in;height:.82in;display:block}'
+   +'.fq{flex:1;font-size:8.5px;line-height:1.35}.fq b{display:block;font-size:10.5px;font-weight:900;letter-spacing:.02em}.fq .tn{font:700 9px Menlo,ui-monospace,monospace}'
+   +'.thx{margin-top:5px;text-align:center;font-size:8px;letter-spacing:.06em}';
+  var slips=list.map(function(o){
+    var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',first=String(c.name||'').trim().split(/\s+/)[0]||'friend',u=units(o);
+    var items=o.items||[],many=items.length>7;
+    var rows=items.map(function(i){var parts=String(i.name||'').split(' · '),nm=parts.shift(),det=parts.join(' · ');
+      return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
+    var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
+    var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer=o.packed&&o.packed.by?o.packed.by:'';
+    var service=(o.shipment&&o.shipment.service)||(o.tracking?'UPS':'');
+    var trackUrl=o.tracking?'https://www.ups.com/track?tracknum='+encodeURIComponent(o.tracking):'https://'+site+(z?'':'/store-next/');
+    var pts=!z&&o.points_earned>0?o.points_earned:0; // only points actually credited to a verified account
+    var addr=[c.address,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
+    return '<section class="slip">'
+     +'<div class="hd">'+(z?'':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>'
+     +'<h1>Thank you, '+esc(first)+'!</h1><p class="lead">Every item in this box was checked by hand, one at a time, before it was sealed.</p>'
+     +'<div class="grid"><div class="to"><b>SHIP TO</b><div class="nm">'+esc(c.name||'')+'</div>'+addr.map(esc).join('<br>')+'</div>'
+     +'<div class="kv"><span>ORDERED</span><em>'+esc(when(o.created))+'</em><span>PACKED</span><em>'+esc(packed.toLocaleDateString('en-US',{month:'short',day:'numeric'}))+(packer?' · '+esc(packer):'')+'</em>'+(service?'<span>SHIP VIA</span><em>'+esc(service)+'</em>':'')+'<span>ITEMS</span><em>'+u+'</em></div></div>'
+     +'<div class="sec"><span>IN THIS BOX</span><span>'+u+' ITEM'+(u===1?'':'S')+'</span></div>'
+     +'<table class="'+(many?'many':'')+'">'+rows+'</table>'
+     +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by</span><span class="sig"></span></div>'
+     +(pts?'<div class="pts"><b>+'+esc(pts)+' Glow Points</b> earned with this order · use them on your next one</div>':'')
+     +'<div class="ft"><div class="qr">'+qrSvg(trackUrl)+'</div><div class="fq"><b>'+(o.tracking?'SCAN TO TRACK YOUR PACKAGE':'SHOP AGAIN')+'</b>'+(o.tracking?'<span class="tn">'+esc(o.tracking)+'</span><br>':'')+esc(site)+(mail?'<br>Questions? '+esc(mail):'')+'</div></div>'
+     +'<div class="thx">'+(z?'THANK YOU FOR CHOOSING ZADER HEALTH':'THANK YOU FOR GLOWING WITH US')+'</div></section>'}).join('');
+  return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style></head><body>'+slips+'</body></html>';
+}
 function printSlips(list){
   var w=window.open('','_blank');if(!w){toast('Allow pop-ups for this site to print slips');return}
-  var slips=list.map(function(o){var c=o.customer||{},z=o.brand==='zader',brand=z?'ZADER HEALTH':'GLOW LAB',site=z?'zaderhealth.com':'glowglps.com',first=String(c.name||'').trim().split(/\s+/)[0]||'friend',u=units(o);
-    var trackUrl=o.tracking?'https://www.ups.com/track?tracknum='+encodeURIComponent(o.tracking):'https://'+site;
-    var rows=(o.items||[]).map(function(i){return '<tr><td class="bx">☐</td><td class="q">'+esc(i.quantity)+'×</td><td>'+esc(i.name)+'</td></tr>'}).join('');
-    return '<section class="slip"><div class="top"><div class="brand">'+brand+'</div><div class="oid">'+esc(o.id)+'</div></div>'
-     +'<h1>Thank you, '+esc(first)+'!</h1><p class="lead">Your order was packed and checked by hand, one item at a time.</p>'
-     +'<div class="to"><b>Ship to</b> '+esc(c.name||'')+(c.city||c.state?' · '+esc([c.city,c.state].filter(Boolean).join(', ')):'')+'<br><b>Packed</b> '+new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+' · '+u+' item'+(u===1?'':'s')+'</div>'
-     +'<table class="items">'+rows+'</table>'
-     +'<div class="foot"><div class="qr">'+qrSvg(trackUrl)+'</div><div class="ft"><b>'+(o.tracking?'Scan to track your package':'Visit us')+'</b><br>'+(o.tracking?'UPS '+esc(o.tracking)+'<br>':'')+esc(site)+(z?'':'<br>Questions? support@glowglps.com')+'</div></div></section>'}).join('');
-  w.document.write('<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>@page{size:4in 6in;margin:.2in}*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Arial,sans-serif;color:#111}.slip{height:5.55in;display:flex;flex-direction:column;page-break-after:always;overflow:hidden}.slip:last-child{page-break-after:auto}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #111;padding-bottom:6px}.brand{font:900 12px/1 Arial;letter-spacing:.35em}.oid{font:800 11px/1 ui-monospace,Menlo,monospace}h1{font:800 22px/1.1 Georgia,serif;margin:10px 0 2px}.lead{margin:0 0 8px;font-size:11.5px;color:#444}.to{font-size:11px;line-height:1.5;background:#f2f2f2;border-radius:6px;padding:6px 8px}.items{width:100%;border-collapse:collapse;margin-top:8px;font-size:12.5px}.items td{padding:4px 2px;border-bottom:1px dashed #bbb;vertical-align:top}.bx{width:16px;font-size:14px}.q{width:30px;font-weight:800}.foot{margin-top:auto;display:flex;gap:10px;align-items:center;border-top:2px solid #111;padding-top:8px}.qr svg{width:.95in;height:.95in;display:block}.ft{font-size:10.5px;line-height:1.45}.ft b{font-size:12px}</style></head><body>'+slips+'<script>window.onload=function(){setTimeout(function(){window.print()},250)}<\/script></body></html>');
+  w.document.write(slipHTML(list).replace('</body>','<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script></body>'));
   w.document.close();
 }
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show')},2600)}
