@@ -394,7 +394,7 @@ function slipHTML(list){
    +'.chk{display:flex;justify-content:space-between;align-items:center;font-size:9px;margin-top:4px}.chk b{font-size:10px}.sig{flex:0 0 1.3in;border-bottom:1px solid #000;height:12px}'
    +'.pts{margin-top:6px;border:1.5px dashed #000;border-radius:5px;padding:4px 7px;font-size:9.5px;text-align:center}.pts b{font-size:11px}'
    +'.ft{margin-top:auto;display:flex;gap:8px;align-items:center;border-top:3px solid #000;padding-top:6px}.qr{flex:0 0 .82in}.qr svg{width:.82in;height:.82in;display:block}'
-   +'.fq{flex:1;font-size:8.5px;line-height:1.35}.fq b{display:block;font-size:10.5px;font-weight:900;letter-spacing:.02em}.fq .tn{font:700 9px Menlo,ui-monospace,monospace}'
+   +'.fq{flex:1;font-size:9px;line-height:1.35}.fq b{display:block;font-size:12px;font-weight:900;letter-spacing:.02em;margin-bottom:2px}.fq .sm{display:block;margin-top:3px;font-size:8px}'
    +'.thx{margin-top:5px;text-align:center;font-size:8px;letter-spacing:.06em}';
   var slips=list.map(function(o){
     var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',first=String(c.name||'').trim().split(/\s+/)[0]||'friend',u=units(o);
@@ -404,8 +404,16 @@ function slipHTML(list){
     var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
     var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer=o.packed&&o.packed.by?o.packed.by:'';
     var service=(o.shipment&&o.shipment.service)||(o.tracking?'UPS':'');
-    var trackUrl=o.tracking?'https://www.ups.com/track?tracknum='+encodeURIComponent(o.tracking):'https://'+site+(z?'':'/store-next/');
-    var pts=!z&&o.points_earned>0?o.points_earned:0; // only points actually credited to a verified account
+    // Footer: Glow orders invite the customer to their account. Points already credited say so; a guest is told how many
+    // points are waiting and that creating an account with the order email adds them (the store claims them on sign-up).
+    var acct='https://glowglps.com/store-next/account',earned=o.points_earned>0?o.points_earned:0,waiting=!o.customer_id?Math.max(0,Math.floor(((o.subtotal||0)-(o.discount||0))/100)):0;
+    var worth=function(n){return '$'+(n*5/100).toFixed(2)};
+    var footUrl=z?'https://'+site:acct,footText;
+    if(z)footText='<b>SHOP AGAIN</b>'+esc(site)+'<br>';
+    else if(earned)footText='<b>+'+esc(earned)+' GLOW POINTS ADDED</b>They are already in your account (worth '+worth(earned)+' off). Scan to see your balance and reorder.<br>';
+    else if(waiting)footText='<b>CLAIM YOUR '+esc(waiting)+' GLOW POINTS</b>Worth '+worth(waiting)+' off your next order. Scan, create your free account with the email you ordered with, and they are added for you.<br>';
+    else if(o.customer_id)footText='<b>YOUR GLOW ACCOUNT</b>Scan to see your points balance and reorder in seconds.<br>';
+    else footText='<b>JOIN GLOW REWARDS</b>Scan to create your free account and earn points on every order.<br>';
     var addr=[c.address,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
     return '<section class="slip">'
      +'<div class="hd">'+(z?'':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>'
@@ -415,8 +423,7 @@ function slipHTML(list){
      +'<div class="sec"><span>IN THIS BOX</span><span>'+u+' ITEM'+(u===1?'':'S')+'</span></div>'
      +'<table class="'+(many?'many':'')+'">'+rows+'</table>'
      +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by</span><span class="sig"></span></div>'
-     +(pts?'<div class="pts"><b>+'+esc(pts)+' Glow Points</b> earned with this order · use them on your next one</div>':'')
-     +'<div class="ft"><div class="qr">'+qrSvg(trackUrl)+'</div><div class="fq"><b>'+(o.tracking?'SCAN TO TRACK YOUR PACKAGE':'SHOP AGAIN')+'</b>'+(o.tracking?'<span class="tn">'+esc(o.tracking)+'</span><br>':'')+esc(site)+(mail?'<br>Questions? '+esc(mail):'')+'</div></div>'
+     +'<div class="ft"><div class="qr">'+qrSvg(footUrl)+'</div><div class="fq">'+footText+(mail?'<span class="sm">Questions? '+esc(mail)+'</span>':'')+'</div></div>'
      +'<div class="thx">'+(z?'THANK YOU FOR CHOOSING ZADER HEALTH':'THANK YOU FOR GLOWING WITH US')+'</div></section>'}).join('');
   return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style></head><body>'+slips+'</body></html>';
 }
