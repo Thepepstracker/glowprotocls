@@ -63,7 +63,7 @@ button:disabled{opacity:.45;cursor:default}
 .name small{display:block;font-weight:600;font-size:13px;margin-top:2px}
 .name small.red{color:var(--warn)}
 .name small.amber{color:var(--amber)}
-.taps{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.taps{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.inside{font-size:15px;font-weight:600;color:#7a5b16;margin-top:3px}.setgap{flex-basis:100%;height:0}
 .tap{width:52px;height:52px;border-radius:10px;border:2px solid var(--ink);background:#fff;font-size:22px;padding:0}
 .tap.on{background:var(--ok);border-color:var(--ok);color:#fff}
 .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px}
@@ -208,8 +208,24 @@ function isSkipped(o){return !!skipped[o.id]}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function nowS(){return Date.now()/1000}
 function fp(o){return (o.items||[]).map(function(i){return i.id+':'+i.quantity}).join(',')+'|'+(o.revision||0)}
-function units(o){return (o.items||[]).reduce(function(n,i){return n+i.quantity},0)}
-function allTicks(o){var t={};(o.items||[]).forEach(function(i,idx){for(var u=0;u<i.quantity;u++)t[idx+'-'+u]=true});return t}
+// What physically goes in the bag for one order line: one entry per vial. A kit of 10 is 10 vials; a bundle is the vials inside it.
+// Bundle contents come from Management ("Bundle contents") when set; until then from the 24 Sep 2026 WooCommerce bundle recipes.
+var BUNDLE_RECIPES={'bundle-737-10-mg':[['GLP-2T · 10 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],'bundle-737-15-mg':[['GLP-2T · 15 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],
+ 'bundle-737-20-mg':[['GLP-2T · 20 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],'bundle-737-30-mg':[['GLP-2T · 30 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],
+ 'bundle-738-10-mg':[['GLP-3R · 10 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],'bundle-738-20-mg':[['GLP-3R · 20 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],
+ 'bundle-751-8-vial-set':[['FOX-04 · 10 mg',3],['Glutathione · 1500 mg',1],['Epithalon · 50 mg',2],['GLP-31 · 10 mg',2]],
+ 'bundle-774-2-vial-set':[['Epithalon · 50 mg',2]],'bundle-795-2-vial-set':[['Glutathione · 1500 mg',1],['Lipo-C with B-12 · 10 mL',1]]};
+function inside(i){var p=byId[i.id]||{},sku=p.sku||i.sku||'',r=[];
+  if(p.components&&p.components.length){p.components.forEach(function(c){var x=byId[c.id];r.push([(x&&x.name)||('Product '+c.id),c.qty||1])});return {kind:'bundle',list:r}}
+  if(BUNDLE_RECIPES[sku])return {kind:'bundle',list:BUNDLE_RECIPES[sku]};
+  var u=p.units||(/· Kit of (\d+)$/.exec(i.name||'')||[])[1]||1;u=Number(u)||1;
+  return u>1?{kind:'kit',list:[[String(i.name||'').replace(/ · Kit of \d+$/,''),u]]}:{kind:'one',list:[[i.name,1]]}}
+function vials(i){var b=inside(i),per=[];b.list.forEach(function(x){for(var k=0;k<x[1];k++)per.push(x[0])});
+  var out=[];for(var q=0;q<i.quantity;q++)per.forEach(function(nm,j){out.push({name:nm,set:q,sets:i.quantity,pos:j,of:per.length,kind:b.kind})});return out}
+function insideText(i){var b=inside(i);if(b.kind==='one')return '';if(b.kind==='kit')return b.list[0][1]+' vials per kit';
+  return 'Inside each: '+b.list.map(function(x){return (x[1]>1?x[1]+'× ':'')+x[0]}).join(' + ')}
+function units(o){return (o.items||[]).reduce(function(n,i){return n+vials(i).length},0)}
+function allTicks(o){var t={};(o.items||[]).forEach(function(i,idx){for(var u=0;u<vials(i).length;u++)t[idx+'-'+u]=true});return t}
 function serverPacked(o){return !!(o.packed&&o.packed.fp===fp(o))}
 function ticks(o){var s=saved[o.id];if(s&&s.fp===fp(o))return s.t||{};if(serverPacked(o))return allTicks(o);return{}}
 function tickCount(o){var t=ticks(o),n=0;Object.keys(t).forEach(function(k){if(t[k])n++});return n}
@@ -301,7 +317,7 @@ function alerts(){
 }
 function target(list){
   for(var a=0;a<list.length;a++){var o=list[a];if(isDone(o)||isSkipped(o)||isBlocked(o))continue;var t=ticks(o);
-    for(var i=0;i<(o.items||[]).length;i++){for(var u=0;u<o.items[i].quantity;u++){var k=i+'-'+u;if(!t[k])return{o:o,k:k,item:o.items[i],unit:u}}}}
+    for(var i=0;i<(o.items||[]).length;i++){var vs=vials(o.items[i]);for(var u=0;u<vs.length;u++){var k=i+'-'+u;if(!t[k])return{o:o,k:k,item:o.items[i],unit:u,v:vs[u],n:vs.length}}}}
   return null;
 }
 function markTarget(list){
@@ -311,8 +327,8 @@ function markTarget(list){
   if(b){b.classList.add('next');var li=b.closest('.item');if(li)li.classList.add('current');var sec=b.closest('.order');if(sec)sec.classList.add('current');
     var id=x.o.id+'|'+x.k;if(id!==lastTarget){lastTarget=id;b.scrollIntoView({behavior:'smooth',block:'center'})}}
   now.hidden=false;if(!targetSince[x.o.id])targetSince[x.o.id]=(saved[x.o.id]&&saved[x.o.id].start)||Date.now();timerOrder=x.o.id;tickTimer();
-  document.getElementById('nowWhat').textContent=x.item.name;
-  document.getElementById('nowSub').textContent='Vial '+(x.unit+1)+' of '+x.item.quantity+' · '+x.o.id+' · '+((x.o.customer&&x.o.customer.name)||'')+(hasLabel(x.o)?' · label ready (L)':'');
+  var v=x.v;document.getElementById('nowWhat').textContent=v.name;
+  document.getElementById('nowSub').textContent=(v.kind==='bundle'?'Vial '+(v.pos+1)+' of '+v.of+' in '+x.item.name+(v.sets>1?' (set '+(v.set+1)+' of '+v.sets+')':''):v.kind==='kit'?'Vial '+(v.pos+1)+' of '+v.of+' in the kit'+(v.sets>1?' (kit '+(v.set+1)+' of '+v.sets+')':''):'Vial '+(x.unit+1)+' of '+x.n)+' · '+x.o.id+' · '+((x.o.customer&&x.o.customer.name)||'')+(hasLabel(x.o)?' · label ready (L)':'');
   var pi=poolInfo(x.item.id);document.getElementById('nowWarn').textContent=pi&&pi.stock<0?'Store count for this is '+pi.stock+' — check the shelf':'';
 }
 function currentOrder(){var x=target(visibleList());return x?x.o:null}
@@ -390,7 +406,7 @@ function slipHTML(list){
    +'.sec{margin:7px 0 2px;font-size:9.5px;font-weight:900;letter-spacing:.12em;display:flex;justify-content:space-between}'
    +'table{width:100%;border-collapse:collapse}td{padding:4px 2px;border-bottom:1.5px solid #000;vertical-align:middle}tr:last-child td{border-bottom:3px solid #000}'
    +'.bx{width:16px}.bx i{display:block;width:12px;height:12px;border:2px solid #000;border-radius:2px}.q{width:32px;font-size:15px;font-weight:900}.pn{font-size:13.5px;font-weight:900}.pd{text-align:right;font-size:12px;font-weight:900;white-space:nowrap}'
-   +'.many td{padding:2px}.many .q{font-size:12.5px}.many .pn{font-size:11.5px}.many .pd{font-size:10.5px}'
+   +'.ins{display:block;font-size:9.5px;font-weight:800;margin-top:1px}.many td{padding:2px}.many .q{font-size:12.5px}.many .pn{font-size:11.5px}.many .pd{font-size:10.5px}'
    +'.chk{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:900;margin-top:5px}.chk b{font-size:11px}.sig{flex:0 0 1.25in;border-bottom:2px solid #000;height:12px}'
    +'.ft{margin-top:auto;display:flex;gap:8px;align-items:center;border-top:4px solid #000;padding-top:6px}.qr{flex:0 0 .85in}.qr svg{width:.85in;height:.85in;display:block}'
    +'.fq{flex:1;font-size:10px;font-weight:800;line-height:1.3}.fq b{display:block;font-size:13px;font-weight:900;margin-bottom:2px}.fq .sm{display:block;margin-top:3px;font-size:9.5px;font-weight:800}'
@@ -399,7 +415,7 @@ function slipHTML(list){
     var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',first=String(c.name||'').trim().split(/\s+/)[0]||'friend',u=units(o);
     var items=o.items||[],many=items.length>7;
     var rows=items.map(function(i){var parts=String(i.name||'').split(' · '),nm=parts.shift(),det=parts.join(' · ');
-      return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
+      var ins=insideText(i);return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+(ins?'<span class="ins">'+esc(ins)+'</span>':'')+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
     var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
     var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer='Jonah';
     var service=(o.shipment&&o.shipment.service)||(o.tracking?'UPS':'');
@@ -446,8 +462,9 @@ function celebrate(o){
 function card(o){
   var t=ticks(o),c=o.customer||{},done=isDone(o),blk=isBlocked(o),brand=o.brand==='zader'?'<span class="tag z">ZADER</span>':'';
   var rows=(o.items||[]).map(function(i,idx){
-    var taps='';for(var u=0;u<i.quantity;u++){var k=idx+'-'+u,on=!!t[k];taps+='<button class="tap'+(on?' on':'')+'" data-o="'+esc(o.id)+'" data-k="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(i.name)+' '+(u+1)+' of '+i.quantity+'">'+(on?'✓':(u+1))+'</button>'}
-    return '<li class="item"><div class="qty'+(i.quantity>1?' multi':'')+'">'+i.quantity+' ×</div><div class="name">'+esc(i.name)+(o.replacement?'':stockNote(i))+'</div><div class="taps">'+taps+'</div></li>';
+    var vs=vials(i),taps='';vs.forEach(function(v,u){var k=idx+'-'+u,on=!!t[k];taps+=(v.kind!=='one'&&v.pos===0&&v.set>0?'<span class="setgap"></span>':'')+'<button class="tap'+(on?' on':'')+'" data-o="'+esc(o.id)+'" data-k="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(v.name)+' '+(u+1)+' of '+vs.length+'" title="'+esc(v.name)+'">'+(on?'✓':(u+1))+'</button>'});
+    var ins=insideText(i);
+    return '<li class="item"><div class="qty'+(i.quantity>1?' multi':'')+'">'+i.quantity+' ×</div><div class="name">'+esc(i.name)+(ins?'<div class="inside">'+esc(ins)+' · <b>'+vs.length+' taps</b></div>':'')+(o.replacement?'':stockNote(i))+'</div><div class="taps">'+taps+'</div></li>';
   }).join('');
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
