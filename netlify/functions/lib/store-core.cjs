@@ -27,7 +27,7 @@ const units=brands.units,lineUnits=l=>Math.max(1,Number.isSafeInteger(l&&l.units
 function signingKey(){if(!process.env.STORE_SESSION_SECRET||process.env.STORE_SESSION_SECRET.length<32)fail('Admin sessions are not configured.',503);return process.env.STORE_SESSION_SECRET}
 function sign(value){return crypto.createHmac('sha256',signingKey()).update(value).digest('base64url')}
 async function session(store,headers){const cookie=(headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('glow_next_admin='));const token=cookie?.slice('glow_next_admin='.length)||'',parts=token.split('.');if(parts.length!==3||Number(parts[0])<=clock()||!equal(sign(parts[0]+'.'+parts[1]),parts[2]))fail('Sign in to the management dashboard.',401);const record=await store.get('sessions',parts[1]);if(!record||record.expires<=clock())fail('Sign in to the management dashboard.',401);if(record.staff_id){const a=await store.get('staff',record.staff_id);if(!a?.active||!a.verified||record.auth_version!==a.auth_version)fail('Sign in to the management dashboard.',401)}return parts[1]}
-const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,created_by_staff,payment_verified_by,invoice_sent_by,restored_by,adjustments:adjustmentHistory,payment_adjustments,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)&&!o.balance_due_cents&&!o.refund_due_cents&&!o.goaffpro_needs_review?'eligible':'not_eligible'}};
+const publicOrder=o=>{const {token_hash,receipt,idempotency_key,request_hash,goaffpro_affiliate_id,customer_id,created_by_staff,payment_verified_by,invoice_sent_by,restored_by,adjustments:adjustmentHistory,payment_adjustments,staff_notes,...rest}=o;return{...rest,has_receipt:!!receipt,commission_status:['paid','shipped'].includes(o.status)&&!o.balance_due_cents&&!o.refund_due_cents&&!o.goaffpro_needs_review?'eligible':'not_eligible'}};
 async function audit(s,action,id=''){const log=await s.get('audit','log')||[];log.push({created:clock(),action,order_id:id});await s.put('audit','log',log.slice(-250))}
 function contactPhone(value){
  if(typeof value!=='string'||!value.trim())fail('Enter your phone number so we can contact you about your order.');
@@ -309,6 +309,17 @@ async function handle({path,method='GET',headers={},body={}}){
     if(body.affiliate_review===true&&o.goaffpro_needs_review){o.goaffpro_needs_review=false;o.goaffpro_status='synced';o.goaffpro_message='Updated affiliate sale reviewed by staff.';}
     o.revision=(o.revision||0)+1;o.updated=clock();await s.put('orders',o.id,o);await audit(s,'order_exports_reviewed',o.id);return{ok:true,order:publicOrder(o)};
    }
+   if(path==='/admin/order/note'&&method==='POST'){
+    const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);
+    if(typeof body.note!=='string'||!body.note.trim()||body.note.length>2000)fail('Enter a staff note of up to 2,000 characters.');
+    if(typeof body.key!=='string'||!/^[-a-zA-Z0-9_]{16,100}$/.test(body.key))fail('Reopen the order and try saving the note again.');
+    const actor=(await s.get('sessions',sessionId)).staff_id||'owner',notes=o.staff_notes||[],previous=notes.find(n=>n.key===body.key);
+    if(previous){if(previous.actor!==actor||previous.text!==body.note.trim())fail('This note request was already used. Reopen the order.',409);return{ok:true}}
+    if(notes.length>=500)fail('This order has reached the staff-note limit.');
+    const author=actor==='owner'?'Store owner':(await s.get('staff',actor))?.name||'Staff';
+    o.staff_notes=[...notes,{key:body.key,text:body.note.trim(),actor,author,created:clock()}];o.revision=(o.revision||0)+1;o.updated=clock();
+    await s.put('orders',o.id,o);await audit(s,'order_note_added',o.id);return{ok:true};
+   }
    if(path==='/admin/order/customer'&&method==='POST'){
     const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);
     if(body.expected_revision!==(o.revision||0))fail('This order changed. Reopen it before saving.',409);
@@ -334,7 +345,7 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/rewards/reconcile'&&method==='POST'){const r=await accounts.reconcileBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_reconciled');return r}
    if(path==='/admin/rewards/import'&&method==='POST'){const r=await accounts.importBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_imported');return r}
    if(path==='/admin/rewards/adjust'&&method==='POST'){const id=text(body.customer_id||'',64),a=await s.get('customers',id);if(!a?.verified)fail('Choose a verified customer.');if(!Number.isSafeInteger(body.points)||!body.points||Math.abs(body.points)>1000000)fail('Enter a nonzero whole-point adjustment.');const key=text(body.idempotency_key||'',100),note=text(body.note||'',500);await accounts.event(s,id,'adjust:'+key,'staff_adjustment',body.points,0,null,note);await audit(s,'rewards_adjusted');return{ok:true}}
-   if(path==='/admin/data'&&method==='GET')return{brand:brands.publicBrand(reqBrand),...(reqBrand.id==='zader'?{native_affiliates:await nativeAffiliates.adminData(s)}:{}),owner,staff:(await s.list('staff')).map(staff.publicStaff),products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(publicOrder),settings,email:await emails.adminData(s),goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),shipstation:shipping.status(await s.get('integrations','shipstation')),shippo:shippo.status(await s.get('integrations','shippo')),audit:(await s.get('audit','log')||[]).slice().reverse()};
+   if(path==='/admin/data'&&method==='GET')return{brand:brands.publicBrand(reqBrand),...(reqBrand.id==='zader'?{native_affiliates:await nativeAffiliates.adminData(s)}:{}),owner,staff:(await s.list('staff')).map(staff.publicStaff),products:await s.list('products'),coupons:await s.list('coupons'),affiliates:await s.list('affiliates'),orders:(await s.list('orders')).sort((a,b)=>b.created-a.created).map(o=>({...publicOrder(o),staff_notes:(o.staff_notes||[]).map(({text,author,created})=>({text,author,created}))})),settings,email:await emails.adminData(s),goaffpro:goaffpro.status(await s.get('integrations','goaffpro')),shipstation:shipping.status(await s.get('integrations','shipstation')),shippo:shippo.status(await s.get('integrations','shippo')),audit:(await s.get('audit','log')||[]).slice().reverse()};
    const r=path.match(/^\/admin\/receipt\/([A-Z0-9-]+)$/);if(r&&method==='GET'){const o=await s.get('orders',r[1]);if(!o?.receipt)fail('Receipt not found.',404);return{_binary:o.receipt,_type:o.receipt_type}}
    if(path==='/admin/product'&&method==='POST'){
     const all=await s.list('products'),id=body.id?int(body.id,1):Math.max(0,...all.map(p=>p.id))+1;const old=body.id?await s.get('products',id):{};if(!old)fail('Product not found.',404);
@@ -390,6 +401,7 @@ async function handle({path,method='GET',headers={},body={}}){
  return{status:result?._status||(method==='POST'&&path==='/orders'?201:200),headers:setCookie?{'Set-Cookie':setCookie}:{},body:result?._error?{error:result._error}:result};
 }
 module.exports={handle,quote,shipmentPayload,publicOrder};
+
 
 
 
