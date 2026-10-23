@@ -82,18 +82,18 @@ const itemLines=o=>(o.items||[]).map(i=>`${i.name} × ${i.quantity}`);
 const shipTo=o=>{const c=o.customer||{};return `Shipping to: ${c.name}, ${c.address}, ${c.city}, ${c.state} ${c.zip}`};
 const viewLink=o=>emails.viewLink(o);
 function trackingLines(sh){return[sh.service?'Carrier: '+sh.service:sh.carrier_name?'Carrier: '+sh.carrier_name:null,'Tracking number: '+sh.tracking].filter(Boolean)}
-function send(s,o,id,kind,subject,title,lines){
+function send(s,o,id,kind,subject,title,lines,stage=null){
  if(o.is_test!==false)return null;const sh=o.shipment||{};
- return emails.enqueue(s,{id,kind,brand:o.brand,to:o.customer.email,related_id:o.id,subject,content:emails.template(title,lines,sh.tracking_url||null,'Track your package',viewLink(o),'View your order')});
+ return emails.enqueue(s,{id,kind,brand:o.brand,to:o.customer.email,related_id:o.id,subject,content:emails.template(title,lines,sh.tracking_url||null,'Track your package',viewLink(o),'View your order',{stage,eyebrow:'Order '+o.id})});
 }
 function queueEta(s,o,d){
  const date=longDate(d.scheduled_date),changed=!!o.delivery?.emailed_date&&o.delivery.emailed_date!==d.scheduled_date;
  return send(s,o,'order-eta-'+o.id+'-'+d.scheduled_date,'order_delivery_date',(changed?'New delivery date: ':'Arriving ')+date+' · Glow Lab '+o.id,
   changed?`UPS has a new delivery date: ${date}.`:`UPS says your package will arrive ${date}.`,
-  ['Hi '+first(o)+',',changed?`UPS changed the delivery date for order ${o.id}. It was ${longDate(o.delivery.emailed_date)}.`:`Good news: UPS gave your package for order ${o.id} a delivery date.`,'Delivery date: '+date+(d.window?' ('+d.window+')':''),...trackingLines(o.shipment),shipTo(o),'UPS can change this date. If it does, we will email you the new one.']);
+  ['Hi '+first(o)+',',changed?`UPS changed the delivery date for order ${o.id}. It was ${longDate(o.delivery.emailed_date)}.`:`Good news: UPS gave your package for order ${o.id} a delivery date.`,'Delivery date: '+date+(d.window?' ('+d.window+')':''),...trackingLines(o.shipment),shipTo(o),'UPS can change this date. If it does, we will email you the new one.'],2);
 }
-const queueOut=(s,o,d)=>send(s,o,'order-out-'+o.id,'order_out_for_delivery','Out for delivery today · Glow Lab '+o.id,'Your package is out for delivery today.',['Hi '+first(o)+',',`UPS has your package for order ${o.id} on the truck for delivery today${d.window?', '+d.window:''}.`,...trackingLines(o.shipment),shipTo(o)]);
-const queueDelivered=(s,o,d)=>send(s,o,'order-delivered-'+o.id,'order_delivered','Delivered · Glow Lab '+o.id,'Your package was delivered.',['Hi '+first(o)+',',`UPS delivered your package for order ${o.id}${d.delivered_date?' on '+longDate(d.delivered_date):''}${d.delivered_time?' at '+d.delivered_time:''}.`,...(d.delivered_location?['Left at: '+d.delivered_location]:[]),...trackingLines(o.shipment),'Can’t find it? Reply to this email and we will help right away.']);
+const queueOut=(s,o,d)=>send(s,o,'order-out-'+o.id,'order_out_for_delivery','Out for delivery today · Glow Lab '+o.id,'Your package is out for delivery today.',['Hi '+first(o)+',',`UPS has your package for order ${o.id} on the truck for delivery today${d.window?', '+d.window:''}.`,...trackingLines(o.shipment),shipTo(o)],3);
+const queueDelivered=(s,o,d)=>send(s,o,'order-delivered-'+o.id,'order_delivered','Delivered · Glow Lab '+o.id,'Your package was delivered.',['Hi '+first(o)+',',`UPS delivered your package for order ${o.id}${d.delivered_date?' on '+longDate(d.delivered_date):''}${d.delivered_time?' at '+d.delivered_time:''}.`,...(d.delivered_location?['Left at: '+d.delivered_location]:[]),...trackingLines(o.shipment),'Can’t find it? Reply to this email and we will help right away.'],4);
 
 // Decide what is new since the last check and queue at most the emails that are now true.
 async function applyUps(s,o,d){

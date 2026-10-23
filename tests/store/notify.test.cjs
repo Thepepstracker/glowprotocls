@@ -27,7 +27,7 @@ test('a new ShipStation label marks the order shipped and emails the tracking nu
  assert.deepEqual([saved.shipment.carrier,saved.shipment.service,saved.shipment.ship_date],['ups','UPS 2nd Day Air','2026-10-09']);
  assert.equal(sent.length,1);const m=sent[0];
  assert.equal(m.subject,'Your shipping label has been created · Glow Lab '+o.id);
- assert.match(m.text,/Your order GLP-NOTIFY\d+ is packed and its shipping label was created on Friday, October 9\./);
+ assert.match(m.text,/The shipping label for order GLP-NOTIFY\d+ was created on Friday, October 9\./);
  assert.match(m.text,/Carrier: UPS 2nd Day Air/);assert.match(m.text,/Tracking number: 1Z999AA10123456784/);
  assert.match(m.text,/Shipping to: Mary Example, 1 Example Street, Canton, GA 30114/);
  assert.match(m.html,/href="https:\/\/www\.ups\.com\/track\?loc=en_US&amp;tracknum=1Z999AA10123456784"/);
