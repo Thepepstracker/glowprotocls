@@ -18,7 +18,7 @@ async function wallet(s,id){return await s.get('rewards_wallets',id)||{customer_
 // counted before the points being earned now. Changed from lifetime spend to points earned the same day, at Jonah's request.
 const TIERS=[{id:'purple',name:'Purple',min_points:1500,multiplier:2},{id:'gold',name:'Gold',min_points:500,multiplier:1.5},{id:'blue',name:'Blue',min_points:0,multiplier:1}];
 const EARN_KINDS=['earned','opening_balance','migration_reconciliation','order_adjustment','staff_adjustment','signup_bonus','referral_bonus'];
-const SIGNUP_BONUS=100,REFERRAL_BONUS=200,BONUS_FROM=1792728000; // when switched on (settings.rewards_bonuses.on), signup bonuses go to accounts created from 23 Oct 2026 00:00 ET
+const SIGNUP_BONUS=100,REFERRAL_BONUS=200,REFERRAL_MIN_CENTS=5000,BONUS_FROM=1792728000; // when switched on (settings.rewards_bonuses.on), signup bonuses go to accounts created from 23 Oct 2026 00:00 ET
 async function bonusesOn(s){const st=await s.get('settings','main');return st?.rewards_bonuses?.on===true?(st.rewards_bonuses.from||BONUS_FROM):null}
 function tierFor(points){return TIERS.find(t=>points>=t.min_points)}
 function nextTier(points){const up=TIERS.slice().reverse().find(t=>t.min_points>points);return up?{id:up.id,name:up.name,multiplier:up.multiplier,needed_points:up.min_points-points}:null}
@@ -31,7 +31,7 @@ function earnNote(e){const lv=TIERS.find(t=>t.id===e.tier);const why=[e.tier!=='
 function referralCode(id){return hash('friend:'+id).slice(0,10)}
 async function signupBonus(s,a){if(!a?.verified)return;const from=await bonusesOn(s);if(from===null||(a.created||0)<from)return;await event(s,a.id,'signup-bonus','signup_bonus',SIGNUP_BONUS,0,null,'Welcome bonus for creating your Glow account')}
 // Why a referred order does NOT earn the referrer their bonus, in plain words (null = it qualifies). Same checks, same order as before.
-async function referralWhy(s,o){if(o.is_test!==false)return 'Test order';if(!o.referred_by)return 'No friend link on this order';if(!brands.orderBrand(o)?.rewards)return 'This store has no Glow Points';if(await bonusesOn(s)===null)return 'Referral bonuses are switched off in Settings';const buyer=emailId(o);if(!buyer)return 'The order has no email';if(buyer===o.referred_by)return 'They used their own link';const ref=await s.get('customers',o.referred_by);if(!ref?.verified)return 'The person who shared the link has not finished setting up their account';
+async function referralWhy(s,o){if(o.is_test!==false)return 'Test order';if(!o.referred_by)return 'No friend link on this order';if(!brands.orderBrand(o)?.rewards)return 'This store has no Glow Points';if(await bonusesOn(s)===null)return 'Referral bonuses are switched off in Settings';if((Number(o.subtotal)||0)-(Number(o.discount)||0)<REFERRAL_MIN_CENTS)return 'The friend\u2019s order was under $50 (products after discounts, not counting shipping)';const buyer=emailId(o);if(!buyer)return 'The order has no email';if(buyer===o.referred_by)return 'They used their own link';const ref=await s.get('customers',o.referred_by);if(!ref?.verified)return 'The person who shared the link has not finished setting up their account';
  const all=await s.list('orders');
  for(const x of all)if(x.id!==o.id&&x.is_test===false&&['paid','shipped'].includes(x.status)&&(x.customer_id===buyer||emailId(x)===buyer)&&(x.created||0)<(o.created||0))return 'This friend had already ordered before, so it is not their first order';
  // Jonah 23 Oct: no sending the link to people who already have an account, and no cheating with a second email.

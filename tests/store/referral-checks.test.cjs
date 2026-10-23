@@ -38,3 +38,9 @@ test('no bonus for a second email at the referrer\'s own address or phone',async
  r=(await admin('/admin/order/referral',{id:'GLP-RFR0000006'})).body;assert.equal(r.ok,false);assert.match(r.reason,/Same phone number/);
  await put(order('GLP-RFR0000007','realfriend@example.com',{referred_by:ref.id,customer:{name:'Real',email:'realfriend@example.com',address:'5 Pine Ave',zip:'30115',phone:'678-555-0199'}}));
  r=(await admin('/admin/order/referral',{id:'GLP-RFR0000007'})).body;assert.equal(r.ok,true,'a real friend somewhere else still counts')});
+
+test('the friend\'s first order must be $50 or more in products after discounts (shipping does not count)',async()=>{const ref=await customer('sharer5@example.com');
+ await put(order('GLP-RFR0000008','small@example.com',{referred_by:ref.id,subtotal:5499,discount:500,total:6499,customer:{name:'Small',email:'small@example.com',address:'1 A St',zip:'30001',phone:''}}));
+ let r=(await admin('/admin/order/referral',{id:'GLP-RFR0000008'})).body;assert.equal(r.ok,false);assert.match(r.reason,/under \$50/);
+ await put(order('GLP-RFR0000009','exact@example.com',{referred_by:ref.id,subtotal:6000,discount:1000,total:6500,customer:{name:'Exact',email:'exact@example.com',address:'2 B St',zip:'30002',phone:''}}));
+ r=(await admin('/admin/order/referral',{id:'GLP-RFR0000009'})).body;assert.equal(r.ok,true,'exactly $50 after the discount counts')});
