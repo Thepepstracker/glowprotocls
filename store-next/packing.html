@@ -38,6 +38,19 @@ button:disabled{opacity:.45;cursor:default}
 .alert.red{background:var(--warnbg);border-color:var(--warn);color:#5c1c0b}
 .alert.amber{background:var(--amberbg);border-color:var(--gold);color:#5a3b00}
 .alert.blue{background:var(--bluebg);border-color:var(--blue);color:#06323c}
+.week{display:flex;gap:18px;align-items:center;border-radius:16px;padding:14px 18px;margin:0 0 14px;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+.week .wk-c{font-size:30px;font-weight:900;letter-spacing:.04em;line-height:1;white-space:nowrap}.week .wk-n{font-size:14px;font-weight:700;opacity:.9;margin-top:4px;white-space:nowrap}
+.week .wk-m{flex:1;min-width:0}.week .wk-m b{font-size:26px}.week .wk-m small{display:block;font-size:15px;font-weight:600;margin-top:4px;opacity:.95}
+.week .wk-bar{height:12px;border-radius:8px;background:rgba(255,255,255,.3);margin-top:8px;overflow:hidden}.week .wk-bar i{display:block;height:100%;background:#fff;border-radius:8px}
+.week .rec{display:inline-block;margin-left:8px;font-size:13px;font-weight:800;background:rgba(255,255,255,.22);border-radius:20px;padding:2px 10px;vertical-align:middle}
+.t-red{background:#a23b1d}.t-yellow{background:#c98a00}.t-green{background:#1f7a3a}.t-blue{background:#1d5fbf}.t-gold{background:linear-gradient(135deg,#9a6b12,#d9b25b 55%,#a87a1e)}.t-purple{background:linear-gradient(135deg,#4b2aa8,#7b4fe0)}
+@media (max-width:600px){.week{flex-wrap:wrap}.week .wk-c{font-size:24px}}
+.tag.cust{background:#efe7d4;color:#6a4b0e}.tag.first{background:#e3f1ff;color:#1d5fbf}.tag.vip{background:linear-gradient(135deg,#9a6b12,#d9b25b);color:#fff}
+.calls .call{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.calls .call.done{opacity:.55}.calls .who{font-size:20px;font-weight:800}.calls .what{font-size:15px;color:var(--muted)}
+.calls .tel{font-size:22px;font-weight:800;text-decoration:none;color:#fff;background:var(--ok);border-radius:12px;padding:10px 16px;white-space:nowrap}
+.calls .cb{display:flex;gap:6px;flex-wrap:wrap}.calls .grow{flex:1;min-width:220px}
+.script{background:#fffaf0;border:2px solid var(--gold);border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:15px}.script q{font-weight:700}
 .alert .act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
 .group{font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--muted);margin:20px 4px 8px;text-transform:uppercase}
 .order{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
@@ -156,6 +169,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 <div class="now" id="now" hidden><div class="in"><span class="key">SPACE</span><div><div class="what" id="nowWhat"></div><div class="sub" id="nowSub"></div><div class="warnline" id="nowWarn"></div></div><div class="timer" id="nowTimer" title="Time on this box"></div></div></div>
 <canvas id="confetti"></canvas><div class="cheer" id="cheer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div><div class="feed" id="feed" aria-live="polite"></div>
 <main>
+  <div id="week"></div>
   <div class="tools">
     <input type="search" id="search" placeholder="Search order number, name, city or product   ( / )" autocomplete="off">
     <button id="refresh" class="primary">Refresh orders</button>
@@ -170,6 +184,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
     <button data-view="pick" aria-pressed="false">Pick list</button>
     <button data-view="restock" aria-pressed="false">Restock<span class="n" id="nRestock">0</span></button>
     <button data-view="stats" aria-pressed="false">⚡ Stats</button>
+    <button data-view="calls" aria-pressed="false">📞 Calls<span class="n" id="nCalls">0</span></button>
   </div>
   <div class="chips" id="chips">
     <button data-chip="all" aria-pressed="true">Everything</button>
@@ -180,7 +195,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
   </div>
   <div class="alerts" id="alerts"></div>
   <div id="out"><div class="msg">Loading paid orders…</div></div>
-  <div class="keys noprint"><span><kbd>Space</kbd> next vial in</span><span><kbd>⌫</kbd> undo</span><span><kbd>L</kbd> open this order's label</span><span><kbd>S</kbd> skip this order</span><span><kbd>R</kbd> refresh</span><span><kbd>/</kbd> search</span><span><kbd>1</kbd>–<kbd>7</kbd> tabs</span><span><kbd>B</kbd> big screen</span><span><kbd>P</kbd> slip for this box</span></div>
+  <div class="keys noprint"><span><kbd>Space</kbd> next vial in</span><span><kbd>⌫</kbd> undo</span><span><kbd>L</kbd> open this order's label</span><span><kbd>S</kbd> skip this order</span><span><kbd>R</kbd> refresh</span><span><kbd>/</kbd> search</span><span><kbd>1</kbd>–<kbd>8</kbd> tabs</span><span><kbd>B</kbd> big screen</span><span><kbd>P</kbd> slip for this box</span></div>
   <p class="small">Shows every order marked <b>Paid</b>, plus orders whose label is printed but UPS has not scanned yet (last 7 days), oldest first. Press the <b>space bar</b> once for every vial as it goes in the bag (or tap the boxes). The gold box shows what to put in next. Ticks, skips and "out of stock" marks stay on this device. When a box is fully checked it is marked <b>Packed</b> in the store too, so every computer and Management see it (Start over un-marks it). <b>🧾 Slip</b> prints a 4×6 packing slip with a tracking QR on the label printer. If an order is edited after you checked it, its ticks clear so you check it again. Orders refresh by themselves every minute while you are not typing — every new order pops up in the corner with a cha-ching (and on your computer, if order pop-ups are on).</p>
 </main>
 <script src="vendor/qrcode-generator.js"></script>
@@ -198,7 +213,7 @@ var MIN_PER_ORDER=3;      // Jonah: one order takes under 3 minutes to pack.
 var AUTO_MS=60000;        // check for new orders every minute.
 var MADE_HERE=/^(glow (protocol|eyes|cpr)|cu-hair|recovery mist|glutathione serum)/i; // topicals made in-house: batch, not order.
 // ---------------------------------------------------------------------------
-var KEY='glp_packing_v1',SKIP='glp_packing_skip_v1',OUTK='glp_packing_out_v1',SEEN='glp_packing_seen_v1',SND='glp_packing_sound_v1';
+var KEY='glp_packing_v1',SKIP='glp_packing_skip_v1',OUTK='glp_packing_out_v1',SEEN='glp_packing_seen_v1',SND='glp_packing_sound_v1',CALLK='glp_calls_v1';
 var targetSince={},timerOrder=null,knownOrders=null,pingQueue=0,titleBase=document.title,titleTimer=null,orders=[],all=[],products=[],byId={},pools={},view='todo',chip='all',query='',justDone={},history=[],lastTarget='',lastLoad=0,lastKey=0,firstSale=0;
 function ls(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
@@ -273,7 +288,7 @@ function stockNote(i){var x=poolInfo(i.id);if(!x)return'';if(outMarks[x.key])ret
 function matches(o){if(!query)return true;var q=query.toLowerCase(),c=o.customer||{};return [o.id,c.name,c.city,c.state,o.tracking].concat((o.items||[]).map(function(i){return i.name})).some(function(v){return String(v||'').toLowerCase().indexOf(q)>=0})}
 function chipOk(o){return chip==='all'?true:chip==='label'?hasLabel(o):chip==='nolabel'?!hasLabel(o):chip==='late'?isLate(o):chip==='blocked'?isBlocked(o):true}
 function inView(o){return view==='all'?true:view==='skipped'?isSkipped(o):view==='done'?isDone(o):(!isSkipped(o)&&(!isDone(o)||justDone[o.id]))}
-function visibleList(){if(view==='pick'||view==='restock'||view==='stats')return[];var l=orders.filter(matches).filter(inView).filter(chipOk);
+function visibleList(){if(view==='pick'||view==='restock'||view==='stats'||view==='calls')return[];var l=orders.filter(matches).filter(inView).filter(chipOk);
   // To check: label printed first (those can go out today), then no label yet, then anything waiting on stock. Oldest first inside each.
   if(view==='todo'){var rank=function(o){return isBlocked(o)?2:hasLabel(o)?0:1};l=l.slice().sort(function(a,b){return rank(a)-rank(b)||((a.paid||a.created||0)-(b.paid||b.created||0))})}return l}
 function render(){
@@ -288,10 +303,11 @@ function render(){
   document.getElementById('bar').style.width=(orders.length?Math.round(done*100/orders.length):0)+'%';
   document.getElementById('nTodo').textContent=todo.length;document.getElementById('nDone').textContent=done;document.getElementById('nSkip').textContent=sk;
   var rs=restockRows().filter(function(x){return x.status==='out'||x.status==='now'}).length,nr=document.getElementById('nRestock');nr.textContent=rs;nr.className='n'+(rs?' red':'');
-  document.getElementById('chips').style.display=(view==='pick'||view==='restock'||view==='stats')?'none':'';
+  document.getElementById('chips').style.display=(view==='pick'||view==='restock'||view==='stats'||view==='calls')?'none':'';
+  weekBanner();var nc=callList().filter(function(c){return !callDone(c)}).length,ncb=document.getElementById('nCalls');ncb.textContent=nc;
   alerts();
   var out=document.getElementById('out');
-  if(view==='pick'||view==='restock'||view==='stats'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=view==='pick'?pickList():view==='stats'?statsView():restock();return}
+  if(view==='pick'||view==='restock'||view==='stats'||view==='calls'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=view==='pick'?pickList():view==='stats'?statsView():view==='calls'?callsView():restock();return}
   var list=visibleList();
   if(!orders.length){out.innerHTML='<div class="msg">No orders waiting to be packed right now.</div>';return}
   if(!list.length){out.innerHTML='<div class="msg">'+(view==='todo'&&chip==='all'&&!query?'Every order is checked'+(sk?' (skipped ones are in the Skipped tab)':'')+'. ✅':'Nothing matches here.')+'</div>';return}
@@ -303,7 +319,7 @@ function render(){
 }
 function alerts(){
   var a=[],box=document.getElementById('alerts');
-  if(view==='restock'||view==='stats'){box.innerHTML='';return}
+  if(view==='restock'||view==='stats'||view==='calls'){box.innerHTML='';return}
   var blocked=orders.filter(isBlocked);
   Object.keys(outMarks).forEach(function(k){var x=pools[k];if(!x)return;var n=orders.filter(function(o){return !isDone(o)&&(o.items||[]).some(function(i){return poolOf(i.id)===k})});
     a.push('<div class="alert red"><span class="ic">⛔</span><div><b>'+esc(x.name)+' is out.</b> '+n.length+' waiting order'+(n.length===1?'':'s')+' need'+(n.length===1?'s':'')+' it — they are moved to the bottom so they do not hold up the run.</div><div class="act"><button class="mini" data-unout="'+esc(k)+'">It\'s back</button></div></div>')});
@@ -459,6 +475,55 @@ function celebrate(o){
   (function frame(t){var e=t-start;ctx.clearRect(0,0,W,H);P.forEach(function(p){p.vy+=.35;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.globalAlpha=Math.max(0,1-e/2600);ctx.fillStyle=p.c;ctx.fillRect(-p.s/2,-p.s/3,p.s,p.s*.66);ctx.restore()});
     if(e<2600)requestAnimationFrame(frame);else ctx.clearRect(0,0,W,H)})(start);
 }
+// ---- week color, regulars, check-in calls ---------------------------------
+// Week color (ops charter §5, set by Jonah 23 Oct 2026): week-to-date paid sales vs the $4,500 target.
+var WEEK_TARGET=450000;
+var TIERS=[{k:'purple',dot:'🟣',name:'PURPLE',say:'Record-week territory',at:WEEK_TARGET*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Big week',at:WEEK_TARGET*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Target hit',at:WEEK_TARGET}];
+function paidOrder(o){return o&&o.is_test===false&&(o.status==='paid'||o.status==='shipped')}
+function weekKeys(offset){var today=etDay(nowS()),d=new Date(today+'T12:00:00Z'),dow=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-dow-7*(offset||0));var k=[];for(var i=0;i<7;i++){k.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}return{keys:k,dow:dow}}
+function weekSum(keys){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&keys.indexOf(etDay(o.created||0))>=0){n+=o.total||0;c++}});return{cents:n,count:c}}
+function tierOf(cents,finished,lastWeekCents){
+  for(var i=0;i<TIERS.length;i++)if(cents>=TIERS[i].at)return TIERS[i];
+  if(!finished){var lw=lastWeekCents||0;if(lw>=WEEK_TARGET)return{k:'green',dot:'🟢',name:'GREEN',say:'New week — last week hit the target'};return{k:'yellow',dot:'🟡',name:'YELLOW',say:'New week — last week missed the target'}}
+  var pace=WEEK_TARGET*finished/7,r=cents/pace;
+  if(r>=1)return{k:'green',dot:'🟢',name:'GREEN',say:'On pace',pace:pace};if(r>=.75)return{k:'yellow',dot:'🟡',name:'YELLOW',say:'Slipping behind pace',pace:pace};return{k:'red',dot:'🔴',name:'RED',say:'Behind pace',pace:pace}}
+function weekBanner(){var box=document.getElementById('week');if(!box)return;if(!all.length){box.innerHTML='';return}
+  var w=weekKeys(0),cur=weekSum(w.keys),last=weekSum(weekKeys(1).keys),t=tierOf(cur.cents,w.dow,last.cents),pace=WEEK_TARGET*w.dow/7;
+  var steps=[{at:pace*.75,dot:'🟡',name:'Yellow'},{at:pace,dot:'🟢',name:'Green'},{at:WEEK_TARGET,dot:'🔵',name:'Blue'},{at:WEEK_TARGET*1.5,dot:'🟨',name:'Gold'},{at:WEEK_TARGET*2,dot:'🟣',name:'Purple'}].filter(function(x){return x.at>cur.cents&&x.at>0});
+  var nx=steps[0],floor=0;[pace*.75,pace,WEEK_TARGET,WEEK_TARGET*1.5,WEEK_TARGET*2].forEach(function(v){if(v<=cur.cents&&v>floor)floor=v});
+  var pct=nx?Math.max(3,Math.min(100,Math.round((cur.cents-floor)*100/Math.max(1,nx.at-floor)))):100;
+  var best=0;for(var i=1;i<=8;i++){var s2=weekSum(weekKeys(i).keys).cents;if(s2>best)best=s2}
+  var rec=cur.cents>best&&cur.cents>=WEEK_TARGET?'<span class="rec">🏆 Best week since the new store opened</span>':'';
+  var ts=todayStats();
+  box.innerHTML='<section class="week t-'+t.k+'" title="Week color: Red under 75% of pace · Yellow 75–99% · Green on pace · Blue $4,500 · Gold $6,750 · Purple $9,000"><div><div class="wk-c">'+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
+   +'<div class="wk-m"><b>'+money(cur.cents)+'</b> this week · '+cur.count+' paid order'+(cur.count===1?'':'s')+rec
+   +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Target '+Math.round(cur.cents*100/WEEK_TARGET)+'% · Today '+money(ts.total)+'</small></div></section>'}
+// Regulars: how many paid orders this customer has in the new store (since 5 Oct 2026), and what they have spent.
+function custKey(o){var c=o.customer||{};return String(c.email||'').trim().toLowerCase()||String(c.phone||'').replace(/\D/g,'')||String(c.name||'').trim().toLowerCase()}
+function custHistory(o){var k=custKey(o);if(!k)return{n:1,spent:0,orders:1};var mine=all.filter(function(x){return paidOrder(x)&&custKey(x)===k});
+  var upto=mine.filter(function(x){return (x.created||0)<=(o.created||0)}).length+(paidOrder(o)?0:1);return{n:Math.max(1,upto),orders:mine.length,spent:mine.reduce(function(a,x){return a+(x.total||0)},0)}}
+function custTag(o){if(o.replacement)return '';var h=custHistory(o);
+  if(h.orders>=2&&(h.orders>=4||h.spent>=75000))return '<span class="tag vip" title="Paid orders in the new store and total spent">⭐ VIP · '+h.orders+' orders · '+money(h.spent).replace(/\.\d\d$/,'')+'</span>';
+  if(h.n<=1)return '<span class="tag first">FIRST ORDER</span>';return '<span class="tag cust">'+ordinal(h.n).toUpperCase()+' ORDER</span>'}
+// Check-in calls: label made 5–9 days ago ≈ package landed 3–4 days ago (UPS 2nd Day Air). One row per customer.
+var calls=ls(CALLK,{}),callsShowDone=false;
+function callList(){var now=nowS(),by={};all.forEach(function(o){if(!paidOrder(o)||o.status!=='shipped'||!o.shipment)return;var t=o.shipment.label_created_at||0;var age=(now-t)/86400;if(!t||age<5||age>=9.5)return;var c=o.customer||{};if(!String(c.phone||'').replace(/\D/g,''))return;var k=custKey(o);if(!by[k]||by[k].created<o.created)by[k]=o});
+  return Object.keys(by).map(function(k){return by[k]}).sort(function(a,b){var fa=custHistory(a).n===1?0:1,fb=custHistory(b).n===1?0:1;return fa-fb||(a.shipment.label_created_at-b.shipment.label_created_at)})}
+function callDone(o){var c=calls[o.id];return !!(c&&c.how!=='noanswer')}
+function markCall(id,how){var c=calls[id]||{tries:0};if(how==='undo'){delete calls[id]}else{c.how=how;c.at=Date.now();if(how==='noanswer')c.tries=(c.tries||0)+1;calls[id]=c}lsSet(CALLK,calls);render();toast(how==='talked'?'Nice — marked as talked':how==='voicemail'?'Voicemail left':how==='noanswer'?'No answer — it stays on the list':how==='skip'?'Skipped':'Undone')}
+function fmtPhone(p){var d=String(p||'').replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.slice(1);return d.length===10?'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6):String(p||'')}
+function callsView(){var list=callList(),todo=list.filter(function(o){return !callDone(o)}),done=list.filter(callDone);
+  var midnight=new Date();midnight.setHours(0,0,0,0);var today=Object.keys(calls).filter(function(k){return calls[k].at>=midnight.getTime()&&calls[k].how!=='skip'}).length;
+  var html='<div class="script"><b>📞 Check-in calls</b> — customers whose package landed about 3–4 days ago. '+today+' call'+(today===1?'':'s')+' made today.<br>Open with: <q>Hey [name], it\'s Jonah from Glow Lab Protocols! How are you doing today?</q> Then thank them and ask <q>How was everything with your order?</q><br><b>Ask about the order, never how it\'s working.</b> If they bring it up, say "that\'s awesome" and move on — don\'t write it down. Best time 1–5pm. <a href="https://claude.ai/artifact/UQxQdBfBYKRsFt8gcUPbkv" target="_blank" rel="noopener">Full script</a></div>';
+  if(!list.length)return html+'<div class="msg">Nobody to call right now. Customers show up here 5–9 days after their label is made.</div>';
+  var row=function(o){var c=o.customer||{},h=custHistory(o),mk=calls[o.id],days=Math.floor((nowS()-o.shipment.label_created_at)/86400),items=(o.items||[]).map(function(i){return i.quantity+'× '+i.name}).join(', ');
+    var phone=String(c.phone||'').replace(/[^\d+]/g,'');
+    return '<div class="call'+(callDone(o)?' done':'')+'"><div class="grow"><div class="who">'+esc(c.name||o.id)+' '+custTag(o)+'</div><div class="what">'+esc(items)+'</div><div class="small">'+esc(o.id)+' · '+esc([c.city,c.state].filter(Boolean).join(', '))+' · label made '+days+' days ago'+(mk&&mk.tries?' · '+mk.tries+' no answer':'')+(mk&&mk.how&&mk.how!=='noanswer'?' · <b>'+(mk.how==='talked'?'✅ Talked':mk.how==='voicemail'?'📨 Voicemail':'Skipped')+'</b>':'')+'</div></div>'
+      +'<a class="tel" href="tel:'+esc(phone)+'">📞 '+esc(fmtPhone(c.phone))+'</a><div class="cb">'
+      +(callDone(o)?'<button class="mini" data-call="'+esc(o.id)+'" data-how="undo">Undo</button>':'<button class="mini" data-call="'+esc(o.id)+'" data-how="talked">✅ Talked</button><button class="mini" data-call="'+esc(o.id)+'" data-how="voicemail">📨 Voicemail</button><button class="mini" data-call="'+esc(o.id)+'" data-how="noanswer">No answer</button><button class="mini" data-call="'+esc(o.id)+'" data-how="skip">Skip</button>')+'</div></div>'};
+  html+='<div class="calls">'+(todo.length?todo.map(row).join(''):'<div class="msg">All caught up — every call on the list is done. ✅</div>')+'</div>';
+  if(done.length)html+='<div class="tools"><button class="mini" id="callsShowDone">'+(callsShowDone?'Hide':'Show')+' finished calls ('+done.length+')</button></div>'+(callsShowDone?'<div class="calls">'+done.map(row).join('')+'</div>':'');
+  return html+'<p class="small">Call marks stay on this computer. First orders are at the top — they are the customers most likely not to come back.</p>'}
 function card(o){
   var t=ticks(o),c=o.customer||{},done=isDone(o),blk=isBlocked(o),brand=o.brand==='zader'?'<span class="tag z">ZADER</span>':'';
   var rows=(o.items||[]).map(function(i,idx){
@@ -468,7 +533,7 @@ function card(o){
   }).join('');
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
-  var tags=brand+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
+  var tags=brand+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
   var ship=hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><span>'+esc(o.shipment.service||'UPS')+'</span>'+(o.tracking?'<span>'+esc(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div></div><div class="small">Paid '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+'<ul class="items">'+rows+'</ul>'
@@ -542,6 +607,8 @@ document.addEventListener('click',function(e){
   if(b.dataset.out){markOut(b.dataset.out,true);return}
   if(b.dataset.unout){markOut(b.dataset.unout,false);return}
   if(b.dataset.copy){var v=b.dataset.copy;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(function(){toast('Tracking copied')},function(){toast(v)});return}
+  if(b.dataset.call){markCall(b.dataset.call,b.dataset.how);return}
+  if(b.id==='callsShowDone'){callsShowDone=!callsShowDone;render();return}
   if(b.dataset.chip){setChip(b.dataset.chip);return}
   if(b.dataset.view){setView(b.dataset.view);return}
   if(b.id==='printPick'){window.print();return}
@@ -567,7 +634,7 @@ document.addEventListener('keydown',function(e){
   if(k==='s'){var c=currentOrder();if(c){skipped[c.id]=Date.now();saveSkip();render();toast('Skipped '+c.id)}return}
   if(k==='b'){toggleBig();return}
   if(k==='p'){var po=currentOrder();if(po)printSlips([po]);else toast('Nothing to pack');return}
-  var tabs=['todo','done','skipped','all','pick','restock','stats'];if(/^[1-7]$/.test(e.key)){setView(tabs[Number(e.key)-1])}
+  var tabs=['todo','done','skipped','all','pick','restock','stats','calls'];if(/^[1-8]$/.test(e.key)){setView(tabs[Number(e.key)-1])}
 });
 document.getElementById('search').addEventListener('input',function(e){query=e.target.value.trim();render()});
 syncNotifyBtn();
