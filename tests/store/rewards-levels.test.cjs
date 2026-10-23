@@ -13,18 +13,23 @@ const ledger=id=>transaction(async s=>(await s.list('rewards_ledger')).filter(e=
 const settings=fn=>transaction(async s=>{const st=await s.get('settings','main');fn(st);await s.put('settings','main',st)});
 before(async()=>{await transaction(seed);const r=await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD});adminCookie=r.headers['Set-Cookie'].split(';')[0]});after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
 
-test('levels: Blue under $500, Gold from $500, Purple from $1,500 of lifetime spend',()=>{assert.equal(accounts.tierFor(0).id,'blue');assert.equal(accounts.tierFor(49999).id,'blue');assert.equal(accounts.tierFor(50000).id,'gold');assert.equal(accounts.tierFor(149999).id,'gold');assert.equal(accounts.tierFor(150000).id,'purple')});
+test('levels: Blue under 500 points earned, Gold from 500, Purple from 1,500',()=>{assert.equal(accounts.tierFor(0).id,'blue');assert.equal(accounts.tierFor(499).id,'blue');assert.equal(accounts.tierFor(500).id,'gold');assert.equal(accounts.tierFor(1499).id,'gold');assert.equal(accounts.tierFor(1500).id,'purple')});
 
-test('a Gold customer earns 1.5x on the next order; the level counts only paid orders placed before it',async()=>{const email='gold@example.com';
+test('a Gold customer earns 1.5x on the next order; the level counts points earned before it, oldest order first',async()=>{const email='gold@example.com';
  await put(order('GLP-LVL0000001',email,30000,{created:1790000000}));await put(order('GLP-LVL0000002',email,25000,{created:1790000100}));await put(order('GLP-LVL0000003',email,10000,{created:1790000200}));
  await put(order('GLP-LVL0000004',email,90000,{created:1790000050,status:'awaiting_payment',paid:0}));
  const a=await customer(email);const o=id=>transaction(s=>s.get('orders',id));
  assert.equal((await o('GLP-LVL0000001')).points_earned,300,'first order: Blue, nothing before it');
- assert.equal((await o('GLP-LVL0000002')).points_earned,250,'$300 before it is still Blue; the unpaid $900 never counts');
- assert.equal((await o('GLP-LVL0000003')).points_earned,150,'$550 before it: Gold, 100 x 1.5');
+ assert.equal((await o('GLP-LVL0000002')).points_earned,250,'300 points before it is still Blue; the unpaid order never counts');
+ assert.equal((await o('GLP-LVL0000003')).points_earned,150,'550 points before it: Gold, 100 x 1.5');
  assert.equal((await o('GLP-LVL0000003')).points_multiplier,1.5);
  assert.equal((await wallet(a.id)).balance,700);
- const acct=(await call('/account',undefined,a.cookie)).body;assert.equal(acct.rewards.tier.id,'gold');assert.equal(acct.rewards.spend_cents,65000);assert.equal(acct.rewards.next.id,'purple');assert.equal(acct.rewards.next.needed_cents,85000)});
+ const acct=(await call('/account',undefined,a.cookie)).body;assert.equal(acct.rewards.tier.id,'gold');assert.equal(acct.rewards.points_lifetime,700);assert.equal(acct.rewards.next.id,'purple');assert.equal(acct.rewards.next.needed_points,800)});
+
+test('spending points never lowers the level; bonuses count toward it',async()=>{const a=await customer('spender@example.com');
+ await transaction(async s=>{await accounts.event(s,a.id,'test-earn','earned',480,0,null,'fixture');await accounts.event(s,a.id,'test-bonus','referral_bonus',40,0,null,'fixture');await accounts.event(s,a.id,'test-spend','redeemed',-500,0,null,'fixture')});
+ assert.equal(await transaction(s=>accounts.lifetimePoints(s,a.id)),520);assert.equal((await wallet(a.id)).balance,20);
+ assert.equal((await call('/account',undefined,a.cookie)).body.rewards.tier.id,'gold')});
 
 test('double points: an order placed inside a window earns 2x on top of its level; outside it does not',async()=>{await settings(st=>{st.double_points={windows:[{from:1790100000,until:1790110000}]}});const email='double@example.com';
  await put(order('GLP-DBL0000001',email,10000,{created:1790105000}));await put(order('GLP-DBL0000002',email,10000,{created:1790200000}));const a=await customer(email);
