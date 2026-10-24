@@ -434,7 +434,9 @@ function slipHTML(list){
    +'.chk{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:900;margin-top:5px}.chk b{font-size:11px}.sig{flex:0 0 1.25in;border-bottom:2px solid #000;height:12px}'
    +'.ft{margin-top:auto;display:flex;gap:8px;align-items:center;border-top:4px solid #000;padding-top:6px}.qr{flex:0 0 .85in}.qr svg{width:.85in;height:.85in;display:block}'
    +'.fq{flex:1;font-size:10px;font-weight:800;line-height:1.3}.fq b{display:block;font-size:13px;font-weight:900;margin-bottom:2px}.fq .sm{display:block;margin-top:3px;font-size:9.5px;font-weight:800}'
-   +'.thx{margin-top:5px;text-align:center;font-size:9.5px;font-weight:900;letter-spacing:.06em}';
+   +'.thx{margin-top:5px;text-align:center;font-size:9.5px;font-weight:900;letter-spacing:.06em}'
+   // The site's seasonal edge function adds decorations before the first closing body tag it sees; slips must stay one clean 4x6 page.
+   +'.glow-season-corner,[class*=season-],[class*=glow-season]{display:none!important}';
   var slips=list.map(function(o){
     var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',first=String(c.name||'').trim().split(/\s+/)[0]||'friend',u=units(o);
     var items=o.items||[],many=items.length>7;
@@ -464,11 +466,11 @@ function slipHTML(list){
      +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by <b>Jonah</b></span></div>'
      +'<div class="ft"><div class="qr">'+qrSvg(footUrl)+'</div><div class="fq">'+footText+(mail?'<span class="sm">Questions? '+esc(mail)+'</span>':'')+'</div></div>'
      +'<div class="thx">'+(z?'THANK YOU FOR CHOOSING ZADER HEALTH':'THANK YOU FOR GLOWING WITH US')+'</div></section>'}).join('');
-  return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style></head><body>'+slips+'</body></html>';
+  return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style><\/head><body>'+slips+'<\/body><\/html>';
 }
 function printSlips(list){
   var w=window.open('','_blank');if(!w){toast('Allow pop-ups for this site to print slips');return}
-  w.document.write(slipHTML(list).replace('</body>','<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script></body>'));
+  w.document.write(slipHTML(list).replace('<\/body>','<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script><\/body>'));
   w.document.close();
 }
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show')},2600)}
