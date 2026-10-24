@@ -542,7 +542,7 @@ function card(o){
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
   var tags=brand+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
-  var ship=hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label to Downloads; the Mac helper prints it on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||'UPS')+'</span>'+(o.tracking?'<span>'+esc(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
+  var ship=hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||'UPS')+'</span>'+(o.tracking?'<span>'+esc(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">Paid '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
@@ -598,14 +598,19 @@ function fetchOrders(quiet){
   }).catch(function(e){if(e!==0&&!quiet)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
 }
 // Saves glow-label-<order>.pdf to Downloads. The Mac helper (glow-helper) prints files with that name on the label printer.
-function sendToPrinter(cardId,b){var m=String(cardId).match(/^(.*)-R(\d+)$/),id=m?m[1]:cardId,r=m?Number(m[2]):0;if(b)b.disabled=true;
-  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Flabel-pdf',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,r:r})})
+function saveFile(name,blob){var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},30000)}
+// The 4x6 packing slip as glow-slip-<order>.html; the Mac helper turns it into a PDF and prints it right after the label.
+function sendSlip(id){var o=orders.find(function(x){return x.id===id});if(!o||o.replacement)return false;saveFile('glow-slip-'+String(o.id).replace(/[^A-Za-z0-9-]/g,'')+'.html',new Blob([slipHTML([o])],{type:'text/html'}));return true}
+function sendToPrinter(cardId,b,opts){opts=opts||{};var m=String(cardId).match(/^(.*)-R(\d+)$/),id=m?m[1]:cardId,r=m?Number(m[2]):0;if(b)b.disabled=true;
+  return fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Flabel-pdf',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,r:r})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok||!d.pdf)throw new Error(d.error||d.message||('Could not get the label ('+x.status+')'));return d})})
   .then(function(d){var bin=atob(d.pdf),a8=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)a8[i]=bin.charCodeAt(i);
-    var u=URL.createObjectURL(new Blob([a8],{type:'application/pdf'})),a=document.createElement('a');a.href=u;a.download=d.name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},30000);
-    toast('🖨️ Sent '+d.name+' — the Mac helper prints it in a few seconds');if(b)b.textContent='✓ Sent to printer'})
-  .catch(function(e){toast((e&&e.message)||'Could not get the label');if(b)b.disabled=false});
+    saveFile(d.name,new Blob([a8],{type:'application/pdf'}));var slip=!r&&opts.slip!==false&&sendSlip(id);
+    toast('🖨️ Sent '+(slip?'label + packing slip':'label')+' for '+id+' — the Mac helper prints in a few seconds');if(b)b.textContent='✓ Sent to printer';return{id:id,label:d.name,slip:!!slip}})
+  .catch(function(e){toast((e&&e.message)||'Could not get the label');if(b)b.disabled=false;throw e});
 }
+// For Claude's scheduled jobs: window.glowPrint.label(id) / .slip(id).
+window.glowPrint={label:function(id,slip){return sendToPrinter(id,null,{slip:slip!==false})},slip:sendSlip};
 function openLabels(){
   var list=orders.filter(function(o){return hasLabel(o)&&!isDone(o)&&!isSkipped(o)&&!isBlocked(o)});
   if(!list.length){toast('No unchecked orders have a label yet');return}
@@ -618,7 +623,7 @@ function markOut(k,on){if(on)outMarks[k]=Date.now();else delete outMarks[k];lsSe
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;lastKey=Date.now();
   if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';var was=isDone(o);setTick(o,b.dataset.k,on);if(on)history.push({id:o.id,k:b.dataset.k});if(isDone(o)){justDone[o.id]=1;if(!was)celebrate(o)}b.blur();buildPools();render();return}
-  if(b.dataset.dl){sendToPrinter(b.dataset.dl,b);return}
+  if(b.dataset.dl){sendToPrinter(b.dataset.dl,b).catch(function(){});return}
   if(b.dataset.refer){var fo=orders.find(function(x){return x.id===b.dataset.refer});if(!fo)return;b.disabled=true;
     fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Freferral',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:fo.id})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(x){
       if(x.ok&&x.d.ok){fo.referral_bonus_awarded=x.d.awarded||200;delete fo._refWhy;toast('✅ '+fo.referral_bonus_awarded+' points added to '+String((fo.referrer&&fo.referrer.name)||'the customer').split(' ')[0])}
