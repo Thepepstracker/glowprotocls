@@ -813,6 +813,7 @@
 };
  const normalize=s=>String(s).replace(/\s+/g,' ').trim();
  const exact=new Map(Object.entries(phrases).map(([en,es])=>[normalize(en),es]));
+ const sentencePrefixes=[...exact].filter(([en])=>en.length>20&&/[.!?]$/.test(en)).sort((a,b)=>b[0].length-a[0].length);
  const rules=[
   [/^View bag \((\d+)\)$/,(_,n)=>`Ver bolsa (${n})`],
   [/^Explore (.+)\.$/,(_,n)=>`Explora ${n}.`],
@@ -879,6 +880,10 @@
   const original=String(value),text=normalize(original);if(language!=='es'||!text)return original;
   let translated=exact.get(text);
   if(translated===undefined){for(const [pattern,replace]of rules){if(pattern.test(text)){translated=text.replace(pattern,replace);break}}}
+  if(translated===undefined){
+   const prefix=sentencePrefixes.find(([en])=>text.startsWith(en+' '));
+   if(prefix)translated=prefix[1]+' '+translateText(text.slice(prefix[0].length+1),language);
+  }
   if(translated===undefined){
    // Adjacent sentences can be one DOM node in generated checkout templates.
    const chunks=text.split(/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚ¿¡])/);if(chunks.length>1){const parts=chunks.map(s=>translateText(s,language));if(parts.some((s,i)=>s!==chunks[i]))translated=parts.join(' ')}
