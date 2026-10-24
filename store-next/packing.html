@@ -85,7 +85,7 @@ button:disabled{opacity:.45;cursor:default}
 .state.ok{color:var(--ok)}
 .note{background:#fff8e6;border:1px solid #f0d58c;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
 .ship{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-top:4px}
-.ship.buy{background:#fff8e6;border:1px dashed #b88a2e;border-radius:10px;padding:8px 10px}.ship.buy select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink)}.ship.buy .buybtn{font-weight:800;background:var(--ink);color:#fff;border-color:var(--ink)}.ship.buy .buybtn[disabled]{opacity:.5}.buywarn{font-size:13px;color:#8a5a00}
+.ship.buy{background:#fff8e6;border:1px dashed #b88a2e;border-radius:10px;padding:8px 10px}.ship.buy select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink)}.ship.buy .buybtn{font-weight:800;background:var(--ink);color:#fff;border-color:var(--ink)}.ship.buy .buybtn[disabled]{opacity:.5}.buywarn{font-size:13px;color:#8a5a00}.buywarn.price{color:#a3001b;font-weight:800}.ship.buy .overbtn{font-weight:800;background:#fff;color:#a3001b;border-color:#a3001b}
 .ship a.lbtn{font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--ink);border-radius:8px;padding:4px 10px;text-decoration:none}
 table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
 td,th{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
@@ -608,19 +608,24 @@ var BUY_SERVICES=[['ups_second_day_air','UPS 2nd Day Air'],['ups_ground','UPS Gr
 function isPoBox(o){var c=o.customer||{};return /\b(p\.?\s*o\.?\s*box|post\s+office\s+box)\b/i.test([c.address,c.address2].join(' '))}
 function defaultService(o){var st=String((o.customer||{}).state||'').toUpperCase().trim();if(isPoBox(o))return 'usps_priority';if(['GA','FL','AL','GEORGIA','FLORIDA','ALABAMA'].indexOf(st)>=0)return 'ups_ground';return 'ups_second_day_air'}
 function canBuy(o){return !o.replacement&&o.status==='paid'&&o.is_test===false}
-function buyBox(o){var def=defaultService(o),due=o.balance_due_cents>0||o.refund_due_cents>0,blk=blockedItems(o);
+var svcChoice={}; // order id → service picked in the menu, kept across refreshes
+function buyBox(o){var def=svcChoice[o.id]||defaultService(o),due=o.balance_due_cents>0||o.refund_due_cents>0,blk=blockedItems(o);
   var opts=BUY_SERVICES.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===def?' selected':'')+'>'+esc(x[1])+'</option>'}).join('');
   return '<div class="ship buy"><select class="svc" data-svc="'+esc(o.id)+'" aria-label="Shipping service">'+opts+'</select>'
    +'<button class="mini buybtn" data-buy="'+esc(o.id)+'"'+(due?' disabled title="Balance or refund due: settle it first"':'')+'>🏷️ Buy label</button>'
    +(due?'<span class="buywarn">Balance due, settle it first</span>':blk.length?'<span class="buywarn">⏳ Waiting on '+esc(blk.map(function(i){return i.name}).join(', '))+'</span>':'')
-   +(o.shippo_message?'<span class="buywarn">Last try: '+esc(String(o.shippo_message).slice(0,140))+'</span>':'')+'</div>'}
-function buyLabel(id,b){var o=orders.find(function(x){return x.id===id});if(!o)return;var sel=document.querySelector('select[data-svc="'+id+'"]'),svc=sel?sel.value:defaultService(o);
+   +(priceStops[o.id]||o.shippo_status==='price_check'?'<span class="buywarn price">💲 '+(priceStops[o.id]?esc(priceStops[o.id].text):'Over the $15 price check')+'</span><button class="mini overbtn" data-override="'+esc(o.id)+'" title="Owner sign-in only">Admin override: buy anyway</button>'
+     :o.shippo_message?'<span class="buywarn">Last try: '+esc(String(o.shippo_message).slice(0,140))+'</span>':'')+'</div>'}
+var priceStops={}; // order id → {text} after the $15 price check stopped a buy (Jonah, 24 Oct 2026)
+function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id});if(!o)return;var sel=document.querySelector('select[data-svc="'+id+'"]'),svc=override&&priceStops[id]&&priceStops[id].svc?priceStops[id].svc:(sel?sel.value:defaultService(o));
   var name=(BUY_SERVICES.find(function(x){return x[0]===svc})||[svc,svc])[1],blk=blockedItems(o),c=o.customer||{};
-  if(!confirm('Buy a '+name+' label for '+(c.name||id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+')?'+(blk.length?'\n\n⚠️ Still waiting on: '+blk.map(function(i){return i.name}).join(', '):'')+'\n\nThe label and packing slip print right after.'))return;
+  if(override){var ps=priceStops[id];if(!confirm('ADMIN OVERRIDE\n\n'+(ps?ps.text:'This label is over the $15 price check.')+'\n\nBuy the '+name+' label for '+(c.name||id)+' anyway?'))return}
+  else if(!confirm('Buy a '+name+' label for '+(c.name||id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+')?'+(blk.length?'\n\n⚠️ Still waiting on: '+blk.map(function(i){return i.name}).join(', '):'')+'\n\nThe label and packing slip print right after.'))return;
   b.disabled=true;b.textContent='Buying…';
-  fetch('/.netlify/functions/store-next?route='+encodeURIComponent(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,servicelevel:svc})})
+  fetch('/.netlify/functions/store-next?route='+encodeURIComponent(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(override?{id:id,servicelevel:svc,override:true}:{id:id,servicelevel:svc})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||('The store answered '+x.status));return d})})
-  .then(function(d){if(d.status==='synced'||d.status==='label_bought'){toast('✅ '+name+' label bought for '+(c.name||id)+' — printing label + slip');return fetchOrders(true).then(function(){return sendToPrinter(id,null)})}
+  .then(function(d){if(d.status==='synced'||d.status==='label_bought'){delete priceStops[id];toast('✅ '+name+' label bought for '+(c.name||id)+' — printing label + slip');return fetchOrders(true).then(function(){return sendToPrinter(id,null)})}
+    if(d.status==='price_check'){svcChoice[id]=svc;priceStops[id]={svc:svc,text:'$'+((d.cents||0)/100).toFixed(2)+' ('+(d.service||name)+') is over the $'+((d.limit_cents||1500)/100).toFixed(2)+' price check. Nothing bought.'};toast('💲 Price check: $'+((d.cents||0)/100).toFixed(2)+' is over $15. Nothing bought.');return fetchOrders(true)}
     toast('Not bought: '+(d.message||d.status||'unknown'));b.disabled=false;b.textContent='🏷️ Buy label';return fetchOrders(true)})
   .catch(function(e){toast((e&&e.message)||'Could not buy the label');b.disabled=false;b.textContent='🏷️ Buy label'});
 }
@@ -646,10 +651,12 @@ function openLabels(){
 function setView(v){view=v;document.querySelectorAll('[data-view]').forEach(function(x){if(x.closest('.tabs'))x.setAttribute('aria-pressed',String(x.dataset.view===v))});render();window.scrollTo({top:0})}
 function setChip(c){chip=c;document.querySelectorAll('[data-chip]').forEach(function(x){if(x.closest('.chips'))x.setAttribute('aria-pressed',String(x.dataset.chip===c))});if(view!=='todo'&&view!=='all')setView('todo');else render()}
 function markOut(k,on){if(on)outMarks[k]=Date.now();else delete outMarks[k];lsSet(OUTK,outMarks);buildPools();render();toast(on?'Marked out — orders that need it are moved to the bottom':'Back in stock')}
+document.addEventListener('change',function(e){var t=e.target;if(t&&t.matches&&t.matches('select[data-svc]')){svcChoice[t.dataset.svc]=t.value;if(priceStops[t.dataset.svc]&&priceStops[t.dataset.svc].svc!==t.value){delete priceStops[t.dataset.svc];render()}}});
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;lastKey=Date.now();
   if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';var was=isDone(o);setTick(o,b.dataset.k,on);if(on)history.push({id:o.id,k:b.dataset.k});if(isDone(o)){justDone[o.id]=1;if(!was)celebrate(o)}b.blur();buildPools();render();return}
   if(b.dataset.buy){buyLabel(b.dataset.buy,b);return}
+  if(b.dataset.override){buyLabel(b.dataset.override,b,true);return}
   if(b.dataset.dl){sendToPrinter(b.dataset.dl,b).catch(function(){});return}
   if(b.dataset.refer){var fo=orders.find(function(x){return x.id===b.dataset.refer});if(!fo)return;b.disabled=true;
     fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Freferral',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:fo.id})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(x){

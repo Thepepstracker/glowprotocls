@@ -8,7 +8,8 @@
 const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs'),emails=require('./store-email.cjs'),tracker=require('./order-tracking.cjs');
 const now=()=>Math.floor(Date.now()/1000),fail=(m,extra={})=>{throw Object.assign(new Error(m),{status:502},extra)}; // status: show the reason to staff instead of a generic error
 const API='https://api.goshippo.com';
-const DEFAULTS={servicelevel:'ups_second_day_air',parcel:{length:8,width:6,height:4,weight_lb:1},max_label_cents:6000,daily_limit:60};
+// soft_cap_cents: Jonah's $15 price check (24 Oct 2026). A label over it is never bought unless the owner signs off (override).
+const DEFAULTS={servicelevel:'ups_second_day_air',parcel:{length:8,width:6,height:4,weight_lb:1},max_label_cents:6000,daily_limit:60,soft_cap_cents:1500};
 // The saved value may have extra text pasted around the token; use only the token itself.
 const token=()=>{const v=process.env.SHIPPO_API_TOKEN||'';const m=v.match(/shippo_(?:live|test)_[A-Za-z0-9]{20,}/);if(m)return m[0];const t=v.trim();return /^[\x21-\x7e]{8,300}$/.test(t)?t:''};
 const tokenProblem=()=>{const v=process.env.SHIPPO_API_TOKEN||'';if(!v)return '';if(token())return '';return 'SHIPPO_API_TOKEN in Netlify does not hold a Shippo token (it is '+v.length+' characters and has no shippo_live_ key in it). Replace its value with only the API token from Shippo > Settings > API.'};
@@ -16,10 +17,13 @@ const configured=()=>!!token()&&!!fromAddress();
 const fingerprint=()=>crypto.createHash('sha256').update(token()).digest('hex');
 const testToken=()=>/^shippo_test_/.test(token());
 const tag=id=>'GLOW:'+id;
+const money=c=>'$'+(c/100).toFixed(2);
+const svcName=r=>((r?.provider||'')+' '+(r?.servicelevel?.name||r?.servicelevel?.token||'')).trim();
+function priceCheck(cents,cfg,override,rate){if(cents>cfg.soft_cap_cents&&!override)fail('Price check: this label costs '+money(cents)+' ('+svcName(rate)+'), over the '+money(cfg.soft_cap_cents)+' limit. Nothing was bought. The owner can override.',{definite:true,price_check:true,cents,service:svcName(rate)})}
 function fromAddress(){const e=process.env;if(!e.SHIPPO_FROM_STREET1||!e.SHIPPO_FROM_CITY||!e.SHIPPO_FROM_STATE||!e.SHIPPO_FROM_ZIP)return null;return{name:e.SHIPPO_FROM_NAME||'Glow Lab',...(e.SHIPPO_FROM_COMPANY?{company:e.SHIPPO_FROM_COMPANY}:{}),street1:e.SHIPPO_FROM_STREET1,...(e.SHIPPO_FROM_STREET2?{street2:e.SHIPPO_FROM_STREET2}:{}),city:e.SHIPPO_FROM_CITY,state:e.SHIPPO_FROM_STATE,zip:e.SHIPPO_FROM_ZIP,country:'US',phone:e.SHIPPO_FROM_PHONE||'',email:fromEmail()}}
 // USPS refuses a label without a sender email; fall back to the store's reply-to / from address (24 Oct 2026).
 function fromEmail(){const e=process.env;for(const v of [e.SHIPPO_FROM_EMAIL,e.STORE_EMAIL_REPLY_TO,e.STORE_EMAIL_FROM]){const m=String(v||'').match(/[^\s<>@"]+@[^\s<>@"]+\.[^\s<>@"]+/);if(m)return m[0]}return ''}
-function settings(r){const p=r?.parcel||{};return{servicelevel:r?.servicelevel||DEFAULTS.servicelevel,carrier_account:r?.carrier_account||'',parcel:{length:p.length||DEFAULTS.parcel.length,width:p.width||DEFAULTS.parcel.width,height:p.height||DEFAULTS.parcel.height,weight_lb:p.weight_lb||DEFAULTS.parcel.weight_lb},max_label_cents:r?.max_label_cents||DEFAULTS.max_label_cents,daily_limit:r?.daily_limit||DEFAULTS.daily_limit}}
+function settings(r){const p=r?.parcel||{};return{servicelevel:r?.servicelevel||DEFAULTS.servicelevel,carrier_account:r?.carrier_account||'',parcel:{length:p.length||DEFAULTS.parcel.length,width:p.width||DEFAULTS.parcel.width,height:p.height||DEFAULTS.parcel.height,weight_lb:p.weight_lb||DEFAULTS.parcel.weight_lb},max_label_cents:r?.max_label_cents||DEFAULTS.max_label_cents,daily_limit:r?.daily_limit||DEFAULTS.daily_limit,soft_cap_cents:r?.soft_cap_cents||DEFAULTS.soft_cap_cents}}
 function status(r){const ok=configured(),same=ok&&r?.fingerprint===fingerprint();return{configured:ok,token_saved:!!process.env.SHIPPO_API_TOKEN,token_problem:tokenProblem(),from_saved:!!fromAddress(),test_mode:testToken(),connected:same,enabled:same&&r?.enabled===true&&!!r?.carrier_account&&(r.accounts||[]).some(a=>a.id===r.carrier_account),accounts:same?r.accounts||[]:[],checked_at:r?.checked_at||null,...settings(r)}}
 async function request(route,body){
  if(!process.env.SHIPPO_API_TOKEN)fail('Save SHIPPO_API_TOKEN privately in Netlify first.');if(tokenProblem())fail(tokenProblem());
@@ -47,7 +51,7 @@ async function finish(id,t,rate){let job=null;await transaction(async s=>{const 
 // pick which orders get labels; the every-minute worker still only buys when Shippo is turned on.
 const MANUAL_SERVICES=['ups_second_day_air','ups_ground','ups_ground_saver','ups_3_day_select','ups_next_day_air_saver','ups_next_day_air','usps_priority','usps_ground_advantage'];
 // servicelevel (manual only): buy this one label at another UPS service, e.g. Ground for nearby states.
-async function buy(id,{manual=false,servicelevel=''}={}){
+async function buy(id,{manual=false,servicelevel='',override=false}={}){
  const claim=await transaction(async s=>{
   const integration=await s.get('integrations','shippo'),st=status(integration);if(!st.enabled&&!(manual&&st.connected&&st.carrier_account&&st.accounts.some(a=>a.id===st.carrier_account)))return{status:'not_connected',message:manual?'Check the Shippo connection and choose the UPS account first.':'Connect and turn on Shippo in Shipping first.'};
   const o=await s.get('orders',id);if(!eligible(o))return{status:'blocked',message:'Only live, staff-verified paid orders without a label can get one.'};
@@ -71,13 +75,14 @@ async function buy(id,{manual=false,servicelevel=''}={}){
    const rate=pickRate(rates,cfg);
    if(!rate){const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);fail('No '+cfg.servicelevel.replace(/_/g,' ')+' rate for this address.'+(why?' Shippo: '+why:''),{definite:true,review:true})}
    const cents=Math.round(Number(rate.amount)*100);if(!(cents>0)||cents>cfg.max_label_cents)fail('Label price $'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit. Raise the limit in Shipping or buy this one by hand.',{definite:true,review:true});
+   priceCheck(cents,cfg,manual&&override,rate);
    await save({purchase_started:true,rate_id:rate.object_id,rate_cents:cents});started=true;
    const t=await request('/transactions/',{rate:rate.object_id,label_file_type:'PDF_4x6',metadata:tag(id),async:false});
    if(t.status==='SUCCESS'&&t.tracking_number){outcome=await finish(id,t,rate);outcome.status='synced';await transaction(async s=>{const k='shippo-count-'+today,c=await s.get('integrations',k)||{id:k,n:0};c.n++;await s.put('integrations',k,c)})}
    else if(t.status==='ERROR'){await save({purchase_started:false});started=false;fail('Shippo could not buy the label: '+((t.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300)||'no reason given'),{definite:true,review:true})}
    else fail('Shippo has not finished the label yet ('+(t.status||'unknown')+'). It will be checked again.',{uncertain:true});
   }
- }catch(e){const review=!!e.review||(started&&!e.definite);outcome={status:review?'needs_review':'failed',message:e.message}}
+ }catch(e){const pc=!!e.price_check,review=(pc&&!manual)||!!e.review||(started&&!e.definite);outcome={status:pc&&manual?'price_check':review?'needs_review':'failed',message:e.message,...(pc?{cents:e.cents,service:e.service,limit_cents:cfg.soft_cap_cents}:{})}}
  await transaction(async s=>{const c=await s.get('outbox',key);if(c?.lease!==q.lease)return;Object.assign(c,{status:outcome.status,message:outcome.message||'',lease_until:0,checked_at:now(),next_attempt:now()+Math.min(3600,60*2**Math.min(c.attempts,6))});await s.put('outbox',key,c);const stored=await s.get('orders',id);if(stored&&stored.status==='paid'){stored.shippo_status=outcome.status;stored.shippo_message=outcome.message||'';if(outcome.status==='needs_review')stored.shippo_needs_review=true;await s.put('orders',id,stored)}});
  return outcome;
 }
@@ -95,7 +100,8 @@ async function dryRun(limit=25){
    if(!rate){row.result='would_stop';row.message='No '+cfg.servicelevel.replace(/_/g,' ')+' rate.'+(why?' Shippo: '+why:'');row.services=rates.map(r=>r.servicelevel?.token).filter(Boolean);row.ups=rates.filter(r=>/^ups_/.test(r.servicelevel?.token||'')).map(r=>({service:r.servicelevel.token,cents:Math.round(Number(r.amount)*100),days:r.estimated_days??r.days??null})).sort((a,b)=>a.cents-b.cents);out.push(row);continue}
    const cents=Math.round(Number(rate.amount)*100);row.cents=cents;row.days=rate.estimated_days??rate.days??null;row.service=(rate.provider||'UPS')+' '+(rate.servicelevel?.name||'');
    row.ups=rates.filter(r=>/^ups_/.test(r.servicelevel?.token||'')).map(r=>({service:r.servicelevel.token,cents:Math.round(Number(r.amount)*100),days:r.estimated_days??r.days??null})).sort((a,b)=>a.cents-b.cents);
-   row.result=cents>0&&cents<=cfg.max_label_cents?'would_buy':'would_stop';if(row.result==='would_stop')row.message='$'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit.';if(why)row.note=why;
+   row.result=cents>0&&cents<=cfg.max_label_cents?'would_buy':'would_stop';if(row.result==='would_stop')row.message='$'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit.';
+   else if(cents>cfg.soft_cap_cents){row.result='price_check';row.message=money(cents)+' is over the '+money(cfg.soft_cap_cents)+' price check. Needs the owner to override.'}if(why)row.note=why;
   }catch(e){row.result='error';row.message=e.message}
   out.push(row)}
  const buy=out.filter(r=>r.result==='would_buy');
@@ -104,7 +110,7 @@ async function dryRun(limit=25){
 // Replacement label: one extra UPS label to the order's ship-to, for a missing or damaged item.
 // Staff only. It never changes the order's status or emails the customer. The click key makes a
 // double click buy one label, not two. Works while automatic buying is paused (connection must be checked).
-async function replacement(id,{note='',key=''}={}){
+async function replacement(id,{note='',key='',override=false}={}){
  note=String(note||'').trim().slice(0,140);key=String(key||'').replace(/[^A-Za-z0-9-]/g,'').slice(0,64);
  if(!note)fail('Say what is being replaced (for example "1 AICAR missing").',400);if(key.length<8)fail('Missing click key.',400);
  const okey='shippo-repl-'+key;
@@ -125,6 +131,7 @@ async function replacement(id,{note='',key=''}={}){
   const rate=rates.find(r=>r.servicelevel?.token===cfg.servicelevel&&(!r.carrier_account||r.carrier_account===cfg.carrier_account));
   if(!rate)fail('No '+cfg.servicelevel.replace(/_/g,' ')+' rate for this address.',{definite:true});
   const cents=Math.round(Number(rate.amount)*100);if(!(cents>0)||cents>cfg.max_label_cents)fail('Label price $'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit.',{definite:true});
+  priceCheck(cents,cfg,override,rate);
   started=true;const t=await request('/transactions/',{rate:rate.object_id,label_file_type:'PDF_4x6',metadata:meta,async:false});
   if(t.status!=='SUCCESS'||!t.tracking_number)fail('Shippo could not buy the label: '+((t.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300)||t.status||'no reason given'),{definite:t.status==='ERROR'});
   const result={order_id:id,n,note,tracking:String(t.tracking_number),label_url:t.label_url||'',label_cost_cents:cents,service:'UPS '+(rate.servicelevel?.name||''),shippo_transaction_id:t.object_id,created:now()};

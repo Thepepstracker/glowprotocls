@@ -6,7 +6,7 @@ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'glow-shippo-'));Object.assign(pr
 const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),shippo=require('../../netlify/functions/lib/shippo.cjs');const originalFetch=global.fetch;
 let n=0;async function fixture(extra={}){const o={id:'GLP-SHIPPO'+(++n),created:1700000000,paid:1700001000+n,status:'paid',is_test:false,customer:{name:'Fixture Person',email:'glp-checkout-test@example.com',phone:'2025550101',address:'1 Example Street',city:'Example',state:'GA',zip:'30301'},items:[{id:1,sku:'FIXTURE',name:'Fixture item',price:3399,quantity:1,amount:3399}],subtotal:3399,discount:0,shipping:1500,tax:0,total:4899,payment_method:'zelle',...extra};await transaction(s=>s.put('orders',o.id,o));return o}
 const order=id=>transaction(s=>s.get('orders',id));
-const rate={object_id:'rate_2da',amount:'18.40',currency:'USD',provider:'UPS',carrier_account:'ca_ups',servicelevel:{token:'ups_second_day_air',name:'2nd Day Air'}};
+const rate={object_id:'rate_2da',amount:'13.40',currency:'USD',provider:'UPS',carrier_account:'ca_ups',servicelevel:{token:'ups_second_day_air',name:'2nd Day Air'}};
 // A fake Shippo that records what was asked and can be told how to behave.
 function fakeShippo(opts={}){const st={labels:opts.labels||[],buys:0,shipments:0,headers:[]};global.fetch=async(url,o={})=>{st.headers.push(o.headers);const body=o.body?JSON.parse(o.body):null;const ok=d=>({ok:true,status:200,json:async()=>d});
  if(url.includes('/carrier_accounts/'))return ok({results:[{object_id:'ca_ups',carrier:'ups',account_id:'ABC123',active:true},{object_id:'ca_usps',carrier:'usps',active:true}]});
@@ -23,7 +23,7 @@ test('unpaid, test, draft and balance-due orders never get a label',async()=>{le
 
 test('a paid order gets exactly one UPS 2nd Day Air label, tracking saved, order shipped',async()=>{const st=fakeShippo();const o=await fixture();const r=await Promise.all([shippo.buy(o.id),shippo.buy(o.id)]);assert.ok(r.some(x=>x.status==='synced'));assert.equal(st.buys,1);assert.equal(st.lastBuy.rate,'rate_2da');assert.equal(st.lastBuy.label_file_type,'PDF_4x6');assert.equal(st.lastBuy.metadata,'GLOW:'+o.id);
  assert.equal(st.lastShipment.address_to.street1,'1 Example Street');assert.equal(st.lastShipment.address_from.zip,'30107');assert.equal(st.lastShipment.parcels[0].weight,'1');
- const s=await order(o.id);assert.equal(s.status,'shipped');assert.equal(s.tracking,'1Z999AA10123456784');assert.equal(s.shipment.carrier,'ups');assert.equal(s.shipment.service,'UPS 2nd Day Air');assert.equal(s.shipment.label_url,'https://shippo-delivery.example/label.pdf');assert.equal(s.shipment.label_cost_cents,1840);
+ const s=await order(o.id);assert.equal(s.status,'shipped');assert.equal(s.tracking,'1Z999AA10123456784');assert.equal(s.shipment.carrier,'ups');assert.equal(s.shipment.service,'UPS 2nd Day Air');assert.equal(s.shipment.label_url,'https://shippo-delivery.example/label.pdf');assert.equal(s.shipment.label_cost_cents,1340);
  assert.equal((await shippo.buy(o.id)).status,'blocked');assert.equal(st.buys,1)});
 
 test('a label already in Shippo for the order is reused, never bought again',async()=>{const o=await fixture();const st=fakeShippo({labels:[{object_id:'tx_old',status:'SUCCESS',tracking_number:'1ZOLD0000000000001',label_url:'https://x.example/l.pdf',metadata:'GLOW:'+o.id,rate:{...rate}}]});const r=await shippo.buy(o.id);assert.equal(r.status,'synced');assert.equal(st.buys,0);assert.equal((await order(o.id)).tracking,'1ZOLD0000000000001')});
@@ -46,7 +46,7 @@ test('extra text pasted around the token: only the token is sent; no token at al
  process.env.SHIPPO_API_TOKEN='I’m pasting the whole page here by mistake';assert.match(shippo.status({}).token_problem,/does not hold a Shippo token/);assert.equal(shippo.status({}).configured,false);await assert.rejects(shippo.check(),/does not hold a Shippo token/)}finally{process.env.SHIPPO_API_TOKEN=saved}});
 
 test('dry run prices every waiting order, works while paused, and buys nothing or changes nothing',async()=>{await transaction(async s=>{const i=await s.get('integrations','shippo');i.enabled=false;await s.put('integrations','shippo',i)});try{const o=await fixture(),o2=await fixture();const st=fakeShippo({labels:[{object_id:'tx_have',status:'SUCCESS',tracking_number:'1ZHAVE000000000001',metadata:'GLOW:'+o2.id}]});const before=JSON.stringify(await order(o.id));const d=await shippo.dryRun();
- assert.equal(st.buys,0);const row=d.orders.find(r=>r.id===o.id);assert.equal(row.result,'would_buy');assert.equal(row.cents,1840);assert.equal(d.orders.find(r=>r.id===o2.id).result,'label_exists');assert.equal(JSON.stringify(await order(o.id)),before);assert.ok(d.total_cents>=1840)}finally{await transaction(async s=>{const i=await s.get('integrations','shippo');i.enabled=true;await s.put('integrations','shippo',i)})}});
+ assert.equal(st.buys,0);const row=d.orders.find(r=>r.id===o.id);assert.equal(row.result,'would_buy');assert.equal(row.cents,1340);assert.equal(d.orders.find(r=>r.id===o2.id).result,'label_exists');assert.equal(JSON.stringify(await order(o.id)),before);assert.ok(d.total_cents>=1340)}finally{await transaction(async s=>{const i=await s.get('integrations','shippo');i.enabled=true;await s.put('integrations','shippo',i)})}});
 
 test('replacement label: one extra label to the same address, order untouched, double click buys once',async()=>{const o=await fixture({status:'shipped',tracking:'1ZORIGINAL',shipment:{carrier:'ups'}});const before=await order(o.id);const st=fakeShippo();
  const [a,b]=await Promise.allSettled([shippo.replacement(o.id,{note:'1 AICAR missing',key:'click-abc-123'}),shippo.replacement(o.id,{note:'1 AICAR missing',key:'click-abc-123'})]);
@@ -100,3 +100,16 @@ test('sender email falls back to the store reply-to address when SHIPPO_FROM_EMA
  try{delete process.env.SHIPPO_FROM_EMAIL;process.env.STORE_EMAIL_REPLY_TO='';process.env.STORE_EMAIL_FROM='Glow Lab <orders@example.com>';assert.equal(shippo.fromAddress().email,'orders@example.com');
   process.env.STORE_EMAIL_REPLY_TO='help@example.com';assert.equal(shippo.fromAddress().email,'help@example.com');process.env.SHIPPO_FROM_EMAIL='ship@example.com';assert.equal(shippo.fromAddress().email,'ship@example.com')}
  finally{for(const[k,v]of[['SHIPPO_FROM_EMAIL',keep.a],['STORE_EMAIL_REPLY_TO',keep.b],['STORE_EMAIL_FROM',keep.c]]){if(v===undefined)delete process.env[k];else process.env[k]=v}}});
+
+test('$15 price check: a staff click on a $17.27 label buys nothing and says the price; override buys it',async()=>{const pricey={...rate,object_id:'rate_pricey',amount:'17.27'};
+ let st=fakeShippo({rates:[pricey]});const o=await fixture();const r=await shippo.buy(o.id,{manual:true});assert.equal(r.status,'price_check');assert.equal(r.cents,1727);assert.equal(r.limit_cents,1500);assert.match(r.message,/\$17\.27/);assert.equal(st.buys,0);
+ const s=await order(o.id);assert.equal(s.status,'paid');assert.notEqual(s.shippo_needs_review,true,'a price check does not lock the order');
+ st=fakeShippo({rates:[pricey]});const r2=await shippo.buy(o.id,{manual:true,override:true});assert.equal(r2.status,'synced');assert.equal(st.buys,1);assert.equal(st.lastBuy.rate,'rate_pricey')});
+
+test('$15 price check: automatic buying never buys over $15 (stops for review), and cannot override',async()=>{const st=fakeShippo({rates:[{...rate,amount:'16.71'}]});const o=await fixture();const r=await shippo.buy(o.id,{override:true});assert.equal(r.status,'needs_review');assert.equal(st.buys,0)});
+
+test('$15 price check: exactly $15.00 is allowed',async()=>{const st=fakeShippo({rates:[{...rate,amount:'15.00'}]});const o=await fixture();const r=await shippo.buy(o.id,{manual:true});assert.equal(r.status,'synced');assert.equal(st.buys,1)});
+
+test('$15 price check: replacement labels too, unless overridden',async()=>{const o=await fixture();await transaction(async s=>{const x=await s.get('orders',o.id);x.status='shipped';await s.put('orders',o.id,x)});
+ let st=fakeShippo({rates:[{...rate,amount:'27.90'}]});await assert.rejects(shippo.replacement(o.id,{note:'1 BAC missing',key:'pricecheck01'}),/Price check/);assert.equal(st.buys,0);
+ st=fakeShippo({rates:[{...rate,amount:'27.90'}]});const r=await shippo.replacement(o.id,{note:'1 BAC missing',key:'pricecheck02',override:true});assert.equal(r.status,'label_bought');assert.equal(st.buys,1)});
