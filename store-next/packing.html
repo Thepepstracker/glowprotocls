@@ -557,8 +557,9 @@ function allLogs(){var out=[],cut=nowS()-30*86400;all.forEach(function(o){logsFo
 // Delivery status on each call (Shippo tracking via /admin/orders/track, cached 2 h on the server).
 var trackLoading=false,trackLoadedAt=0;
 function loadTracking(list,force){if(trackLoading||(!force&&Date.now()-trackLoadedAt<10*60*1000))return;var ids=list.map(function(o){return o.id});if(!ids.length)return;trackLoading=true;
-  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forders%2Ftrack',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ids:ids,force:!!force})})
-  .then(function(x){return x.json()}).then(function(d){var t=d.track||{};all.forEach(function(o){if(t[o.id])o.track=t[o.id]});trackLoadedAt=Date.now()}).catch(function(){}).then(function(){trackLoading=false;if(view==='calls')render()})}
+  var chunks=[];for(var i=0;i<ids.length;i+=25)chunks.push(ids.slice(i,i+25)); // the server checks 25 orders per request
+  Promise.all(chunks.map(function(c){return fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forders%2Ftrack',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ids:c,force:!!force})}).then(function(x){return x.json()}).then(function(d){var t=d.track||{};all.forEach(function(o){if(t[o.id])o.track=t[o.id]})}).catch(function(){})}))
+  .then(function(){trackLoadedAt=Date.now();trackLoading=false;if(view==='calls')render()})}
 function daysAgo(sec){var d=Math.floor((nowS()-sec)/86400);return d<=0?'today':d===1?'yesterday':d+' days ago'}
 function shortDate(sec){return new Date(sec*1000).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
 function deliveryBadge(o){var t=o.track;if(!t)return '<span class="dlv wait">'+(trackLoading?'Checking delivery…':'Delivery not checked yet')+'</span>';
