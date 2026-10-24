@@ -95,3 +95,8 @@ test('USPS by hand (P.O. box): buys the USPS Priority rate, saves USPS tracking;
 test('USPS asked for but Shippo has no USPS rate: nothing bought, review',async()=>{const st=fakeShippo({rates:[rate]});const o=await fixture();const r=await shippo.buy(o.id,{manual:true,servicelevel:'usps_priority'});assert.equal(r.status,'needs_review');assert.match(r.message,/No usps priority rate/);assert.equal(st.buys,0)});
 
 test('automatic (not manual) buying can never switch to USPS',async()=>{const st=fakeShippo();const o=await fixture();const r=await shippo.buy(o.id,{servicelevel:'usps_priority'});assert.equal(r.status,'synced');assert.equal(st.lastBuy.rate,'rate_2da')});
+
+test('sender email falls back to the store reply-to address when SHIPPO_FROM_EMAIL is not set (USPS needs one)',()=>{const keep={a:process.env.SHIPPO_FROM_EMAIL,b:process.env.STORE_EMAIL_REPLY_TO,c:process.env.STORE_EMAIL_FROM};
+ try{delete process.env.SHIPPO_FROM_EMAIL;process.env.STORE_EMAIL_REPLY_TO='';process.env.STORE_EMAIL_FROM='Glow Lab <orders@example.com>';assert.equal(shippo.fromAddress().email,'orders@example.com');
+  process.env.STORE_EMAIL_REPLY_TO='help@example.com';assert.equal(shippo.fromAddress().email,'help@example.com');process.env.SHIPPO_FROM_EMAIL='ship@example.com';assert.equal(shippo.fromAddress().email,'ship@example.com')}
+ finally{for(const[k,v]of[['SHIPPO_FROM_EMAIL',keep.a],['STORE_EMAIL_REPLY_TO',keep.b],['STORE_EMAIL_FROM',keep.c]]){if(v===undefined)delete process.env[k];else process.env[k]=v}}});
