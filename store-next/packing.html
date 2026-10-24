@@ -50,6 +50,7 @@ button:disabled{opacity:.45;cursor:default}
 .calls .call.done{opacity:.55}.calls .who{font-size:20px;font-weight:800}.calls .what{font-size:15px;color:var(--muted)}
 .calls .tel{font-size:22px;font-weight:800;text-decoration:none;color:#fff;background:var(--ok);border-radius:12px;padding:10px 16px;white-space:nowrap}
 .calls .cb{display:flex;gap:6px;flex-wrap:wrap}.calls .grow{flex:1;min-width:220px}
+.calls .logwrap{flex-basis:100%}.logform{background:#fffaf0;border:2px solid var(--gold);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}.lfrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.lfl{font-size:13px;font-weight:800;color:var(--muted);min-width:120px}.chipb{font:inherit;font-size:14px;font-weight:700;padding:6px 10px;border:2px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);cursor:pointer}.chipb.on{background:var(--ink);color:#fff;border-color:var(--ink)}.logform textarea{font:inherit;font-size:15px;width:100%;padding:8px 10px;border:2px solid var(--line);border-radius:10px;resize:vertical}.logform .savebtn{font-weight:800;background:var(--ok);color:#fff;border-color:var(--ok)}.logwrap.hist{border-top:1px dashed var(--line);padding-top:6px}.logline{font-size:14px;padding:3px 0}.logline.prob{color:#a3001b}.lognote{color:var(--ink);font-style:italic;margin-left:12px}.mini.linkish{background:none;border:none;text-decoration:underline;padding:0 4px;font-size:13px}.calllog{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:12px}.calllog .logline{border-bottom:1px solid var(--line);padding:6px 0}
 .script{background:#fffaf0;border:2px solid var(--gold);border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:15px}.script q{font-weight:700}
 .alert .act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
 .group{font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--muted);margin:20px 4px 8px;text-transform:uppercase}
@@ -520,21 +521,54 @@ function custTag(o){if(o.replacement)return '';var h=custHistory(o);
 var calls=ls(CALLK,{}),callsShowDone=false;
 function callList(){var now=nowS(),by={};all.forEach(function(o){if(!paidOrder(o)||o.status!=='shipped'||!o.shipment)return;var t=o.shipment.label_created_at||0;var age=(now-t)/86400;if(!t||age<5||age>=9.5)return;var c=o.customer||{};if(!String(c.phone||'').replace(/\D/g,''))return;var k=custKey(o);if(!by[k]||by[k].created<o.created)by[k]=o});
   return Object.keys(by).map(function(k){return by[k]}).sort(function(a,b){var fa=custHistory(a).n===1?0:1,fb=custHistory(b).n===1?0:1;return fa-fb||(a.shipment.label_created_at-b.shipment.label_created_at)})}
-function callDone(o){var c=calls[o.id];return !!(c&&c.how!=='noanswer')}
-function markCall(id,how){var c=calls[id]||{tries:0};if(how==='undo'){delete calls[id]}else{c.how=how;c.at=Date.now();if(how==='noanswer')c.tries=(c.tries||0)+1;calls[id]=c}lsSet(CALLK,calls);render();toast(how==='talked'?'Nice — marked as talked':how==='voicemail'?'Voicemail left':how==='noanswer'?'No answer — it stays on the list':how==='skip'?'Skipped':'Undone')}
+// ---- Call log (Jonah, 24 Oct 2026): each call is saved on the order on the server (Management sees it too). ----
+var OUTCOMES={talked:'✅ Talked',voicemail:'📨 Voicemail',noanswer:'📵 No answer',wrong:'❌ Wrong number'},FEEL={happy:'😊 Happy',neutral:'😐 Neutral',problem:'⚠️ Problem'},PROBS={missing:'Missing item',damaged:'Damaged',late:'Late',wrong_item:'Wrong item',other:'Other'};
+var logOpen={},callLogShow=false,callLogProblemsOnly=false;
+function logsFor(o){return (o&&o.call_log)||[]}
+function lastLog(o){var l=logsFor(o);return l.length?l[l.length-1]:null}
+function callDone(o){var l=lastLog(o);if(l)return l.outcome!=='noanswer';var c=calls[o.id];return !!(c&&c.how!=='noanswer')}
+function markCall(id,how){var c=calls[id]||{tries:0};if(how==='undo'){delete calls[id]}else{c.how=how;c.at=Date.now();calls[id]=c}lsSet(CALLK,calls);render();toast(how==='skip'?'Skipped':'Undone')}
 function fmtPhone(p){var d=String(p||'').replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.slice(1);return d.length===10?'('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6):String(p||'')}
+function whenShort(sec){return new Date(sec*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
+function logLine(e,o,withWho){var prob=e.feeling==='problem';return '<div class="logline'+(prob?' prob':'')+'">'+(withWho?'<b>'+esc((o.customer||{}).name||o.id)+'</b> · ':'')+esc(whenShort(e.at))+' · '+esc(e.by||'')+' · <b>'+esc(OUTCOMES[e.outcome]||e.outcome)+'</b>'+(e.feeling?' · '+esc(FEEL[e.feeling]||e.feeling):'')+(e.problems&&e.problems.length?' · <b>'+esc(e.problems.map(function(x){return PROBS[x]||x}).join(', '))+'</b>':'')+(e.notes?'<div class="lognote">'+esc(e.notes)+'</div>':'')
+  +(withWho?'':((nowS()-e.at)<3600?' <button class="mini linkish" data-logrm="'+esc(o.id)+'" data-key="'+esc(e.key)+'">Remove</button>':''))+'</div>'}
+function logForm(o){var f=logOpen[o.id];if(!f)return '';var talk=f.outcome==='talked';
+  var chip=function(group,val,label,on){return '<button class="chipb'+(on?' on':'')+'" data-logset="'+esc(o.id)+'" data-g="'+group+'" data-v="'+val+'" aria-pressed="'+on+'">'+esc(label)+'</button>'};
+  return '<div class="logform"><div class="lfrow"><span class="lfl">Call</span>'+Object.keys(OUTCOMES).map(function(k){return chip('outcome',k,OUTCOMES[k],f.outcome===k)}).join('')+'</div>'
+   +(talk?'<div class="lfrow"><span class="lfl">How they liked it</span>'+Object.keys(FEEL).map(function(k){return chip('feeling',k,FEEL[k],f.feeling===k)}).join('')+'</div>':'')
+   +(talk&&f.feeling==='problem'?'<div class="lfrow"><span class="lfl">What went wrong</span>'+Object.keys(PROBS).map(function(k){return chip('problems',k,PROBS[k],(f.problems||[]).indexOf(k)>=0)}).join('')+'</div>':'')
+   +'<textarea data-lognotes="'+esc(o.id)+'" maxlength="1000" rows="2" placeholder="Notes (what they said, what to do next)">'+esc(f.notes||'')+'</textarea>'
+   +'<div class="lfrow"><button class="mini savebtn" data-logsave="'+esc(o.id)+'"'+(f.saving?' disabled':'')+'>'+(f.saving?'Saving…':'💾 Save call')+'</button><button class="mini" data-logcancel="'+esc(o.id)+'">Cancel</button>'+(f.err?'<span class="buywarn price">'+esc(f.err)+'</span>':'')+'</div></div>'}
+function openLog(id,outcome){logOpen[id]=logOpen[id]||{problems:[]};logOpen[id].outcome=outcome;logOpen[id].err='';if(outcome!=='talked'){logOpen[id].feeling='';logOpen[id].problems=[]}render();var t=document.querySelector('textarea[data-lognotes="'+id+'"]');if(t&&outcome!=='talked')t.focus()}
+function setLog(id,g,v){var f=logOpen[id];if(!f)return;f.err='';if(g==='problems'){var a=f.problems||[];var i=a.indexOf(v);if(i>=0)a.splice(i,1);else a.push(v);f.problems=a}else{f[g]=v;if(g==='outcome'&&v!=='talked'){f.feeling='';f.problems=[]}if(g==='feeling'&&v!=='problem')f.problems=[]}render()}
+function saveLog(id){var f=logOpen[id],o=all.find(function(x){return x.id===id});if(!f||!o)return;
+  if(!f.outcome){f.err='Pick how the call went';render();return}if(f.outcome==='talked'&&!f.feeling){f.err='Pick how they liked it';render();return}if(f.feeling==='problem'&&!(f.problems||[]).length){f.err='Pick what went wrong';render();return}
+  f.key=f.key||('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8));f.saving=true;render();
+  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Fcall-log',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,key:f.key,outcome:f.outcome,feeling:f.feeling||'',problems:f.problems||[],notes:f.notes||''})})
+  .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok||!d.entry)throw new Error(d.error||('Not saved ('+x.status+')'));return d})})
+  .then(function(d){var l=o.call_log||(o.call_log=[]);if(!l.some(function(e){return e.key===d.entry.key}))l.push(d.entry);delete logOpen[id];delete calls[id];lsSet(CALLK,calls);render();toast(d.entry.feeling==='problem'?'⚠️ Call saved — problem flagged':d.entry.outcome==='noanswer'?'No answer saved — they stay on the list':'✅ Call saved')})
+  .catch(function(e){f.saving=false;f.err=(e&&e.message)||'Not saved';render()});
+}
+function removeLog(id,key){var o=all.find(function(x){return x.id===id});if(!o)return;
+  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Fcall-log',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,key:key,remove:true})})
+  .then(function(x){return x.json().then(function(d){if(!x.ok)throw new Error(d.error||'Not removed');return d})}).then(function(){o.call_log=logsFor(o).filter(function(e){return e.key!==key});render();toast('Removed')}).catch(function(e){toast(e.message)})}
+function allLogs(){var out=[],cut=nowS()-30*86400;all.forEach(function(o){logsFor(o).forEach(function(e){if(e.at>=cut)out.push({e:e,o:o})})});return out.sort(function(a,b){return b.e.at-a.e.at})}
 function callsView(){var list=callList(),todo=list.filter(function(o){return !callDone(o)}),done=list.filter(callDone);
-  var midnight=new Date();midnight.setHours(0,0,0,0);var today=Object.keys(calls).filter(function(k){return calls[k].at>=midnight.getTime()&&calls[k].how!=='skip'}).length;
-  var html='<div class="script"><b>📞 Check-in calls</b> — customers whose package landed about 3–4 days ago. '+today+' call'+(today===1?'':'s')+' made today.<br>Open with: <q>Hey [name], it\'s Jonah from Glow Lab Protocols! How are you doing today?</q> Then thank them and ask <q>How was everything with your order?</q><br><b>Ask about the order, never how it\'s working.</b> If they bring it up, say "that\'s awesome" and move on — don\'t write it down. Best time 1–5pm. <a href="https://claude.ai/artifact/UQxQdBfBYKRsFt8gcUPbkv" target="_blank" rel="noopener">Full script</a></div>';
-  if(!list.length)return html+'<div class="msg">Nobody to call right now. Customers show up here 5–9 days after their label is made.</div>';
-  var row=function(o){var c=o.customer||{},h=custHistory(o),mk=calls[o.id],days=Math.floor((nowS()-o.shipment.label_created_at)/86400),items=(o.items||[]).map(function(i){return i.quantity+'× '+i.name}).join(', ');
-    var phone=String(c.phone||'').replace(/[^\d+]/g,'');
-    return '<div class="call'+(callDone(o)?' done':'')+'"><div class="grow"><div class="who">'+esc(c.name||o.id)+' '+custTag(o)+'</div><div class="what">'+esc(items)+'</div><div class="small">'+esc(o.id)+' · '+esc([c.city,c.state].filter(Boolean).join(', '))+' · label made '+days+' days ago'+(mk&&mk.tries?' · '+mk.tries+' no answer':'')+(mk&&mk.how&&mk.how!=='noanswer'?' · <b>'+(mk.how==='talked'?'✅ Talked':mk.how==='voicemail'?'📨 Voicemail':'Skipped')+'</b>':'')+'</div></div>'
+  var midnight=new Date();midnight.setHours(0,0,0,0);var logs=allLogs(),today=logs.filter(function(x){return x.e.at*1000>=midnight.getTime()}),probs=logs.filter(function(x){return x.e.feeling==='problem'});
+  var html='<div class="script"><b>📞 Check-in calls</b> — customers whose package landed about 3–4 days ago. <b>'+today.length+'</b> call'+(today.length===1?'':'s')+' logged today'+(probs.length?' · <b style="color:#a3001b">'+probs.length+' problem'+(probs.length===1?'':'s')+' in the last 30 days</b>':'')+'.<br>Open with: <q>Hey [name], it\'s Jonah from Glow Lab Protocols! How are you doing today?</q> Then thank them and ask <q>How was everything with your order?</q><br><b>Ask about the order, never how it\'s working.</b> If they bring it up, say "that\'s awesome" and move on — don\'t write it down. Best time 1–5pm. <a href="https://claude.ai/artifact/UQxQdBfBYKRsFt8gcUPbkv" target="_blank" rel="noopener">Full script</a></div>';
+  var row=function(o){var c=o.customer||{},l=logsFor(o),tries=l.filter(function(e){return e.outcome==='noanswer'}).length,days=Math.floor((nowS()-o.shipment.label_created_at)/86400),items=(o.items||[]).map(function(i){return i.quantity+'× '+i.name}).join(', '),mk=calls[o.id];
+    var phone=String(c.phone||'').replace(/[^\d+]/g,''),open=!!logOpen[o.id];
+    return '<div class="call'+(callDone(o)&&!open?' done':'')+'"><div class="grow"><div class="who">'+esc(c.name||o.id)+' '+custTag(o)+'</div><div class="what">'+esc(items)+'</div><div class="small">'+esc(o.id)+' · '+esc([c.city,c.state].filter(Boolean).join(', '))+' · label made '+days+' days ago'+(tries?' · '+tries+' no answer':'')+(mk&&mk.how==='skip'&&!l.length?' · Skipped':'')+'</div></div>'
       +'<a class="tel" href="tel:'+esc(phone)+'">📞 '+esc(fmtPhone(c.phone))+'</a><div class="cb">'
-      +(callDone(o)?'<button class="mini" data-call="'+esc(o.id)+'" data-how="undo">Undo</button>':'<button class="mini" data-call="'+esc(o.id)+'" data-how="talked">✅ Talked</button><button class="mini" data-call="'+esc(o.id)+'" data-how="voicemail">📨 Voicemail</button><button class="mini" data-call="'+esc(o.id)+'" data-how="noanswer">No answer</button><button class="mini" data-call="'+esc(o.id)+'" data-how="skip">Skip</button>')+'</div></div>'};
-  html+='<div class="calls">'+(todo.length?todo.map(row).join(''):'<div class="msg">All caught up — every call on the list is done. ✅</div>')+'</div>';
-  if(done.length)html+='<div class="tools"><button class="mini" id="callsShowDone">'+(callsShowDone?'Hide':'Show')+' finished calls ('+done.length+')</button></div>'+(callsShowDone?'<div class="calls">'+done.map(row).join('')+'</div>':'');
-  return html+'<p class="small">Call marks stay on this computer. First orders are at the top — they are the customers most likely not to come back.</p>'}
+      +(open?'':Object.keys(OUTCOMES).map(function(k){return '<button class="mini" data-logopen="'+esc(o.id)+'" data-v="'+k+'">'+esc(OUTCOMES[k])+'</button>'}).join('')+(l.length?'':(mk&&mk.how==='skip'?'<button class="mini" data-call="'+esc(o.id)+'" data-how="undo">Undo skip</button>':'<button class="mini" data-call="'+esc(o.id)+'" data-how="skip">Skip</button>')))+'</div>'
+      +(open?'<div class="logwrap">'+logForm(o)+'</div>':'')+(l.length?'<div class="logwrap hist">'+l.slice().reverse().map(function(e){return logLine(e,o,false)}).join('')+'</div>':'')+'</div>'};
+  if(!list.length)html+='<div class="msg">Nobody to call right now. Customers show up here 5–9 days after their label is made.</div>';
+  else{html+='<div class="calls">'+(todo.length?todo.map(row).join(''):'<div class="msg">All caught up — every call on the list is done. ✅</div>')+'</div>';
+    if(done.length)html+='<div class="tools"><button class="mini" id="callsShowDone">'+(callsShowDone?'Hide':'Show')+' finished calls ('+done.length+')</button></div>'+(callsShowDone?'<div class="calls">'+done.map(row).join('')+'</div>':'')}
+  var shown=callLogProblemsOnly?probs:logs;
+  html+='<div class="tools"><button class="mini" id="callLogShow">📒 '+(callLogShow?'Hide':'Show')+' call log ('+logs.length+' in 30 days)</button>'+(callLogShow?'<button class="mini" id="callLogProbs" aria-pressed="'+callLogProblemsOnly+'">'+(callLogProblemsOnly?'Show all calls':'⚠️ Problems only')+'</button>':'')+'</div>'
+   +(callLogShow?'<div class="calllog">'+(shown.length?shown.map(function(x){return logLine(x.e,x.o,true)}).join(''):'<div class="msg">No calls logged yet.</div>')+'</div>':'');
+  return html+'<p class="small">Calls are saved on the order, so they show on every computer and in Management. First orders are at the top — they are the customers most likely not to come back.</p>'}
 function card(o){
   var t=ticks(o),c=o.customer||{},done=isDone(o),blk=isBlocked(o),brand=o.brand==='zader'?'<span class="tag z">ZADER</span>':'';
   var rows=(o.items||[]).map(function(i,idx){
@@ -651,6 +685,7 @@ function openLabels(){
 function setView(v){view=v;document.querySelectorAll('[data-view]').forEach(function(x){if(x.closest('.tabs'))x.setAttribute('aria-pressed',String(x.dataset.view===v))});render();window.scrollTo({top:0})}
 function setChip(c){chip=c;document.querySelectorAll('[data-chip]').forEach(function(x){if(x.closest('.chips'))x.setAttribute('aria-pressed',String(x.dataset.chip===c))});if(view!=='todo'&&view!=='all')setView('todo');else render()}
 function markOut(k,on){if(on)outMarks[k]=Date.now();else delete outMarks[k];lsSet(OUTK,outMarks);buildPools();render();toast(on?'Marked out — orders that need it are moved to the bottom':'Back in stock')}
+document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.lognotes&&logOpen[t.dataset.lognotes]){logOpen[t.dataset.lognotes].notes=t.value;lastKey=Date.now()}});
 document.addEventListener('change',function(e){var t=e.target;if(t&&t.matches&&t.matches('select[data-svc]')){svcChoice[t.dataset.svc]=t.value;if(priceStops[t.dataset.svc]&&priceStops[t.dataset.svc].svc!==t.value){delete priceStops[t.dataset.svc];render()}}});
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;lastKey=Date.now();
@@ -669,6 +704,13 @@ document.addEventListener('click',function(e){
   if(b.dataset.unout){markOut(b.dataset.unout,false);return}
   if(b.dataset.copy){var v=b.dataset.copy;(navigator.clipboard?navigator.clipboard.writeText(v):Promise.reject()).then(function(){toast('Tracking copied')},function(){toast(v)});return}
   if(b.dataset.call){markCall(b.dataset.call,b.dataset.how);return}
+  if(b.dataset.logopen){openLog(b.dataset.logopen,b.dataset.v);return}
+  if(b.dataset.logset){setLog(b.dataset.logset,b.dataset.g,b.dataset.v);return}
+  if(b.dataset.logsave){saveLog(b.dataset.logsave);return}
+  if(b.dataset.logcancel){delete logOpen[b.dataset.logcancel];render();return}
+  if(b.dataset.logrm){removeLog(b.dataset.logrm,b.dataset.key);return}
+  if(b.id==='callLogShow'){callLogShow=!callLogShow;render();return}
+  if(b.id==='callLogProbs'){callLogProblemsOnly=!callLogProblemsOnly;render();return}
   if(b.id==='callsShowDone'){callsShowDone=!callsShowDone;render();return}
   if(b.dataset.chip){setChip(b.dataset.chip);return}
   if(b.dataset.view){setView(b.dataset.view);return}
@@ -700,7 +742,7 @@ document.addEventListener('keydown',function(e){
 document.getElementById('search').addEventListener('input',function(e){query=e.target.value.trim();render()});
 syncNotifyBtn();
 (function(){var b=document.getElementById('sound');b.setAttribute('aria-pressed',String(soundOn));b.textContent=soundOn?'🔔 Sound on':'🔕 Sound off'})();
-setInterval(function(){if(document.hidden)return;if(Date.now()-lastKey<20000)return;fetchOrders(true)},AUTO_MS);
+setInterval(function(){if(document.hidden)return;if(Date.now()-lastKey<20000)return;if(Object.keys(logOpen).length)return;fetchOrders(true)},AUTO_MS);
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&Date.now()-lastLoad>AUTO_MS)fetchOrders(true)});
 fetchOrders();
 })();
