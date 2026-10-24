@@ -20,4 +20,4 @@ test('bad input is refused: no outcome, problem without a reason, signed out',as
 test('a fresh mistake can be removed; the customer order page never includes the call log',async()=>{
  const rm=(await call('/admin/order/call-log',{id:'GLP-CALLLOG001',key:'k-000000002',remove:true},admin)).body;assert.equal(rm.removed,true);
  const o=await transaction(s=>s.get('orders','GLP-CALLLOG001'));assert.equal(o.call_log.length,1);
- const {publicOrder}=(()=>{const src=fs.readFileSync(path.join(__dirname,'../../netlify/functions/lib/store-core.cjs'),'utf8');return{publicOrder:/payment_adjustments,staff_notes,call_log,\.\.\.rest/.test(src)}})();assert.equal(publicOrder,true,'publicOrder strips call_log')});
+ const {publicOrder}=(()=>{const src=fs.readFileSync(path.join(__dirname,'../../netlify/functions/lib/store-core.cjs'),'utf8');return{publicOrder:/payment_adjustments,staff_notes,call_log,(stripe_invoice,)?\.\.\.rest/.test(src)}})();assert.equal(publicOrder,true,'publicOrder strips call_log')});
