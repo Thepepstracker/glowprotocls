@@ -36,11 +36,14 @@ function toAddress(o){const c=o.customer;return{name:String(c.name||'').slice(0,
 function shipmentBody(o,cfg){const p=cfg.parcel;return{address_from:fromAddress(),address_to:toAddress(o),parcels:[{length:String(p.length),width:String(p.width),height:String(p.height),distance_unit:'in',weight:String(p.weight_lb),mass_unit:'lb'}],metadata:tag(o.id),async:false}}
 // Labels already bought for this order (searched by tag in the most recent Shippo labels).
 async function existingLabels(id){const found=[];for(let page=1;page<=3;page++){const r=await request('/transactions/?results=100&page='+page);if(!Array.isArray(r.results))fail('Shippo label list needs review.',{uncertain:true});for(const t of r.results)if(t.metadata===tag(id)&&t.status==='SUCCESS')found.push(t);if(!r.next)break}return found}
-function record(o,t,rate){const amount=Math.round(Number(rate?.amount||0)*100);return tracker.fromShippo('ups',rate?.servicelevel?.token||rate?.servicelevel_token||'ups_second_day_air',t.tracking_number,{ship_date:new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}),source:'shippo',shippo_transaction_id:t.object_id,label_url:t.label_url||'',label_cost_cents:amount||null})}
+// USPS (manual only, e.g. P.O. boxes UPS cannot reach) uses Shippo's USPS account, not the chosen UPS account.
+const isUsps=t=>/^usps_/.test(String(t||''));
+const pickRate=(rates,cfg)=>rates.find(r=>r.servicelevel?.token===cfg.servicelevel&&(isUsps(cfg.servicelevel)?/usps/i.test(String(r.provider||'usps')):(!r.carrier_account||r.carrier_account===cfg.carrier_account)));
+function record(o,t,rate){const amount=Math.round(Number(rate?.amount||0)*100),svc=rate?.servicelevel?.token||rate?.servicelevel_token||'ups_second_day_air';return tracker.fromShippo(isUsps(svc)?'usps':'ups',svc,t.tracking_number,{ship_date:new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}),source:'shippo',shippo_transaction_id:t.object_id,label_url:t.label_url||'',label_cost_cents:amount||null})}
 async function finish(id,t,rate){let job=null;await transaction(async s=>{const stored=await s.get('orders',id);if(!stored||stored.status!=='paid')return;stored.status='shipped';stored.tracking=String(t.tracking_number).trim();stored.shipment=record(stored,t,rate);stored.shippo_status='label_bought';stored.shippo_message='';stored.shippo_transaction_id=t.object_id;stored.shippo_label_url=t.label_url||'';await s.put('orders',id,stored);job=await emails.queueUpdate(s,stored)});if(job)await emails.safeDispatch(job);return{status:'label_bought',tracking:t.tracking_number,label_url:t.label_url}}
 // manual:true is a staff click on one order. It works while automatic buying is paused, so staff can
 // pick which orders get labels; the every-minute worker still only buys when Shippo is turned on.
-const MANUAL_SERVICES=['ups_second_day_air','ups_ground','ups_ground_saver','ups_3_day_select','ups_next_day_air_saver','ups_next_day_air'];
+const MANUAL_SERVICES=['ups_second_day_air','ups_ground','ups_ground_saver','ups_3_day_select','ups_next_day_air_saver','ups_next_day_air','usps_priority','usps_ground_advantage'];
 // servicelevel (manual only): buy this one label at another UPS service, e.g. Ground for nearby states.
 async function buy(id,{manual=false,servicelevel=''}={}){
  const claim=await transaction(async s=>{
@@ -63,7 +66,7 @@ async function buy(id,{manual=false,servicelevel=''}={}){
   else{
    const shipment=await request('/shipments/',shipmentBody(o,cfg));
    const rates=Array.isArray(shipment.rates)?shipment.rates:[];
-   const rate=rates.find(r=>r.servicelevel?.token===cfg.servicelevel&&(!r.carrier_account||r.carrier_account===cfg.carrier_account));
+   const rate=pickRate(rates,cfg);
    if(!rate){const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);fail('No '+cfg.servicelevel.replace(/_/g,' ')+' rate for this address.'+(why?' Shippo: '+why:''),{definite:true,review:true})}
    const cents=Math.round(Number(rate.amount)*100);if(!(cents>0)||cents>cfg.max_label_cents)fail('Label price $'+(cents/100).toFixed(2)+' is over the $'+(cfg.max_label_cents/100).toFixed(2)+' limit. Raise the limit in Shipping or buy this one by hand.',{definite:true,review:true});
    await save({purchase_started:true,rate_id:rate.object_id,rate_cents:cents});started=true;

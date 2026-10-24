@@ -86,3 +86,12 @@ test('staff can pick UPS Ground for one label; unknown services fall back to the
  const r=await shippo.buy(a.id,{manual:true,servicelevel:'ups_ground'});assert.equal(r.status,'synced');assert.equal(st.lastBuy.rate,'rate_g');assert.equal((await order(a.id)).shipment.label_cost_cents,910);
  await shippo.buy(b.id,{manual:true,servicelevel:'fedex_overnight'});assert.equal(st.lastBuy.rate,'rate_2da');
  const c=await fixture();await shippo.buy(c.id,{servicelevel:'ups_ground'});assert.equal(st.lastBuy.rate,'rate_2da')});
+
+test('USPS by hand (P.O. box): buys the USPS Priority rate, saves USPS tracking; UPS rates are ignored',async()=>{const usps={object_id:'rate_usps',amount:'9.85',currency:'USD',provider:'USPS',carrier_account:'ca_usps',servicelevel:{token:'usps_priority',name:'Priority Mail'}};
+ const st=fakeShippo({rates:[rate,usps],buyResult:{object_id:'tx_usps',status:'SUCCESS',tracking_number:'9405511899223197428490',label_url:'https://shippo-delivery.example/usps.pdf'}});const o=await fixture({customer:{name:'PO Box Person',email:'glp-checkout-test@example.com',phone:'',address:'P O Box 10601',city:'El Dorado',state:'AR',zip:'71730'}});
+ const r=await shippo.buy(o.id,{manual:true,servicelevel:'usps_priority'});assert.equal(r.status,'synced');assert.equal(st.lastBuy.rate,'rate_usps');
+ const s=await order(o.id);assert.equal(s.shipment.carrier,'usps');assert.equal(s.shipment.service,'USPS Priority');assert.match(s.shipment.tracking_url,/tools\.usps\.com/);assert.equal(s.shipment.label_cost_cents,985)});
+
+test('USPS asked for but Shippo has no USPS rate: nothing bought, review',async()=>{const st=fakeShippo({rates:[rate]});const o=await fixture();const r=await shippo.buy(o.id,{manual:true,servicelevel:'usps_priority'});assert.equal(r.status,'needs_review');assert.match(r.message,/No usps priority rate/);assert.equal(st.buys,0)});
+
+test('automatic (not manual) buying can never switch to USPS',async()=>{const st=fakeShippo();const o=await fixture();const r=await shippo.buy(o.id,{servicelevel:'usps_priority'});assert.equal(r.status,'synced');assert.equal(st.lastBuy.rate,'rate_2da')});

@@ -109,6 +109,16 @@ async function handle({path,method='GET',headers={},body={}}){
   r.items=lines;r.stock_taken=true;await s.put('orders',id,o);await audit(s,'replacement_items',id);return{ok:true,items:lines.map(l=>({id:l.id,name:l.name,quantity:l.quantity}))}});return{status:200,headers:{},body:result}}
  // Packing Check: mark an order packed (or un-packed) so every device and Management see the same thing.
  // fp is the packing page's item fingerprint; if the order's items change later the page treats it as not packed.
+ // Packing Check "Send to printer": the label PDF, fetched here (Shippo's file host blocks browser fetches), so the page can
+ // save it as glow-label-<order>.pdf in Downloads, where the Mac helper prints it. Staff only; Shippo file hosts only.
+ if(path==='/admin/order/label-pdf'&&method==='POST'){const{url,name}=await transaction(async s=>{await session(s,h);const id=text(body.id||'',50);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);
+   const rn=Number(body.r||0);const src=rn?(o.replacements||[])[rn-1]?.label_url:(o.shipment?.label_url||o.shippo_label_url);if(!src)fail('This order has no label yet.',409);
+   let u;try{u=new URL(src)}catch{fail('The saved label link is not valid.',409)}if(u.protocol!=='https:'||!(/(^|\.)goshippo\.com$/.test(u.hostname)||/^shippo-delivery[a-z0-9-]*\.s3[a-z0-9.-]*\.amazonaws\.com$/.test(u.hostname)))fail('The label is not on Shippo, so it was not fetched.',409);
+   return{url:u.toString(),name:'glow-label-'+id.replace(/[^A-Za-z0-9-]/g,'')+(rn?'-R'+rn:'')+'.pdf'}});
+  let r;try{r=await fetch(url,{signal:AbortSignal.timeout(15000)})}catch(e){fail('Could not download the label from Shippo. Try again.',502)}
+  if(!r.ok)fail('Shippo answered HTTP '+r.status+' for the label file.',502);const buf=Buffer.from(await r.arrayBuffer());
+  if(buf.length>4*1024*1024)fail('The label file is unexpectedly large.',502);if(buf.subarray(0,5).toString()!=='%PDF-')fail('Shippo did not return a PDF.',502);
+  return{status:200,headers:{'Cache-Control':'no-store'},body:{name,pdf:buf.toString('base64'),bytes:buf.length}}}
  if(path==='/admin/order/referral'&&method==='POST'){const r=await transaction(async s=>{await session(s,h);const id=text(body.id||'',50);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(!['paid','shipped'].includes(o.status))fail('Mark the order paid first.',409);
   if(o.referral_bonus_awarded)return{ok:true,already:true,awarded:o.referral_bonus_awarded};const why=await accounts.referralWhy(s,o);if(why)return{ok:false,reason:why};
   const ok=await accounts.referralPaid(s,o);if(ok){await s.put('orders',id,o);await audit(s,'referral_bonus',id)}return ok?{ok:true,awarded:o.referral_bonus_awarded}:{ok:false,reason:'This friend\u2019s referral points were already given on another order'}});return{status:200,headers:{},body:r}}
@@ -255,8 +265,8 @@ async function handle({path,method='GET',headers={},body={}}){
    const ip=hash(h['x-nf-client-connection-ip']||h['x-forwarded-for']||'local'),attempt=await s.get('login_attempts',ip)||{count:0,until:0};
    if(attempt.until>clock()&&attempt.count>=5)return{_error:'Too many login attempts. Wait 15 minutes.',_status:429};
    if(!equal(hash(String(body.password||'')),hash(process.env.STORE_ADMIN_PASSWORD))){const next=attempt.until>clock()?{count:attempt.count+1,until:attempt.until}:{count:1,until:clock()+900};await s.put('login_attempts',ip,next);return{_error:'Incorrect password.',_status:401}}
-   await s.remove('login_attempts',ip);const core=(clock()+28800)+'.'+crypto.randomBytes(16).toString('hex');const token=core+'.'+sign(core);
-   await s.put('sessions',core.split('.')[1],{expires:clock()+28800});setCookie=`glow_next_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${process.env.STORE_LOCAL?'':'; Secure'}`;return{ok:true};
+   await s.remove('login_attempts',ip);const life=[true,'1','on'].includes(body.remember)?2592000:28800;const core=(clock()+life)+'.'+crypto.randomBytes(16).toString('hex');const token=core+'.'+sign(core);
+   await s.put('sessions',core.split('.')[1],{expires:clock()+life});setCookie=`glow_next_admin=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${life}${process.env.STORE_LOCAL?'':'; Secure'}`;return{ok:true};
   }
   if(path.startsWith('/admin/')){
    const sessionId=await session(s,h);
