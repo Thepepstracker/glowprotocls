@@ -85,6 +85,7 @@ button:disabled{opacity:.45;cursor:default}
 .state.ok{color:var(--ok)}
 .note{background:#fff8e6;border:1px solid #f0d58c;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
 .ship{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-top:4px}
+.ship.buy{background:#fff8e6;border:1px dashed #b88a2e;border-radius:10px;padding:8px 10px}.ship.buy select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink)}.ship.buy .buybtn{font-weight:800;background:var(--ink);color:#fff;border-color:var(--ink)}.ship.buy .buybtn[disabled]{opacity:.5}.buywarn{font-size:13px;color:#8a5a00}
 .ship a.lbtn{font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--ink);border-radius:8px;padding:4px 10px;text-decoration:none}
 table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
 td,th{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
@@ -544,7 +545,7 @@ function card(o){
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
   var tags=brand+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
-  var ship=hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||'UPS')+'</span>'+(o.tracking?'<span>'+esc(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
+  var ship=!hasLabel(o)&&canBuy(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||'UPS')+'</span>'+(o.tracking?'<span>'+esc(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">Paid '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
@@ -600,6 +601,29 @@ function fetchOrders(quiet){
   }).catch(function(e){if(e!==0&&!quiet)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
 }
 // Saves glow-label-<order>.pdf to Downloads. The Mac helper (glow-helper) prints files with that name on the label printer.
+// ---- Buy label (Jonah, 24 Oct 2026) ----
+// Default service follows the shipping rule: Ground for GA, FL, AL; USPS Priority for P.O. boxes (UPS can't deliver there);
+// UPS 2nd Day Air everywhere else. Staff can pick another service. After buying, the label + slip go to the printer.
+var BUY_SERVICES=[['ups_second_day_air','UPS 2nd Day Air'],['ups_ground','UPS Ground'],['ups_ground_saver','UPS Ground Saver'],['ups_3_day_select','UPS 3 Day Select'],['ups_next_day_air_saver','UPS Next Day Air Saver'],['usps_priority','USPS Priority'],['usps_ground_advantage','USPS Ground Advantage']];
+function isPoBox(o){var c=o.customer||{};return /\b(p\.?\s*o\.?\s*box|post\s+office\s+box)\b/i.test([c.address,c.address2].join(' '))}
+function defaultService(o){var st=String((o.customer||{}).state||'').toUpperCase().trim();if(isPoBox(o))return 'usps_priority';if(['GA','FL','AL','GEORGIA','FLORIDA','ALABAMA'].indexOf(st)>=0)return 'ups_ground';return 'ups_second_day_air'}
+function canBuy(o){return !o.replacement&&o.status==='paid'&&o.is_test===false}
+function buyBox(o){var def=defaultService(o),due=o.balance_due_cents>0||o.refund_due_cents>0,blk=blockedItems(o);
+  var opts=BUY_SERVICES.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===def?' selected':'')+'>'+esc(x[1])+'</option>'}).join('');
+  return '<div class="ship buy"><select class="svc" data-svc="'+esc(o.id)+'" aria-label="Shipping service">'+opts+'</select>'
+   +'<button class="mini buybtn" data-buy="'+esc(o.id)+'"'+(due?' disabled title="Balance or refund due: settle it first"':'')+'>🏷️ Buy label</button>'
+   +(due?'<span class="buywarn">Balance due, settle it first</span>':blk.length?'<span class="buywarn">⏳ Waiting on '+esc(blk.map(function(i){return i.name}).join(', '))+'</span>':'')
+   +(o.shippo_message?'<span class="buywarn">Last try: '+esc(String(o.shippo_message).slice(0,140))+'</span>':'')+'</div>'}
+function buyLabel(id,b){var o=orders.find(function(x){return x.id===id});if(!o)return;var sel=document.querySelector('select[data-svc="'+id+'"]'),svc=sel?sel.value:defaultService(o);
+  var name=(BUY_SERVICES.find(function(x){return x[0]===svc})||[svc,svc])[1],blk=blockedItems(o),c=o.customer||{};
+  if(!confirm('Buy a '+name+' label for '+(c.name||id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+')?'+(blk.length?'\n\n⚠️ Still waiting on: '+blk.map(function(i){return i.name}).join(', '):'')+'\n\nThe label and packing slip print right after.'))return;
+  b.disabled=true;b.textContent='Buying…';
+  fetch('/.netlify/functions/store-next?route='+encodeURIComponent(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,servicelevel:svc})})
+  .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||('The store answered '+x.status));return d})})
+  .then(function(d){if(d.status==='synced'||d.status==='label_bought'){toast('✅ '+name+' label bought for '+(c.name||id)+' — printing label + slip');return fetchOrders(true).then(function(){return sendToPrinter(id,null)})}
+    toast('Not bought: '+(d.message||d.status||'unknown'));b.disabled=false;b.textContent='🏷️ Buy label';return fetchOrders(true)})
+  .catch(function(e){toast((e&&e.message)||'Could not buy the label');b.disabled=false;b.textContent='🏷️ Buy label'});
+}
 function saveFile(name,blob){var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},30000)}
 // The 4x6 packing slip as glow-slip-<order>.html; the Mac helper turns it into a PDF and prints it right after the label.
 function sendSlip(id){var o=orders.find(function(x){return x.id===id});if(!o||o.replacement)return false;saveFile('glow-slip-'+String(o.id).replace(/[^A-Za-z0-9-]/g,'')+'.html',new Blob([slipHTML([o])],{type:'text/html'}));return true}
@@ -625,6 +649,7 @@ function markOut(k,on){if(on)outMarks[k]=Date.now();else delete outMarks[k];lsSe
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;lastKey=Date.now();
   if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';var was=isDone(o);setTick(o,b.dataset.k,on);if(on)history.push({id:o.id,k:b.dataset.k});if(isDone(o)){justDone[o.id]=1;if(!was)celebrate(o)}b.blur();buildPools();render();return}
+  if(b.dataset.buy){buyLabel(b.dataset.buy,b);return}
   if(b.dataset.dl){sendToPrinter(b.dataset.dl,b).catch(function(){});return}
   if(b.dataset.refer){var fo=orders.find(function(x){return x.id===b.dataset.refer});if(!fo)return;b.disabled=true;
     fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Freferral',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:fo.id})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(x){
