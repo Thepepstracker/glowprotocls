@@ -148,4 +148,15 @@ async function pending(limit=3){
 }
 // Refund (void) an unused label. Shippo answers QUEUED/PENDING and settles the refund within days.
 async function voidLabel(transactionId){const t=String(transactionId||'').replace(/[^A-Za-z0-9_]/g,'').slice(0,64);if(t.length<4)fail('No Shippo label on this order.',{definite:true});const r=await request('/refunds/',{transaction:t,async:false});return{status:String(r.status||'').toUpperCase(),object_id:String(r.object_id||''),transaction:t}}
-module.exports={voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
+// Delivery status from Shippo's tracking API (24 Oct 2026, for the Calls tab). Read-only: it never emails customers.
+// Shippo statuses: PRE_TRANSIT, TRANSIT, DELIVERED, RETURNED, FAILURE, UNKNOWN.
+const toEpoch=v=>{const t=Date.parse(v||'');return Number.isFinite(t)?Math.floor(t/1000):null};
+function where(l){if(!l)return '';return [l.city,l.state].filter(Boolean).join(', ')}
+async function track(carrier,number){const c=String(carrier||'').toLowerCase(),n=String(number||'').replace(/\s+/g,'').toUpperCase();
+ if(!['ups','usps'].includes(c)||!/^[A-Z0-9]{8,40}$/.test(n))fail('Not a UPS or USPS tracking number.',{definite:true});
+ const r=await request('/tracks/'+c+'/'+encodeURIComponent(n));const st=r.tracking_status||{},raw=String(st.status||'UNKNOWN').toUpperCase();
+ const state={DELIVERED:'delivered',TRANSIT:'in_transit',PRE_TRANSIT:'pre_transit',RETURNED:'exception',FAILURE:'exception'}[raw]||'unknown';
+ const hist=Array.isArray(r.tracking_history)?r.tracking_history:[];const scanned=hist.find(h=>String(h.status||'').toUpperCase()!=='PRE_TRANSIT'&&String(h.status||'').toUpperCase()!=='UNKNOWN');
+ return{state,status:raw,details:String(st.status_details||'').slice(0,160),last_at:toEpoch(st.status_date),location:where(st.location),delivered_at:state==='delivered'?toEpoch(st.status_date):null,
+  first_scan_at:scanned?toEpoch(scanned.status_date):null,eta:toEpoch(r.eta),carrier:c,tracking:n,source:'shippo',checked_at:now()}}
+module.exports={track,voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};

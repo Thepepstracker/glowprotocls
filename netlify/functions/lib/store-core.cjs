@@ -122,6 +122,14 @@ async function handle({path,method='GET',headers={},body={}}){
   if(buf.length>4*1024*1024)fail('The label file is unexpectedly large.',502);if(buf.subarray(0,5).toString()!=='%PDF-')fail('Shippo did not return a PDF.',502);
   return{status:200,headers:{'Cache-Control':'no-store'},body:{name,pdf:buf.toString('base64'),bytes:buf.length}}}
  // Packing Check call log (Jonah, 24 Oct 2026): one entry per phone call, saved on the order. Staff only; customers never see it.
+ // Calls tab: delivery status for up to 25 shipped orders, from Shippo tracking. Cached on the order (o.track): delivered stays,
+ // otherwise re-checked after 2 hours. Staff only; read-only toward customers (no emails).
+ if(path==='/admin/orders/track'&&method==='POST'){await transaction(s=>session(s,h));const ids=[...new Set((Array.isArray(body.ids)?body.ids:[]).map(x=>text(String(x),50)))].slice(0,25);const force=body.force===true;
+  const jobs=await transaction(async s=>{const out=[];for(const id of ids){const o=await s.get('orders',id);if(!o||o.status!=='shipped')continue;const num=String(o.tracking||o.shipment?.tracking||'').replace(/\s+/g,'');if(!num)continue;
+    const carrier=o.shipment?.carrier||(/^1Z/i.test(num)?'ups':/^9\d{15,}/.test(num)?'usps':'');const t=o.track;const fresh=t&&t.tracking===num.toUpperCase()&&(t.state==='delivered'||(!force&&clock()-(t.checked_at||0)<7200));out.push({id,carrier,num,cached:fresh?t:null})}return out});
+  const result={};let i=0;const worker=async()=>{while(i<jobs.length){const j=jobs[i++];if(j.cached){result[j.id]=j.cached;continue}
+    try{const t=await shippo.track(j.carrier,j.num);result[j.id]=t;await transaction(async s=>{const o=await s.get('orders',j.id);if(o){o.track=t;await s.put('orders',j.id,o)}})}catch(e){result[j.id]={state:'error',details:String(e.message||'').slice(0,160),checked_at:clock()}}}};
+  await Promise.all([worker(),worker(),worker(),worker()]);return{status:200,headers:{},body:{ok:true,track:result}}}
  if(path==='/admin/order/call-log'&&method==='POST'){const r=await transaction(async s=>{const sid=await session(s,h);const id=text(body.id||'',50);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);
    const key=String(body.key||'');if(!/^[A-Za-z0-9_-]{8,64}$/.test(key))fail('Missing save key. Try again.');const log=o.call_log||[];
    if(body.remove===true){const i=log.findIndex(e=>e.key===key);if(i<0)return{ok:true,removed:false};if(clock()-log[i].at>3600)fail('Calls older than an hour stay in the log.',409);log.splice(i,1);o.call_log=log;await s.put('orders',id,o);await audit(s,'call_log_removed',id);return{ok:true,removed:true}}

@@ -1,0 +1,22 @@
+'use strict';
+// Calls tab delivery status (24 Oct 2026): Shippo tracking, cached on the order; delivered stays; staff only.
+const {test,before,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-track-'));Object.assign(process.env,{STORE_LOCAL:'1',STORE_SQLITE_PATH:path.join(tmp,'store.sqlite'),STORE_ADMIN_PASSWORD:'track-test-admin-password',STORE_SESSION_SECRET:'track-test-session-secret-long-enough',STORE_ORIGIN:'http://127.0.0.1:8787',SHIPPO_API_TOKEN:'shippo_live_fixturetokenfixturetoken'});
+const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=require('../../tools/store/seed-data.cjs'),{handle}=require('../../netlify/functions/lib/store-core.cjs');
+const call=(p,b,c='')=>handle({path:p,method:'POST',headers:{'x-store-request':'1',cookie:c,'x-nf-client-connection-ip':'fixture'},body:b||{}});let admin,asked=[];const old=global.fetch;
+before(async()=>{await transaction(seed);admin=(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD})).headers['Set-Cookie'].split(';')[0];
+ const put=(id,num,carrier)=>transaction(s=>s.put('orders',id,{id,is_test:false,status:'shipped',created:1,customer:{name:'X'},items:[],tracking:num,shipment:{carrier,tracking:num}}));
+ await put('GLP-TRACK00001','1Z3G52C30202081132','ups');await put('GLP-TRACK00002','9305520845500017700946','usps');
+ global.fetch=async url=>{asked.push(url);const ok=d=>({ok:true,status:200,json:async()=>d});
+  if(url.includes('/tracks/ups/'))return ok({tracking_status:{status:'DELIVERED',status_date:'2026-10-22T18:04:00Z',status_details:'Delivered, front door',location:{city:'Bolivia',state:'NC'}},tracking_history:[{status:'PRE_TRANSIT',status_date:'2026-10-20T15:00:00Z'},{status:'TRANSIT',status_date:'2026-10-20T23:10:00Z'}],eta:'2026-10-22T00:00:00Z'});
+  if(url.includes('/tracks/usps/'))return ok({tracking_status:{status:'TRANSIT',status_date:'2026-10-24T20:00:00Z',status_details:'In transit',location:{city:'Atlanta',state:'GA'}},tracking_history:[],eta:'2026-10-27T00:00:00Z'});
+  throw new Error('unexpected '+url)}});
+after(()=>{global.fetch=old;fs.rmSync(tmp,{recursive:true,force:true})});
+test('delivered UPS and in-transit USPS come back with dates; saved on the order',async()=>{const r=(await call('/admin/orders/track',{ids:['GLP-TRACK00001','GLP-TRACK00002','GLP-NOPE']},admin)).body.track;
+ assert.equal(r['GLP-TRACK00001'].state,'delivered');assert.equal(r['GLP-TRACK00001'].delivered_at,Date.parse('2026-10-22T18:04:00Z')/1000);assert.equal(r['GLP-TRACK00001'].first_scan_at,Date.parse('2026-10-20T23:10:00Z')/1000);
+ assert.equal(r['GLP-TRACK00002'].state,'in_transit');assert.equal(r['GLP-TRACK00002'].location,'Atlanta, GA');assert.equal(r['GLP-TRACK00002'].delivered_at,null);assert.equal(r['GLP-NOPE'],undefined);
+ assert.ok(asked.some(u=>u.endsWith('/tracks/ups/1Z3G52C30202081132')));assert.ok(asked.some(u=>u.endsWith('/tracks/usps/9305520845500017700946')));
+ assert.equal((await transaction(s=>s.get('orders','GLP-TRACK00001'))).track.state,'delivered')});
+test('cached: a second look within 2 hours does not call Shippo again; delivered never re-checks even when forced',async()=>{const n=asked.length;await call('/admin/orders/track',{ids:['GLP-TRACK00001','GLP-TRACK00002']},admin);assert.equal(asked.length,n);
+ await call('/admin/orders/track',{ids:['GLP-TRACK00001','GLP-TRACK00002'],force:true},admin);assert.equal(asked.length,n+1,'only the in-transit one is re-checked')});
+test('signed out is refused',async()=>{await assert.rejects(call('/admin/orders/track',{ids:['GLP-TRACK00001']}),/Sign in/)});
