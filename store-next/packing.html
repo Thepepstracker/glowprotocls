@@ -684,10 +684,10 @@ function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id}
   var name=(BUY_SERVICES.find(function(x){return x[0]===svc})||[svc,svc])[1],blk=blockedItems(o),c=o.customer||{};
   if(override){var ps=priceStops[id];if(!confirm('ADMIN OVERRIDE\n\n'+(ps?ps.text:'This label is over the $15 price check.')+'\n\nBuy the '+name+' label for '+(c.name||id)+' anyway?'))return}
   else if(!confirm('Buy a '+name+' label for '+(c.name||id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+')?'+(blk.length?'\n\n⚠️ Still waiting on: '+blk.map(function(i){return i.name}).join(', '):'')+'\n\nThe label and packing slip print right after.'))return;
-  b.disabled=true;b.textContent='Buying…';
+  b.disabled=true;b.textContent='Buying…';var t0=Date.now(),early=sendSlipWait(id,name);
   fetch('/.netlify/functions/store-next?route='+encodeURIComponent(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(override?{id:id,servicelevel:svc,override:true}:{id:id,servicelevel:svc})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||('The store answered '+x.status));return d})})
-  .then(function(d){if(d.status==='synced'||d.status==='label_bought'){delete priceStops[id];toast('✅ '+name+' label bought for '+(c.name||id)+' — printing label + slip');return fetchOrders(true).then(function(){return sendToPrinter(id,null)})}
+  .then(function(d){if(d.status==='synced'||d.status==='label_bought'){delete priceStops[id];toast('✅ '+name+' label bought for '+(c.name||id)+' in '+((Date.now()-t0)/1000).toFixed(1)+'s — printing label + slip');fetchOrders(true);return sendToPrinter(id,null,{slip:!early,slipHeld:early})}
     if(d.status==='price_check'){svcChoice[id]=svc;priceStops[id]={svc:svc,text:'$'+((d.cents||0)/100).toFixed(2)+' ('+(d.service||name)+') is over the $'+((d.limit_cents||1500)/100).toFixed(2)+' price check. Nothing bought.'};toast('💲 Price check: $'+((d.cents||0)/100).toFixed(2)+' is over $'+((d.limit_cents||1500)/100).toFixed(2)+'. Nothing bought.');return fetchOrders(true)}
     toast('Not bought: '+(d.message||d.status||'unknown'));b.disabled=false;b.textContent='🏷️ Buy label';return fetchOrders(true)})
   .catch(function(e){toast((e&&e.message)||'Could not buy the label');b.disabled=false;b.textContent='🏷️ Buy label'});
@@ -695,12 +695,16 @@ function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id}
 function saveFile(name,blob){var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},30000)}
 // The 4x6 packing slip as glow-slip-<order>.html; the Mac helper turns it into a PDF and prints it right after the label.
 function sendSlip(id){var o=orders.find(function(x){return x.id===id});if(!o||o.replacement)return false;saveFile('glow-slip-'+String(o.id).replace(/[^A-Za-z0-9-]/g,'')+'.html',new Blob([slipHTML([o])],{type:'text/html'}));return true}
+// Faster labels (Jonah, 25 Oct 2026): the slip is saved the moment Buy is clicked as glow-slipwait-<order>.html,
+// so the Mac helper's Chrome makes its PDF while Shippo is still buying. The helper holds it and prints it right
+// after that order's label; if no label comes (price check, failed buy) it is not printed.
+function sendSlipWait(id,service){var o=orders.find(function(x){return x.id===id});if(!o||o.replacement)return false;var o2=Object.assign({},o,{shipment:Object.assign({},o.shipment||{},{service:(o.shipment&&o.shipment.service)||service})});saveFile('glow-slipwait-'+String(o.id).replace(/[^A-Za-z0-9-]/g,'')+'.html',new Blob([slipHTML([o2])],{type:'text/html'}));return true}
 function sendToPrinter(cardId,b,opts){opts=opts||{};var m=String(cardId).match(/^(.*)-R(\d+)$/),id=m?m[1]:cardId,r=m?Number(m[2]):0;if(b)b.disabled=true;
   return fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Flabel-pdf',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,r:r})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok||!d.pdf)throw new Error(d.error||d.message||('Could not get the label ('+x.status+')'));return d})})
   .then(function(d){var bin=atob(d.pdf),a8=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)a8[i]=bin.charCodeAt(i);
     saveFile(d.name,new Blob([a8],{type:'application/pdf'}));var slip=!r&&opts.slip!==false&&sendSlip(id);
-    toast('🖨️ Sent '+(slip?'label + packing slip':'label')+' for '+id+' — the Mac helper prints in a few seconds');if(b)b.textContent='✓ Sent to printer';return{id:id,label:d.name,slip:!!slip}})
+    toast('🖨️ Sent '+(slip||opts.slipHeld?'label + packing slip':'label')+' for '+id+' — the Mac helper prints in a few seconds');if(b)b.textContent='✓ Sent to printer';return{id:id,label:d.name,slip:!!slip}})
   .catch(function(e){toast((e&&e.message)||'Could not get the label');if(b)b.disabled=false;throw e});
 }
 // For Claude's scheduled jobs: window.glowPrint.label(id) / .slip(id).
