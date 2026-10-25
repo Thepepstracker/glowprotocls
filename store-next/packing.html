@@ -157,7 +157,7 @@ body.big .tap{width:76px;height:76px;font-size:30px}body.big .qty{font-size:36px
 body.big .oid{font-size:32px}body.big .who{font-size:24px}body.big .keys,body.big main>p.small,body.big .chips,body.big #search,body.big #notify,body.big #testPing{display:none}
 body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 @media (prefers-reduced-motion:reduce){.tap.next{animation:none}.ping,.ping .top,.ping .timer{animation:none;transition:none}}
-@media (max-width:600px){.item{flex-wrap:wrap}.taps{width:100%;justify-content:flex-start}.oid{font-size:19px}.hide-sm{display:none}}
+@media (max-width:600px){.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}.item{flex-wrap:wrap}.taps{width:100%;justify-content:flex-start}.oid{font-size:19px}.hide-sm{display:none}}
 @media print{header,.now,.tools,.chips,.alerts,.keys,.noprint,#confetti,.cheer,.toast,.foot .btns{display:none!important}body{background:#fff;font-size:13px}main{padding:0;max-width:none}table{border:1px solid #999}td,th{padding:5px 8px}.order{break-inside:avoid;border:1px solid #999}}
 .sees{font-size:13px;color:#5b6b60;margin-top:4px}.sees b{color:#23553a}
 .tag.refer{background:#efe7fb;color:#4b2a86}.referline{font-size:13px;margin-top:4px;padding:6px 8px;border-radius:6px}.referline.ok{background:#e9f5ee;color:#23553a}.referline.warn{background:#fdf3e1;color:#7a5200}.referline .mini{margin-left:6px}.refer-why{margin-top:4px;color:#7a2e00}
@@ -201,7 +201,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
   <div class="alerts" id="alerts"></div>
   <div id="out"><div class="msg">Loading paid orders…</div></div>
   <div class="keys noprint"><span><kbd>Space</kbd> next vial in</span><span><kbd>⌫</kbd> undo</span><span><kbd>L</kbd> open this order's label</span><span><kbd>S</kbd> skip this order</span><span><kbd>R</kbd> refresh</span><span><kbd>/</kbd> search</span><span><kbd>1</kbd>–<kbd>8</kbd> tabs</span><span><kbd>B</kbd> big screen</span><span><kbd>P</kbd> slip for this box</span></div>
-  <p class="small">Shows every order marked <b>Paid</b>, plus orders whose label is printed but UPS has not scanned yet (last 7 days), oldest first. Press the <b>space bar</b> once for every vial as it goes in the bag (or tap the boxes). The gold box shows what to put in next. Ticks, skips and "out of stock" marks stay on this device. When a box is fully checked it is marked <b>Packed</b> in the store too, so every computer and Management see it (Start over un-marks it). <b>🧾 Slip</b> prints a 4×6 packing slip with a tracking QR on the label printer. If an order is edited after you checked it, its ticks clear so you check it again. Orders refresh by themselves every minute while you are not typing — every new order pops up in the corner with a cha-ching (and on your computer, if order pop-ups are on).</p>
+  <p class="small">Shows every order marked <b>Paid</b>, plus orders whose label is printed but the carrier has not scanned yet (last 7 days), oldest first. Press the <b>space bar</b> once for every vial as it goes in the bag (or tap the boxes). The gold box shows what to put in next. Ticks, skips and "out of stock" marks stay on this device. When a box is fully checked it is marked <b>Packed</b> in the store too, so every computer and Management see it (Start over un-marks it). <b>🧾 Slip</b> prints a 4×6 packing slip (its QR opens the customer’s Glow account) on the label printer. If an order is edited after you checked it, its ticks clear so you check it again. Orders refresh by themselves every minute while you are not typing — every new order pops up in the corner with a cha-ching (and on your computer, if order pop-ups are on).</p>
 </main>
 <script src="vendor/qrcode-generator.js"></script>
 <script>
@@ -227,7 +227,9 @@ function save(s){lsSet(KEY,s)}function saveSkip(){lsSet(SKIP,skipped)}
 function isSkipped(o){return !!skipped[o.id]}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function nowS(){return Date.now()/1000}
-function fp(o){return (o.items||[]).map(function(i){return i.id+':'+i.quantity}).join(',')+'|'+(o.revision||0)}
+// Item fingerprint: which items and how many. (Until 25 Oct 2026 it also had "|revision", so a staff note or address edit un-packed a box.)
+function fp(o){return (o.items||[]).map(function(i){return i.id+':'+i.quantity}).join(',')}
+function sameFp(a,o){return typeof a==='string'&&a.split('|')[0]===fp(o)}
 // What physically goes in the bag for one order line: one entry per vial. A kit of 10 is 10 vials; a bundle is the vials inside it.
 // Bundle contents come from Management ("Bundle contents") when set; until then from the 24 Sep 2026 WooCommerce bundle recipes.
 var BUNDLE_RECIPES={'bundle-737-10-mg':[['GLP-2T · 10 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],'bundle-737-15-mg':[['GLP-2T · 15 mg',1],['MOTS-C · 10 mg',1],['NAD+ · 500 mg',1]],
@@ -246,11 +248,11 @@ function insideText(i){var b=inside(i);if(b.kind==='one')return '';if(b.kind==='
   return 'Inside each: '+b.list.map(function(x){return (x[1]>1?x[1]+'× ':'')+x[0]}).join(' + ')}
 function units(o){return (o.items||[]).reduce(function(n,i){return n+vials(i).length},0)}
 function allTicks(o){var t={};(o.items||[]).forEach(function(i,idx){for(var u=0;u<vials(i).length;u++)t[idx+'-'+u]=true});return t}
-function serverPacked(o){return !!(o.packed&&o.packed.fp===fp(o))}
-function ticks(o){var s=saved[o.id];if(s&&s.fp===fp(o))return s.t||{};if(serverPacked(o))return allTicks(o);return{}}
+function serverPacked(o){return !!(o.packed&&sameFp(o.packed.fp,o))}
+function ticks(o){var s=saved[o.id];if(s&&sameFp(s.fp,o))return s.t||{};if(serverPacked(o))return allTicks(o);return{}}
 function tickCount(o){var t=ticks(o),n=0;Object.keys(t).forEach(function(k){if(t[k])n++});return n}
 function isDone(o){return units(o)>0&&tickCount(o)>=units(o)}
-function setTick(o,key,on){var was=isDone(o),s=saved[o.id];if(!s||s.fp!==fp(o))s={fp:fp(o),t:serverPacked(o)?allTicks(o):{}};if(on&&!s.start)s.start=Math.min(Date.now(),targetSince[o.id]||Date.now());s.t[key]=on;if(isDoneWith(o,s)){if(!s.at)s.at=Date.now()}else delete s.at;saved[o.id]=s;save(saved);
+function setTick(o,key,on){var was=isDone(o),s=saved[o.id];if(!s||!sameFp(s.fp,o))s={fp:fp(o),t:serverPacked(o)?allTicks(o):{}};if(on&&!s.start)s.start=Math.min(Date.now(),targetSince[o.id]||Date.now());s.t[key]=on;if(isDoneWith(o,s)){if(!s.at)s.at=Date.now()}else delete s.at;saved[o.id]=s;save(saved);
   var now=isDone(o);if(!o.replacement&&now&&!was)syncPacked(o,true,s.start?(s.at-s.start)/1000:null);else if(!o.replacement&&was&&!now&&o.packed)syncPacked(o,false)}
 function syncPacked(o,on,secs){if(on)o.packed={at:Math.floor(Date.now()/1000),by:'you',fp:fp(o),seconds:secs?Math.round(secs):null};else delete o.packed;
   fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Fpacked',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:o.id,packed:!!on,fp:fp(o),seconds:secs||null})}).then(function(r){return r.ok?r.json():Promise.reject(r.status)}).then(function(d){if(d&&d.packed)o.packed=d.packed;render();if(on&&d&&d.packed)toast('📦 Packed — '+((o.customer&&o.customer.name)||'the customer').split(' ')[0]+'\'s tracking page now says '+(o.status==='shipped'?'Packed and labeled':'Packed'))},function(){toast(on?'Saved on this computer — could not tell the store it is packed yet':'Could not clear packed in the store')})}
@@ -261,14 +263,18 @@ function hasLabel(o){return !!(o.shipment&&o.shipment.label_url)}
 function referLine(o){if(!o.referred_by)return '';var r=o.referrer||{},who=(r.name||r.email||'a customer'),first=String(who).split(' ')[0];
   if(o.referral_bonus_awarded)return '<div class="referline ok">🤝 Friend of <b>'+esc(who)+'</b> · ✅ '+esc(o.referral_bonus_awarded)+' points added to '+esc(first)+'</div>';
   return '<div class="referline warn">🤝 Friend of <b>'+esc(who)+'</b> · ⚠️ 200 points not added yet <button class="mini" data-refer="'+esc(o.id)+'">Check &amp; add points</button>'+(o._refWhy?'<div class="refer-why">Not added: '+esc(o._refWhy)+'</div>':'')+'</div>'}
-function custSees(o){var d=o.delivery||{},sh=o.status==='shipped',pk=!!o.packed;if(d.state==='delivered')return 'Delivered';if(d.state==='out_for_delivery')return 'Out for delivery today';if(d.first_scan_at||d.state==='in_transit')return 'UPS has the package';if(sh&&pk)return 'Packed and labeled · waiting for UPS pickup';if(sh)return 'Label created · not packed yet';if(pk)return 'Packed and ready to ship';return 'Paid · in queue'}
-function needsPacking(o){if(o.is_test===true)return false;if(o.status==='paid')return true;var sh=o.shipment||{},dl=o.delivery||{};return o.status==='shipped'&&hasLabel(o)&&!dl.first_scan_at&&!dl.delivered&&(sh.label_created_at||0)>nowS()-7*86400}
+function carrierName(o){var sh=o.shipment||{};return sh.carrier_name||(sh.carrier==='usps'?'USPS':/^usps/i.test(sh.service||'')?'USPS':'UPS')}
+function custSees(o){var d=o.delivery||{},t=o.track||{},sh=o.status==='shipped',pk=!!o.packed,cn=carrierName(o);if(d.state==='delivered'||t.state==='delivered')return 'Delivered';if(d.state==='out_for_delivery')return 'Out for delivery today';if(d.first_scan_at||d.state==='in_transit'||t.first_scan_at||t.state==='in_transit')return cn+' has the package';if(sh&&pk)return 'Packed and labeled · waiting for '+cn+' pickup';if(sh)return 'Label created · not packed yet';if(pk)return 'Packed and ready to ship';return 'Paid · in queue'}
+function needsPacking(o){if(o.is_test===true)return false;if(o.status==='paid')return true;var sh=o.shipment||{},dl=o.delivery||{},t=o.track||{};if(t.first_scan_at||t.state==='in_transit'||t.state==='delivered')return false;if(carrierName(o)==='USPS'&&o.packed&&(o.packed.at||0)<nowS()-2*86400)return false;return o.status==='shipped'&&hasLabel(o)&&!dl.first_scan_at&&!dl.delivered&&(sh.label_created_at||0)>nowS()-7*86400}
 function replacementCards(list){var out=[],cut=nowS()-4*86400;list.forEach(function(o){(o.replacements||[]).forEach(function(r){if((r.created||0)<cut)return;
   out.push({id:o.id+'-R'+r.n,brand:o.brand,customer:o.customer,paid:r.created,created:r.created,revision:0,replacement:r.note||'Replacement',
     items:(r.items&&r.items.length)?r.items:[{id:'note',name:r.note||'Replacement items',quantity:1}],shipment:{label_url:r.label_url,service:r.service,label_created_at:r.created},tracking:r.tracking})})});return out}
 function when(sec){return sec?new Date(sec*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}
 function ago(sec){var h=(nowS()-sec)/3600;if(h<1)return Math.max(1,Math.round(h*60))+' min';if(h<48)return Math.round(h)+' h';return Math.round(h/24)+' days'}
 // ---- stock pools ------------------------------------------------------------
+// Units a line takes from its product's stock, like the server: quantity × units per item (a kit of 10 = 10).
+function stockQty(i){var u=Number(i.units)||0;if(!u){var b=inside(i);u=b.kind==='kit'?b.list[0][1]:1}return i.quantity*u}
+function lineDraws(i){if(Array.isArray(i.draws)&&i.draws.length)return i.draws.map(function(d){return{id:d.id,q:i.quantity*(Number(d.qty)||1)}});return [{id:i.id,q:stockQty(i)}]}
 function poolOf(id){var p=byId[id];return p?(p.stock_pool||('p'+p.id)):null}
 function poolInfo(id){var k=poolOf(id);return k?pools[k]:null}
 function isOut(id){var k=poolOf(id);return !!(k&&outMarks[k])}
@@ -278,13 +284,13 @@ function isLate(o){return o.status==='paid'&&!hasLabel(o)&&(o.paid||o.created||0
 function isNew(o){return !seen[o.id]&&lastLoad>0}
 function buildPools(){
   pools={};products.forEach(function(p){var k=p.stock_pool||('p'+p.id);var x=pools[k]||(pools[k]={key:k,name:p.name,stock:null,ids:[],sold:0,days:{},made:MADE_HERE.test(p.name||''),active:false,need:0});
-    x.ids.push(p.id);if(p.active)x.active=true;if(x.stock===null||(p.brand!=='zader'))x.stock=Number(p.stock||0);if(p.brand!=='zader')x.name=p.name});
+    x.ids.push(p.id);if(p.active)x.active=true;if(x.stock===null||(p.brand!=='zader'))x.stock=Number(p.stock||0);if(p.brand!=='zader'&&(!x.named||!(Number(p.units)>1))){x.name=p.name;x.named=!(Number(p.units)>1)}});
   var live=all.filter(function(o){return o.is_test===false&&['paid','shipped'].indexOf(o.status)>=0});
   firstSale=live.reduce(function(m,o){var t=o.paid||o.created||0;return t&&(!m||t<m)?t:m},0);
   var cut=nowS()-WINDOW_DAYS*86400;
   live.forEach(function(o){var t=o.paid||o.created||0;if(t<cut)return;var day=new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
-    (o.items||[]).forEach(function(i){var x=poolInfo(i.id);if(!x)return;x.sold+=i.quantity;x.days[day]=(x.days[day]||0)+i.quantity})});
-  orders.forEach(function(o){if(isDone(o)||o.replacement)return;(o.items||[]).forEach(function(i){var x=poolInfo(i.id);if(x)x.need+=i.quantity})});
+    (o.items||[]).forEach(function(i){lineDraws(i).forEach(function(d){var x=poolInfo(d.id);if(!x)return;x.sold+=d.q;x.days[day]=(x.days[day]||0)+d.q})})});
+  orders.forEach(function(o){if(isDone(o)||o.replacement)return;(o.items||[]).forEach(function(i){lineDraws(i).forEach(function(d){var x=poolInfo(d.id);if(x)x.need+=d.q})})});
   var span=Math.max(1,Math.min(WINDOW_DAYS,(nowS()-(firstSale||cut))/86400));
   Object.keys(pools).forEach(function(k){var x=pools[k];x.span=span;x.rate=x.sold/span;x.peak=Object.keys(x.days).reduce(function(m,d){return Math.max(m,x.days[d])},0);
     x.daysLeft=x.rate>0?x.stock/x.rate:Infinity;x.rop=Math.ceil(x.rate*(LEAD_DAYS+CHECK_GAP_DAYS)+x.peak);x.target=Math.ceil(x.rate*COVER_DAYS+x.peak);
@@ -302,7 +308,7 @@ function inView(o){return view==='all'?true:view==='skipped'?isSkipped(o):view==
 function visibleList(){if(view==='pick'||view==='restock'||view==='stats'||view==='calls')return[];var l=orders.filter(matches).filter(inView).filter(chipOk);
   // To check: label printed first (those can go out today), then no label yet, then anything waiting on stock. Oldest first inside each.
   if(view==='todo'){var rank=function(o){return isBlocked(o)?2:hasLabel(o)?0:1};l=l.slice().sort(function(a,b){return rank(a)-rank(b)||((a.paid||a.created||0)-(b.paid||b.created||0))})}return l}
-function render(){
+function render(){setTimeout(fitNowBar,0);
   var done=orders.filter(isDone).length,sk=orders.filter(isSkipped).length,todo=orders.filter(function(o){return !isSkipped(o)&&!isDone(o)});
   document.getElementById('count').textContent=done+' of '+orders.length+' orders checked'+(sk?' · '+sk+' skipped':'');
   var leftUnits=todo.reduce(function(n,o){return n+units(o)-tickCount(o)},0);
@@ -359,8 +365,8 @@ function markTarget(list){
   var pi=poolInfo(x.item.id);document.getElementById('nowWarn').textContent=pi&&pi.stock<0?'Store count for this is '+pi.stock+' — check the shelf':'';
 }
 function currentOrder(){var x=target(visibleList());return x?x.o:null}
-function tickTarget(){var x=target(visibleList());if(!x)return;setTick(x.o,x.k,true);history.push({id:x.o.id,k:x.k});if(isDone(x.o)){justDone[x.o.id]=1;celebrate(x.o)}render()}
-function undo(){var h=history.pop();if(!h)return;var o=orders.find(function(z){return z.id===h.id});if(!o)return;setTick(o,h.k,false);delete justDone[o.id];render()}
+function tickTarget(){var x=target(visibleList());if(!x)return;setTick(x.o,x.k,true);history.push({id:x.o.id,k:x.k});if(isDone(x.o)){justDone[x.o.id]=1;celebrate(x.o)}buildPools();render()}
+function undo(){var h=history.pop();if(!h)return;var o=orders.find(function(z){return z.id===h.id});if(!o)return;setTick(o,h.k,false);delete justDone[o.id];buildPools();render()}
 var actx=null;function ding(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();var t=actx.currentTime;[880,1320].forEach(function(f,i){var o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t+i*.12);g.gain.exponentialRampToValueAtTime(.18,t+i*.12+.02);g.gain.exponentialRampToValueAtTime(.0001,t+i*.12+.35);o.connect(g);g.connect(actx.destination);o.start(t+i*.12);o.stop(t+i*.12+.4)})}catch(e){}}
 function chaChing(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();var t=actx.currentTime;
   [[1568,0],[2093,.09],[2637,.18],[3136,.27]].forEach(function(n){var o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.value=n[0];g.gain.setValueAtTime(.0001,t+n[1]);g.gain.exponentialRampToValueAtTime(.22,t+n[1]+.01);g.gain.exponentialRampToValueAtTime(.0001,t+n[1]+.5);o.connect(g);g.connect(actx.destination);o.start(t+n[1]);o.stop(t+n[1]+.55)});
@@ -368,7 +374,7 @@ function chaChing(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||
 function money(c){return '$'+((c||0)/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
 function etDay(t){return new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'})}
 function liveOrder(o){return o&&o.is_test===false&&['canceled','expired'].indexOf(o.status)<0&&(!o.proof_required||o.submitted_at||o.status!=='order_received')}
-function todayStats(){var k=etDay(nowS()),l=all.filter(function(o){return liveOrder(o)&&etDay(o.created||0)===k});return{count:l.length,total:l.reduce(function(a,o){return a+(o.total||0)},0)}}
+function todayStats(){var k=etDay(nowS()),l=all.filter(function(o){return paidOrder(o)&&etDay(o.created||0)===k});return{count:l.length,total:l.reduce(function(a,o){return a+(o.total||0)},0)}}
 function ordinal(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
 function statusWord(o){return {paid:'PAID',shipped:'SHIPPED',payment_submitted:'RECEIPT IN',awaiting_payment:'AWAITING PAYMENT',order_received:'NEW'}[o.status]||String(o.status||'').toUpperCase()}
 function ping(o,rank){var feed=document.getElementById('feed'),c=o.customer||{},st=todayStats(),big=(o.total||0)>=25000,el=document.createElement('div');
@@ -398,7 +404,9 @@ function detectNew(){var live=all.filter(liveOrder);
 }
 function syncNotifyBtn(){var b=document.getElementById('notify');if(!('Notification' in window)){b.hidden=true;return}var p=Notification.permission;b.textContent=p==='granted'?'🛎️ Order pop-ups on':p==='denied'?'🛎️ Pop-ups blocked in Chrome':'🛎️ Turn on order pop-ups';b.disabled=p!=='default'}
 function mmss(sec){sec=Math.max(0,Math.round(sec));var m=Math.floor(sec/60),s2=sec%60;return m+':'+(s2<10?'0':'')+s2}
-function tickTimer(){var el=document.getElementById('nowTimer');if(!el)return;if(!timerOrder||document.getElementById('now').hidden){el.innerHTML='';return}var st=packStats(),t0=targetSince[timerOrder]||Date.now(),sec=(Date.now()-t0)/1000,slow=st.avg&&sec>st.avg*1.5;el.style.color=slow?'var(--warn)':'';el.innerHTML='⏱ '+mmss(sec)+'<small>'+(st.avg?'AVG '+mmss(st.avg):'THIS BOX')+'</small>'}
+function fitNowBar(){var h=document.querySelector('header'),n=document.getElementById('now');if(h&&n)n.style.top=h.offsetHeight+'px'}
+window.addEventListener('resize',fitNowBar);
+function tickTimer(){fitNowBar();var el=document.getElementById('nowTimer');if(!el)return;if(!timerOrder||document.getElementById('now').hidden){el.innerHTML='';return}var st=packStats(),t0=targetSince[timerOrder]||Date.now(),sec=(Date.now()-t0)/1000,slow=st.avg&&sec>st.avg*1.5;el.style.color=slow?'var(--warn)':'';el.innerHTML='⏱ '+mmss(sec)+'<small>'+(st.avg?'AVG '+mmss(st.avg):'THIS BOX')+'</small>'}
 setInterval(tickTimer,1000);
 function packStats(){var k=etDay(nowS()),m={};
   all.forEach(function(o){if(o.packed&&o.packed.at&&etDay(o.packed.at)===k)m[o.id]={id:o.id,at:o.packed.at*1000,secs:o.packed.seconds||null,by:o.packed.by||'',total:o.total||0}});
@@ -446,19 +454,19 @@ function slipHTML(list){
     var rows=items.map(function(i){var parts=String(i.name||'').split(' · '),nm=parts.shift(),det=parts.join(' · ');
       var ins=insideText(i);return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+(ins?'<span class="ins">'+esc(ins)+'</span>':'')+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
     var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
-    var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer='Jonah';
-    var service=(o.shipment&&o.shipment.service)||(o.tracking?'UPS':'');
+    var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer=(o.packed&&o.packed.by&&o.packed.by!=='you'&&o.packed.by!=='Owner')?String(o.packed.by):'Jonah';
+    var service=(o.shipment&&o.shipment.service)||(o.tracking?carrierName(o):'');
     // Footer: Glow orders invite the customer to their account. Points already credited say so; a guest is told how many
     // points are waiting and that creating an account with the order email adds them (the store claims them on sign-up).
-    var acct='https://glowglps.com/store-next/account',earned=o.points_earned>0?o.points_earned:0,waiting=!o.customer_id?Math.max(0,Math.floor(((o.subtotal||0)-(o.discount||0))/100)):0;
+    var acct='https://glowglps.com/store-next/account',earned=o.points_earned>0?o.points_earned:0,waiting=!(o.customer_id||o.has_account)?Math.max(0,Math.floor(((o.subtotal||0)-(o.discount||0))/100)):0;
     var worth=function(n){return '$'+(n*5/100).toFixed(2)};
     var footUrl=z?'https://'+site:acct,footText;
     if(z)footText='<b>SHOP AGAIN</b>'+esc(site)+'<br>';
     else if(earned)footText='<b>+'+esc(earned)+' GLOW POINTS ADDED</b>They are already in your account (worth '+worth(earned)+' off). Scan to see your balance and reorder.<br>';
     else if(waiting)footText='<b>CLAIM YOUR '+esc(waiting)+' GLOW POINTS</b>Worth '+worth(waiting)+' off your next order. Scan, create your free account with the email you ordered with, and they are added for you.<br>';
-    else if(o.customer_id)footText='<b>YOUR GLOW ACCOUNT</b>Scan to see your points balance and reorder in seconds.<br>';
+    else if(o.customer_id||o.has_account)footText='<b>YOUR GLOW ACCOUNT</b>Scan to see your points balance and reorder in seconds.<br>';
     else footText='<b>JOIN GLOW REWARDS</b>Scan to create your free account and earn points on every order.<br>';
-    var addr=[c.address,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
+    var addr=[c.address,c.address2,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
     return '<section class="slip">'
      +'<div class="hd">'+(z?'':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>'
      +'<h1>Thank you, '+esc(first)+'!</h1><p class="lead">Every item in this box was checked by hand, one at a time, before it was sealed.</p>'
@@ -466,7 +474,7 @@ function slipHTML(list){
      +'<div class="kv"><span>ORDERED</span><em>'+esc(when(o.created))+'</em><span>PACKED</span><em>'+esc(packed.toLocaleDateString('en-US',{month:'short',day:'numeric'}))+(packer?' · '+esc(packer):'')+'</em>'+(service?'<span>SHIP VIA</span><em>'+esc(service)+'</em>':'')+'<span>ITEMS</span><em>'+u+'</em></div></div>'
      +'<div class="sec"><span>IN THIS BOX</span><span>'+u+' ITEM'+(u===1?'':'S')+'</span></div>'
      +'<table class="'+(many?'many':'')+'">'+rows+'</table>'
-     +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by <b>Jonah</b></span></div>'
+     +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by <b>'+esc(packer)+'</b></span></div>'
      +'<div class="ft"><div class="qr">'+qrSvg(footUrl)+'</div><div class="fq">'+footText+(mail?'<span class="sm">Questions? '+esc(mail)+'</span>':'')+'</div></div>'
      +'<div class="thx">'+(z?'THANK YOU FOR CHOOSING ZADER HEALTH':'THANK YOU FOR GLOWING WITH US')+'</div></section>'}).join('');
   return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style><\/head><body>'+slips+'<\/body><\/html>';
@@ -592,18 +600,23 @@ function card(o){
     var ins=insideText(i);
     return '<li class="item"><div class="qty'+(i.quantity>1?' multi':'')+'">'+i.quantity+' ×</div><div class="name">'+esc(i.name)+(ins?'<div class="inside">'+esc(ins)+' · <b>'+vs.length+' taps</b></div>':'')+(o.replacement?'':stockNote(i))+'</div><div class="taps">'+taps+'</div></li>';
   }).join('');
-  var notes=[o.staff_note,o.note,o.notes,o.customer_note].filter(function(v){return typeof v==='string'&&v.trim()});
+  var notes=[o.staff_note,o.note,o.notes,o.customer_note].concat((o.staff_notes||[]).map(function(n){return n&&n.text?'📝 '+n.text+(n.author?' — '+n.author:''):''})).filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
   var tags=brand+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
-  var ship=!hasLabel(o)&&canBuy(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||'UPS')+'</span>'+(o.tracking?'<span>'+esc(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
+  var ship=!hasLabel(o)&&canBuy(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||carrierName(o))+'</span>'+(o.tracking?'<span>'+esc(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">Paid '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
     +ship+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(done?'✅ All '+u+' in the bag. '+(hasLabel(o)?'Put the label on.':'Ready for its label.'):blk?'⛔ Waiting on: '+esc(blockedItems(o).map(function(i){return i.name}).join(', ')):n+' of '+u+' checked')+'</span>'+'<span class="btns">'+(o.replacement?'':'<button data-slip="'+esc(o.id)+'" title="Print a packing slip for this box">🧾 Slip</button> ')+(n?'<button data-reset="'+esc(o.id)+'">Start over</button> ':'')+'<button data-skip="'+esc(o.id)+'">'+(isSkipped(o)?'Un-skip':'Skip for now')+'</button></span></div></section>';
 }
+// What to pull off the shelf for one order line: a kit of 10 is 10 of that vial; a bundle is the vials inside it.
+function productByName(nm){var best=null;products.forEach(function(p){if(p.name===nm&&(!best||p.brand!=='zader'))best=p});return best}
+function pullLines(i){var b=inside(i);if(b.kind==='kit'){var k=poolOf(i.id);return [{key:k||('n:'+b.list[0][0]),name:b.list[0][0],qty:i.quantity*b.list[0][1]}]}
+  if(b.kind==='bundle')return b.list.map(function(x){var p=productByName(x[0]),k=p?(p.stock_pool||('p'+p.id)):'';return {key:k||('n:'+x[0]),name:x[0],qty:i.quantity*x[1]}});
+  return [{key:poolOf(i.id)||('n:'+i.name),name:i.name,qty:i.quantity}]}
 function pickList(){
   var totals={},src=orders.filter(function(o){return !isSkipped(o)&&!isDone(o)});
-  src.forEach(function(o){(o.items||[]).forEach(function(i){var k=poolOf(i.id)||('n:'+i.name);var r=totals[k]||(totals[k]={name:(pools[k]&&pools[k].name)||i.name,qty:0,orders:0,pool:pools[k]});r.qty+=i.quantity;r.orders++})});
+  src.forEach(function(o){(o.items||[]).forEach(function(i){pullLines(i).forEach(function(x){var k=x.key;var r=totals[k]||(totals[k]={name:(pools[k]&&pools[k].name)||x.name,qty:0,ids:{},orders:0,pool:pools[k]});r.qty+=x.qty;if(!r.ids[o.id]){r.ids[o.id]=1;r.orders++}})})});
   var rows=Object.keys(totals).map(function(k){return totals[k]}).sort(function(a,b){return b.qty-a.qty||a.name.localeCompare(b.name)});
   if(!rows.length)return '<div class="msg">Nothing left to pull — every waiting order is checked or skipped.</div>';
   var tu=rows.reduce(function(n,r){return n+r.qty},0);
@@ -625,11 +638,11 @@ function restock(){
   if(!rows.length)return rules+'<div class="msg">No sales in the window yet.</div>';
   var lab={out:['red','OUT — ORDER TODAY'],now:['red','ORDER NOW'],next:['amber','ORDER NEXT CHECK'],ok:['ok','OK'],idle:['grey','NO SALES']};
   return rules+(need.length?'<div class="alert red" style="margin-bottom:12px"><span class="ic">📦</span><div><b>'+need.length+' line'+(need.length===1?'':'s')+' to order now</b>'+(totalOrder?' — '+totalOrder+' units from the supplier':'')+'.</div></div>':'<div class="alert blue" style="margin-bottom:12px"><span class="ic">✅</span><div><b>Nothing needs ordering right now.</b></div></div>')
-   +'<table><thead><tr><th>Product</th><th class="n">Store count</th><th class="n hide-sm">Sold / day</th><th class="n">Days left</th><th class="n hide-sm">Reorder at</th><th>Status</th><th class="n">Order</th></tr></thead><tbody>'
+   +'<div class="tscroll"><table><thead><tr><th>Product</th><th class="n">Store count</th><th class="n hide-sm">Sold / day</th><th class="n">Days left</th><th class="n hide-sm">Reorder at</th><th>Status</th><th class="n">Order</th></tr></thead><tbody>'
    +rows.map(function(x){var l=lab[x.status],cls=x.status==='out'||x.status==='now'?'red':x.status==='next'?'amber':'';
      var dl=x.rate>0?Math.max(0,Math.floor(x.daysLeft)):'—';
      var ord=x.made?(x.status==='ok'||x.status==='idle'?'—':'Make a batch'):(x.status==='out'||x.status==='now'||x.status==='next'?(x.order||Math.max(BOX,Math.ceil((x.target-x.stock)/BOX)*BOX))+(x.status==='next'?' <span class="small">(next)</span>':''):'—');
-     return '<tr class="'+cls+'"><td>'+esc(x.name)+(x.made?' <span class="st blue">MADE HERE</span>':'')+'</td><td class="n">'+x.stock+'</td><td class="n hide-sm">'+x.rate.toFixed(1)+'</td><td class="n">'+dl+'</td><td class="n hide-sm">'+x.rop+'</td><td><span class="st '+l[0]+'">'+l[1]+'</span></td><td class="n">'+ord+'</td></tr>'}).join('')+'</tbody></table>';
+     return '<tr class="'+cls+'"><td>'+esc(x.name)+(x.made?' <span class="st blue">MADE HERE</span>':'')+'</td><td class="n">'+x.stock+'</td><td class="n hide-sm">'+x.rate.toFixed(1)+'</td><td class="n">'+dl+'</td><td class="n hide-sm">'+x.rop+'</td><td><span class="st '+l[0]+'">'+l[1]+'</span></td><td class="n">'+ord+'</td></tr>'}).join('')+'</tbody></table></div>';
 }
 // ---- data -------------------------------------------------------------------
 function fetchOrders(quiet){
@@ -647,7 +660,7 @@ function fetchOrders(quiet){
     if(!hadData){orders.forEach(function(o){seen[o.id]=1});lsSet(SEEN,seen)}
     lastLoad=Date.now();buildPools();render();
     detectNew();
-    setTimeout(function(){orders.forEach(function(o){seen[o.id]=1});var s2={};orders.forEach(function(o){s2[o.id]=1});seen=s2;lsSet(SEEN,seen)},60000);
+    var loadedIds=orders.map(function(o){return o.id});setTimeout(function(){loadedIds.forEach(function(id){seen[id]=1});var s2={};orders.forEach(function(o){if(seen[o.id])s2[o.id]=1});seen=s2;lsSet(SEEN,seen)},60000);
   }).catch(function(e){if(e!==0&&!quiet)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
 }
 // Saves glow-label-<order>.pdf to Downloads. The Mac helper (glow-helper) prints files with that name on the label printer.
@@ -675,7 +688,7 @@ function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id}
   fetch('/.netlify/functions/store-next?route='+encodeURIComponent(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(override?{id:id,servicelevel:svc,override:true}:{id:id,servicelevel:svc})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||('The store answered '+x.status));return d})})
   .then(function(d){if(d.status==='synced'||d.status==='label_bought'){delete priceStops[id];toast('✅ '+name+' label bought for '+(c.name||id)+' — printing label + slip');return fetchOrders(true).then(function(){return sendToPrinter(id,null)})}
-    if(d.status==='price_check'){svcChoice[id]=svc;priceStops[id]={svc:svc,text:'$'+((d.cents||0)/100).toFixed(2)+' ('+(d.service||name)+') is over the $'+((d.limit_cents||1500)/100).toFixed(2)+' price check. Nothing bought.'};toast('💲 Price check: $'+((d.cents||0)/100).toFixed(2)+' is over $15. Nothing bought.');return fetchOrders(true)}
+    if(d.status==='price_check'){svcChoice[id]=svc;priceStops[id]={svc:svc,text:'$'+((d.cents||0)/100).toFixed(2)+' ('+(d.service||name)+') is over the $'+((d.limit_cents||1500)/100).toFixed(2)+' price check. Nothing bought.'};toast('💲 Price check: $'+((d.cents||0)/100).toFixed(2)+' is over $'+((d.limit_cents||1500)/100).toFixed(2)+'. Nothing bought.');return fetchOrders(true)}
     toast('Not bought: '+(d.message||d.status||'unknown'));b.disabled=false;b.textContent='🏷️ Buy label';return fetchOrders(true)})
   .catch(function(e){toast((e&&e.message)||'Could not buy the label');b.disabled=false;b.textContent='🏷️ Buy label'});
 }
@@ -695,7 +708,7 @@ window.glowPrint={label:function(id,slip){return sendToPrinter(id,null,{slip:sli
 function openLabels(){
   var list=orders.filter(function(o){return hasLabel(o)&&!isDone(o)&&!isSkipped(o)&&!isBlocked(o)});
   if(!list.length){toast('No unchecked orders have a label yet');return}
-  var opened=0;list.forEach(function(o){var w=window.open(o.shipment.label_url,'_blank','noopener');if(w!==null)opened++});
+  var opened=0;list.forEach(function(o){var w=window.open(o.shipment.label_url,'_blank');if(w){try{w.opener=null}catch(e){}opened++}});
   toast(opened<list.length?'Opened '+opened+' of '+list.length+' — allow pop-ups for this site to open them all':'Opened '+list.length+' label'+(list.length===1?'':'s'));
 }
 function setView(v){view=v;document.querySelectorAll('[data-view]').forEach(function(x){if(x.closest('.tabs'))x.setAttribute('aria-pressed',String(x.dataset.view===v))});render();window.scrollTo({top:0})}
@@ -743,7 +756,7 @@ document.addEventListener('click',function(e){
 document.addEventListener('keydown',function(e){
   lastKey=Date.now();
   var tag=(e.target&&e.target.tagName)||'';
-  if(tag==='INPUT'||tag==='TEXTAREA'){if(e.key==='Escape'){e.target.blur()}return}
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'){if(e.key==='Escape'){e.target.blur()}return}
   if(e.metaKey||e.ctrlKey||e.altKey)return;
   if(e.code==='Space'||e.key===' '){e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();if(!e.repeat)tickTarget();return}
   if(e.key==='Backspace'){e.preventDefault();undo();return}
@@ -753,7 +766,7 @@ document.addEventListener('keydown',function(e){
   if(k==='l'){var o=currentOrder();if(o&&hasLabel(o))window.open(o.shipment.label_url,'_blank','noopener');else toast(o?'This order has no label yet':'Nothing to pack');return}
   if(k==='s'){var c=currentOrder();if(c){skipped[c.id]=Date.now();saveSkip();render();toast('Skipped '+c.id)}return}
   if(k==='b'){toggleBig();return}
-  if(k==='p'){var po=currentOrder();if(po)printSlips([po]);else toast('Nothing to pack');return}
+  if(k==='p'){var po=currentOrder();if(po&&po.replacement){toast('Replacements have no packing slip');return}if(po)printSlips([po]);else toast('Nothing to pack');return}
   var tabs=['todo','done','skipped','all','pick','restock','stats','calls'];if(/^[1-8]$/.test(e.key)){setView(tabs[Number(e.key)-1])}
 });
 document.getElementById('search').addEventListener('input',function(e){query=e.target.value.trim();render()});
