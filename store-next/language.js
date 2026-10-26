@@ -811,10 +811,12 @@
  "Your friend link is copied.": "Tu enlace para amigos se ha copiado.",
  "Signed out.": "Sesión cerrada."
 };
+ Object.assign(phrases,{"New Product Spotlight": "Nuevos productos destacados", "Discover what’s new": "Descubre las novedades", "Introductory offer": "Oferta de lanzamiento", "New arrival": "Nuevo producto", "Introductory price": "Precio de lanzamiento", "Regular price": "Precio regular", "While supplies last": "Hasta agotar existencias", "One vial · MOTS-C 10 mg · 5-Amino-1MQ 10 mg · NAD+ 100 mg.": "Un vial · MOTS-C 10 mg · 5-Amino-1MQ 10 mg · NAD+ 100 mg."});
  const normalize=s=>String(s).replace(/\s+/g,' ').trim();
  const exact=new Map(Object.entries(phrases).map(([en,es])=>[normalize(en),es]));
  const sentencePrefixes=[...exact].filter(([en])=>en.length>20&&/[.!?]$/.test(en)).sort((a,b)=>b[0].length-a[0].length);
  const rules=[
+  [/^Save (\$[\d,.]+)$/,(_,n)=>`Ahorra ${n}`],
   [/^View bag \((\d+)\)$/,(_,n)=>`Ver bolsa (${n})`],
   [/^Explore (.+)\.$/,(_,n)=>`Explora ${n}.`],
   [/^Your (.+) collection$/,(_,n)=>`Tu colección de ${n}`],
@@ -920,3 +922,4 @@
  }
  if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })(typeof window==='undefined'?{}:window);
+
