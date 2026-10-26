@@ -13,6 +13,7 @@ const emails=require('./store-email.cjs');
 const staff=require('./staff-accounts.cjs');
 const catalogPhotos=require('./catalog-photo-upload.cjs');
 const couponRules=require('./coupon-rules.cjs');
+const productOffers=require('./product-offers.cjs');
 const businessReports=require('./business-reports.cjs');
 const {ensureMerchCatalog}=require('./merch-catalog.cjs');
 const {withProductPhotos}=require('./product-photos.cjs');const brands=require('./brands.cjs');
@@ -410,6 +411,9 @@ async function handle({path,method='GET',headers={},body={}}){
     const p={...old,id,name:text(body.name||'',150),sku:text(body.sku||'',60),price:int(body.price),stock:body.id&&body.expected_stock!==undefined&&body.stock===body.expected_stock?old.stock:int(body.stock),stock_pool:stockPool,active:int(body.active??1,0,1),promo_excluded:int(body.promo_excluded??Number(!!old.promo_excluded),0,1)===1,brand:brands.validId(body.brand??old.brand??'glow')};{const u=int(body.units??old.units??1,1,100);if(u>1)p.units=u;else delete p.units;if(u!==(old.units||1)&&body.id&&(await s.list('orders')).some(o=>['order_received','awaiting_payment','payment_submitted'].includes(o.status)&&o.items.some(i=>i.id===id)))fail('Finish or cancel this product’s reserved orders before changing how many units it takes.',409)}if(body.components!==undefined){const raw=Array.isArray(body.components)?body.components:String(body.components||'').split(',').map(x=>x.trim()).filter(Boolean);if(raw.length>20)fail('A bundle can hold at most 20 different products.');const comps=[];for(const r of raw){let sku,qty=1,x;if(typeof r==='string'){const m=r.match(/^(.+?)(?:\s+x\s*(\d+)|\s*[×*]\s*(\d+))?$/i);sku=m[1].trim();qty=Number(m[2]||m[3]||1)}else{sku=String(r&&r.sku||'');qty=r&&r.qty;if(r&&r.id)x=all.find(y=>y.id===r.id)}x=x||all.find(y=>y.sku.toLowerCase()===sku.toLowerCase()&&brands.productBrand(y)===p.brand)||all.find(y=>y.sku.toLowerCase()===sku.toLowerCase());if(!x)fail('Bundle contents: no product with SKU '+sku+'.');if(x.id===id)fail('A bundle cannot contain itself.');if(isBundle(x))fail('A bundle cannot contain another bundle.');const n=int(qty,1,20),same=comps.find(c=>c.id===x.id);if(same)same.qty+=n;else comps.push({id:x.id,qty:n})}if(comps.length&&p.units)fail('A bundle takes its stock from the products inside it. Set units per item to 1.');if(comps.length)p.components=comps;else delete p.components}if(all.some(x=>x.id!==id&&x.sku.toLowerCase()===p.sku.toLowerCase()))fail('That SKU already exists.',409);
     if(!body.id&&stockPool){const member=all.find(x=>x.stock_pool===stockPool);if(member)p.stock=member.stock}
     if(/^merch-/i.test(p.sku))p.category='merch';else if(/^cosmetic-/i.test(p.sku))p.category='cosmetic';
+    if(body.expected_offer_revision!==undefined&&body.id&&body.expected_offer_revision!==(old.offer_revision||0))fail('Product pricing or spotlight changed while you were editing. Reopen this product before saving.',409);
+    Object.assign(p,productOffers.apply(old,body),{offer_revision:(old.offer_revision||0)+1});
+    if(body.image_url){const image=text(body.image_url,250);if(!/^\/img\/[a-zA-Z0-9][a-zA-Z0-9_\/-]*\.(?:webp|png|jpe?g)$/.test(image)||image.includes('..'))fail('Use an existing product image path under /img/.');p.image=image;}
     const saved=await catalogPhotos.applyPhotoUpdate(s,p,body.photo_update);
     const group=body.photo_update?.apply_design===true&&p.merch_design?all.filter(x=>x.merch_design===p.merch_design&&x.brand===p.brand&&x.id!==p.id):[];
     if(body.photo_update?.apply_design===true&&!p.merch_design)fail('Choose an existing shirt design before applying photos to all variants.');
@@ -477,6 +481,7 @@ async function stripeInvoicePaid(invoiceId){const r=await autoInvoice.paidFromSt
  if(r.status==='review'&&r.order_id){try{await transaction(async s=>{const o=await s.get('orders',r.order_id);if(o)await emails.queueStaffAlert(s,o)})}catch{}} // the email worker sends staff alerts
  return r}
 module.exports={handle,quote,shipmentPayload,publicOrder,stripeInvoicePaid};
+
 
 
 

@@ -44,7 +44,7 @@ test('checkout stays a recoverable draft until a valid screenshot is submitted; 
  const r=(await call('/orders',orderBody())).body,h={'x-order-token':r.token},route='/orders/'+r.order.id;
  assert.equal(r.order.checkout_stage,'draft');assert.equal(r.order.submitted_at,null);assert.equal(r.order.has_receipt,false);
  await assert.rejects(call(route+'/receipt',{file:'',mime:'image/png'},h));
- const recovered=(await call(route,undefined,h)).body;assert.equal(recovered.checkout_stage,'draft');assert.equal(recovered.status,'awaiting_payment');
+ const recovered=(await call(route,undefined,h)).body;assert.equal(recovered.checkout_stage,'draft');assert.equal(recovered.status,'order_received');assert.equal(recovered.proof_required,true);assert.equal(recovered.submitted_at,null);assert.equal(recovered.paid,null);
  const image=await sharp({create:{width:20,height:20,channels:3,background:'#fff'}}).png().toBuffer(),body={file:image.toString('base64'),mime:'image/png'};
  const submitted=(await call(route+'/receipt',body,h)).body;assert.equal(submitted.checkout_stage,'submitted');assert.equal(submitted.status,'payment_submitted');assert.ok(submitted.submitted_at);assert.equal(submitted.has_receipt,true);assert.equal(submitted.commission_status,'not_eligible');
  const repeat=(await call(route+'/receipt',body,h)).body;assert.equal(repeat.submitted_at,submitted.submitted_at);assert.equal(repeat.status,'payment_submitted');
@@ -80,3 +80,4 @@ test('draft edits keep one order, return its stock to availability and roll back
  await call('/orders/'+id+'/receipt',{...receipt,expected_revision:2},h);await assert.rejects(call('/orders/'+id+'/edit-context',undefined,h),/submitted/);
  await admin('/admin/status',{id,status:'canceled'});assert.equal((await call('/catalog')).body.products.find(p=>p.id===1).stock,before+1);
 });
+
