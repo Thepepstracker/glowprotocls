@@ -45,6 +45,9 @@ button:disabled{opacity:.45;cursor:default}
 .week .rec{display:inline-block;margin-left:8px;font-size:13px;font-weight:800;background:rgba(255,255,255,.22);border-radius:20px;padding:2px 10px;vertical-align:middle}
 .t-red{background:#a23b1d}.t-yellow{background:#c98a00}.t-green{background:#1f7a3a}.t-blue{background:#1d5fbf}.t-gold{background:linear-gradient(135deg,#9a6b12,#d9b25b 55%,#a87a1e)}.t-purple{background:linear-gradient(135deg,#4b2aa8,#7b4fe0)}
 @media (max-width:600px){.week{flex-wrap:wrap}.week .wk-c{font-size:24px}}
+.week.day{padding:10px 16px;margin:-6px 0 8px}.week.day .wk-c{font-size:22px}.week.day .wk-m b{font-size:20px}.week.day .wk-m small{font-size:14px}
+.days{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.days span{font-size:12.5px;font-weight:700;background:#f3f1ec;border:1px solid #e4dfd3;border-radius:10px;padding:4px 9px;white-space:nowrap}.days span.now{border-color:#1a1a1a}.days span.fut{opacity:.45}
+@media (max-width:600px){.week.day .wk-c{font-size:19px}}
 .tag.cust{background:#efe7d4;color:#6a4b0e}.tag.first{background:#e3f1ff;color:#1d5fbf}.tag.vip{background:linear-gradient(135deg,#9a6b12,#d9b25b);color:#fff}
 .calls .call{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .calls .call.done{opacity:.55}.calls .who{font-size:20px;font-weight:800}.calls .what{font-size:15px;color:var(--muted)}
@@ -518,7 +521,33 @@ function weekBanner(){var box=document.getElementById('week');if(!box)return;if(
   var ts=todayStats();
   box.innerHTML='<section class="week t-'+t.k+'" title="Week color: Red under 75% of pace · Yellow 75–99% · Green on pace · Blue $4,500 · Gold $6,750 · Purple $9,000"><div><div class="wk-c">'+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
    +'<div class="wk-m"><b>'+money(cur.cents)+'</b> this week · '+cur.count+' paid order'+(cur.count===1?'':'s')+rec
-   +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Target '+Math.round(cur.cents*100/WEEK_TARGET)+'% · Today '+money(ts.total)+'</small></div></section>'}
+   +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Target '+Math.round(cur.cents*100/WEEK_TARGET)+'% · Today '+money(ts.total)+'</small></div></section>'+dayBanner(w)}
+// ---- Daily goal and colors (Jonah, 26 Oct 2026) ----
+// Day target = week target / 7 ($642.86). Same colors as the week: Blue = target, Gold = 150%, Purple = 200%.
+// A day in progress is judged against how much of a normal day's money has usually come in by this time of day,
+// measured from our own paid orders over the last 28 days (most of it lands after the evening live), so a quiet
+// morning is not called Red. Before a quarter of a normal day's money has usually arrived, the color is
+// yesterday's result (Green if yesterday hit the target, Yellow if not), like the week does on Monday morning.
+// Finished days keep their final color: Red under 75% of target, Yellow 75–99%, then Blue / Gold / Purple.
+var DAY_TARGET=Math.round(WEEK_TARGET/7);
+var DAY_TIERS=[{k:'purple',dot:'🟣',name:'PURPLE',say:'Record-day territory',at:DAY_TARGET*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Big day',at:DAY_TARGET*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Day target hit',at:DAY_TARGET}];
+function etHM(t){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t*1000)),h=0,m=0;p.forEach(function(x){if(x.type==='hour')h=Number(x.value)%24;if(x.type==='minute')m=Number(x.value)});return{h:h,m:m}}
+function daySum(key){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&etDay(o.created||0)===key){n+=o.total||0;c++}});return{cents:n,count:c}}
+function dayShare(){var now=nowS(),today=etDay(now),bins=[],tot=0,n=0,i;for(i=0;i<24;i++)bins.push(0);
+  all.forEach(function(o){if(paidOrder(o)&&o.created>=now-28*86400&&etDay(o.created)!==today){bins[etHM(o.created).h]+=o.total||0;tot+=o.total||0;n++}});
+  var hm=etHM(now),f=0;if(n<20||!tot)return (hm.h*60+hm.m)/1440;for(i=0;i<hm.h;i++)f+=bins[i]/tot;return f+bins[hm.h]/tot*hm.m/60}
+function dayFinalTier(c){for(var i=0;i<DAY_TIERS.length;i++)if(c>=DAY_TIERS[i].at)return DAY_TIERS[i];if(c>=DAY_TARGET*.75)return{k:'yellow',dot:'🟡',name:'YELLOW',say:'Just missed'};return{k:'red',dot:'🔴',name:'RED',say:'Missed'}}
+function dayLiveTier(c,share,yHit){for(var i=0;i<DAY_TIERS.length;i++)if(c>=DAY_TIERS[i].at)return DAY_TIERS[i];
+  if(share<.25)return yHit?{k:'green',dot:'🟢',name:'GREEN',say:'Early — yesterday hit the target'}:{k:'yellow',dot:'🟡',name:'YELLOW',say:'Early — yesterday missed the target'};
+  var r=c/(DAY_TARGET*share);if(r>=1)return{k:'green',dot:'🟢',name:'GREEN',say:'On pace for today'};if(r>=.75)return{k:'yellow',dot:'🟡',name:'YELLOW',say:'Slipping behind today’s pace'};return{k:'red',dot:'🔴',name:'RED',say:'Behind today’s pace'}}
+function dayBanner(w){var today=etDay(nowS()),td=daySum(today),y=new Date(today+'T12:00:00Z');y.setUTCDate(y.getUTCDate()-1);var yk=y.toISOString().slice(0,10),share=dayShare(),t=dayLiveTier(td.cents,share,daySum(yk).cents>=DAY_TARGET);
+  var marks=[0,DAY_TARGET,DAY_TARGET*1.5,DAY_TARGET*2],names=[['🔵','Blue'],['🟨','Gold'],['🟣','Purple']],nx=null,floor=0,i;for(i=1;i<4;i++){if(td.cents<marks[i]){nx={at:marks[i],dot:names[i-1][0],name:names[i-1][1]};floor=marks[i-1];break}}
+  var pct=nx?Math.max(3,Math.min(100,Math.round((td.cents-floor)*100/Math.max(1,nx.at-floor)))):100;
+  var strip=w.keys.map(function(k){var d=new Date(k+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'}),s=daySum(k);
+    if(k>today)return '<span class="fut">⚪ '+d+'</span>';if(k===today)return '<span class="now" title="Today so far">'+t.dot+' '+d+' '+money(s.cents)+'</span>';var f=dayFinalTier(s.cents);return '<span title="'+f.name+' · '+s.count+' paid order'+(s.count===1?'':'s')+'">'+f.dot+' '+d+' '+money(s.cents)+'</span>'}).join('');
+  return '<section class="week day t-'+t.k+'" title="Day color: Blue '+money(DAY_TARGET)+' · Gold '+money(DAY_TARGET*1.5)+' · Purple '+money(DAY_TARGET*2)+'. Before the target, today is compared with how much usually comes in by this time of day."><div><div class="wk-c">TODAY '+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
+   +'<div class="wk-m"><b>'+money(td.cents)+'</b> today · '+td.count+' paid order'+(td.count===1?'':'s')+'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-td.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Day target '+money(DAY_TARGET)+' ('+Math.round(td.cents*100/DAY_TARGET)+'%)</small></div></section>'
+   +'<div class="days" aria-label="This week by day">'+strip+'</div>'}
 // Regulars: how many paid orders this customer has in the new store (since 5 Oct 2026), and what they have spent.
 function custKey(o){var c=o.customer||{};return String(c.email||'').trim().toLowerCase()||String(c.phone||'').replace(/\D/g,'')||String(c.name||'').trim().toLowerCase()}
 function custHistory(o){var k=custKey(o);if(!k)return{n:1,spent:0,orders:1};var mine=all.filter(function(x){return paidOrder(x)&&custKey(x)===k});
