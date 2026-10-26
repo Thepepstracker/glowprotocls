@@ -701,11 +701,11 @@ function isPoBox(o){var c=o.customer||{};return /\b(p\.?\s*o\.?\s*box|post\s+off
 function defaultService(o){var st=String((o.customer||{}).state||'').toUpperCase().trim();if(isPoBox(o))return 'usps_priority';if(['GA','FL','AL','GEORGIA','FLORIDA','ALABAMA'].indexOf(st)>=0)return 'ups_ground';return 'ups_second_day_air'}
 function canBuy(o){return !o.replacement&&o.status==='paid'&&o.is_test===false}
 var svcChoice={}; // order id → service picked in the menu, kept across refreshes
-function buyBox(o){var def=svcChoice[o.id]||defaultService(o),due=o.balance_due_cents>0||o.refund_due_cents>0,blk=blockedItems(o);
+function buyBox(o){var def=svcChoice[o.id]||defaultService(o),due=o.balance_due_cents>0||o.refund_due_cents>0,ssr=!!o.shipstation_needs_review,blk=blockedItems(o);
   var opts=BUY_SERVICES.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===def?' selected':'')+'>'+esc(x[1])+'</option>'}).join('');
   return '<div class="ship buy"><select class="svc" data-svc="'+esc(o.id)+'" aria-label="Shipping service">'+opts+'</select>'
-   +'<button class="mini buybtn" data-buy="'+esc(o.id)+'"'+(due?' disabled title="Balance or refund due: settle it first"':'')+'>🏷️ Buy label</button>'
-   +(due?'<span class="buywarn">Balance due, settle it first</span>':blk.length?'<span class="buywarn">⏳ Waiting on '+esc(blk.map(function(i){return i.name}).join(', '))+'</span>':'')
+   +'<button class="mini buybtn" data-buy="'+esc(o.id)+'"'+(due?' disabled title="Balance or refund due: settle it first"':ssr?' disabled title="Order changed after it went to ShipStation: confirm the ShipStation review in Management first"':'')+'>🏷️ Buy label</button>'
+   +(due?'<span class="buywarn">Balance due, settle it first</span>':ssr?'<span class="buywarn">⚠️ Changed after it was sent to ShipStation, so the label is locked. <a href="/store-next/admin?order='+encodeURIComponent(o.id)+'" target="_blank" rel="noopener">Confirm the ShipStation review in Management</a>, then Refresh orders.</span>':blk.length?'<span class="buywarn">⏳ Waiting on '+esc(blk.map(function(i){return i.name}).join(', '))+'</span>':'')
    +(priceStops[o.id]||o.shippo_status==='price_check'?'<span class="buywarn price">💲 '+(priceStops[o.id]?esc(priceStops[o.id].text):'Over the $15 price check')+'</span><button class="mini overbtn" data-override="'+esc(o.id)+'" title="Owner sign-in only">Admin override: buy anyway</button>'
      :o.shippo_message?'<span class="buywarn">Last try: '+esc(String(o.shippo_message).slice(0,140))+'</span>':'')+'</div>'}
 var priceStops={}; // order id → {text} after the $15 price check stopped a buy (Jonah, 24 Oct 2026)
