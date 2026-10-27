@@ -21,15 +21,24 @@ async function transaction(work){
  const run=queue.then(async()=>{const db=sqliteDb();try{db.exec('BEGIN IMMEDIATE');const result=await work(localStore(db));db.exec('COMMIT');return result}catch(e){db.exec('ROLLBACK');throw e}finally{db.close()}});
  queue=run.catch(()=>{});return run;
 }
+// Read-only lists for the hot polling paths (Packing Check / Management data, Order Bell).
+// Payment screenshots are stored inside each order record (o.receipt, base64), which made every full
+// order list tens of MB and pushed the database past its bandwidth quota (locked 26 Oct 2026, 10:14 PM ET).
+// listLite leaves the image in the database and sends receipt:true instead, so has_receipt still works.
+// Never save a record that came from listLite: it would replace the stored image with `true`.
+const LITE_SQL="SELECT CASE WHEN length(payload::jsonb->>'receipt')>0 THEN ((payload::jsonb - 'receipt') || '{\"receipt\":true}'::jsonb)::text ELSE payload END AS payload FROM glow_store_records WHERE kind=$1 ORDER BY key";
+function liteRecord(o){if(o&&typeof o==='object'&&o.receipt)o.receipt=true;return o}
 function localStore(db){return{
  get:async(kind,key)=>{const r=db.prepare('SELECT payload FROM glow_store_records WHERE kind=? AND key=?').get(kind,String(key));return r?JSON.parse(r.payload):null},
  list:async kind=>db.prepare('SELECT payload FROM glow_store_records WHERE kind=? ORDER BY key').all(kind).map(r=>JSON.parse(r.payload)),
+ listLite:async kind=>db.prepare('SELECT payload FROM glow_store_records WHERE kind=? ORDER BY key').all(kind).map(r=>liteRecord(JSON.parse(r.payload))),
  put:async(kind,key,value)=>db.prepare('INSERT INTO glow_store_records(kind,key,payload) VALUES(?,?,?) ON CONFLICT(kind,key) DO UPDATE SET payload=excluded.payload').run(kind,String(key),JSON.stringify(value)),
  remove:async(kind,key)=>db.prepare('DELETE FROM glow_store_records WHERE kind=? AND key=?').run(kind,String(key))
 }}
 function remoteStore(c){return{
  get:async(kind,key)=>{const r=await c.query('SELECT payload FROM glow_store_records WHERE kind=$1 AND key=$2',[kind,String(key)]);return r.rows.length?JSON.parse(r.rows[0].payload):null},
  list:async kind=>(await c.query('SELECT payload FROM glow_store_records WHERE kind=$1 ORDER BY key',[kind])).rows.map(r=>JSON.parse(r.payload)),
+ listLite:async kind=>(await c.query(LITE_SQL,[kind])).rows.map(r=>JSON.parse(r.payload)),
  put:async(kind,key,value)=>c.query('INSERT INTO glow_store_records(kind,key,payload) VALUES($1,$2,$3) ON CONFLICT(kind,key) DO UPDATE SET payload=excluded.payload',[kind,String(key),JSON.stringify(value)]),
  remove:async(kind,key)=>c.query('DELETE FROM glow_store_records WHERE kind=$1 AND key=$2',[kind,String(key)])
 }}

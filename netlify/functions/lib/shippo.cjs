@@ -143,7 +143,7 @@ async function replacement(id,{note='',key='',override=false}={}){
 async function retry(id,opts={}){await transaction(async s=>{const o=await s.get('orders',id);if(!o)fail('Order not found.');o.shippo_needs_review=false;o.shippo_message='';o.shippo_status='queued';await s.put('orders',id,o);const q=await s.get('outbox','shippo-'+id);if(q){q.purchase_started=false;q.status='failed';q.next_attempt=0;q.lease_until=0;await s.put('outbox',q.id,q)}});return buy(id,opts)}
 async function enabled(){return transaction(async s=>status(await s.get('integrations','shippo')).enabled)}
 async function pending(limit=3){
- const batch=await transaction(async s=>{if(!status(await s.get('integrations','shippo')).enabled)return[];const outbox=await s.list('outbox');return(await s.list('orders')).filter(eligible).filter(o=>{const q=outbox.find(x=>x.id==='shippo-'+o.id);return !(q?.purchase_started&&q.status!=='failed')&&(q?.next_attempt||0)<=now()}).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit).map(o=>o.id)});
+ const batch=await transaction(async s=>{if(!status(await s.get('integrations','shippo')).enabled)return[];const outbox=await s.list('outbox');return(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(eligible).filter(o=>{const q=outbox.find(x=>x.id==='shippo-'+o.id);return !(q?.purchase_started&&q.status!=='failed')&&(q?.next_attempt||0)<=now()}).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit).map(o=>o.id)});
  const results=[];for(const id of batch)results.push(await buy(id));return{processed:batch.length,results};
 }
 // Refund (void) an unused label. Shippo answers QUEUED/PENDING and settles the refund within days.

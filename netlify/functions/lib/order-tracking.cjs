@@ -125,7 +125,7 @@ async function refreshOne(id){
 }
 async function refreshDue(limit=8){
  if(!upsConfigured())return{status:'not_configured',processed:0};
- const due=await transaction(async s=>(await s.list('orders')).filter(trackable).filter(o=>(o.delivery?.next_check||0)<=now()).sort((a,b)=>(a.delivery?.next_check||0)-(b.delivery?.next_check||0)).slice(0,limit).map(o=>o.id));
+ const due=await transaction(async s=>(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(trackable).filter(o=>(o.delivery?.next_check||0)<=now()).sort((a,b)=>(a.delivery?.next_check||0)-(b.delivery?.next_check||0)).slice(0,limit).map(o=>o.id));
  const results=await Promise.all(due.map(refreshOne));
  return{processed:due.length,results};
 }

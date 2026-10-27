@@ -65,7 +65,7 @@ async function sendFor(id,{force=false}={}){
 }
 
 // Every minute (shipping worker): retry invoices that failed to send, up to 5 tries, 2+ minutes apart.
-async function retryFailed(limit=5){const ids=await transaction(async s=>{const settings=await s.get('settings','main');return (await s.list('orders')).filter(o=>eligible(o,settings)&&(!o.stripe_invoice||(o.stripe_invoice.status==='failed'&&(o.stripe_invoice.tries||0)<5&&now()-(o.stripe_invoice.failed_at||0)>120)||(o.stripe_invoice.status==='sending'&&o.stripe_invoice.lease_until<now()))&&now()-(o.created||0)>60).slice(0,limit).map(o=>o.id)});
+async function retryFailed(limit=5){const ids=await transaction(async s=>{const settings=await s.get('settings','main');return (await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(o=>eligible(o,settings)&&(!o.stripe_invoice||(o.stripe_invoice.status==='failed'&&(o.stripe_invoice.tries||0)<5&&now()-(o.stripe_invoice.failed_at||0)>120)||(o.stripe_invoice.status==='sending'&&o.stripe_invoice.lease_until<now()))&&now()-(o.created||0)>60).slice(0,limit).map(o=>o.id)});
  const out=[];for(const id of ids)out.push(await sendFor(id));return{processed:ids.length,out}}
 
 // ---- Stripe webhook ----
