@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node tools/sevalla/server.cjs",
     "store:init-db": "node tools/sevalla/init-db.cjs",
+    "store:recover-catalog": "node tools/sevalla/recovery-catalog.cjs",
     "store:worker": "node tools/sevalla/worker.cjs",
     "store:dev": "node tools/store/dev.cjs",
     "store:test": "node --test tests/store/*.test.cjs",
