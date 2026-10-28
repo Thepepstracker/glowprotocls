@@ -64,7 +64,9 @@ async function authRoute(path,body,h,method){
   const address=email(body.email),register=path==='/account/register',name=register?clean(body.name):null;
   await rate(register?'register':'reset-ip',ip,10,3600);await rate('setup-email',address,5,3600);
   const job=await transaction(async s=>{
-   const id=hash(address);let a=await s.get('customers',id);if(!a&&register){a={id,email:address,name,created:now(),verified:false,auth_version:0,password:null};await s.put('customers',id,a)}
+   const id=hash(address);let a=await s.get('customers',id);
+   // Customers from the old site have no record here yet; "Set up or reset your password" must still email them a link.
+   if(!a){a={id,email:address,name:name||'',created:now(),verified:false,auth_version:0,password:null};await s.put('customers',id,a)}
    const held=await s.get('rewards_imports',id);if(!emails.configuration().ready||!a||held?.held||address.endsWith('@gmail.coml')||(register&&a.verified)||(a.last_setup_email||0)>now()-300)return null;
    const link=await issueSetup(s,id);a=await s.get('customers',id);a.last_setup_email=now();await s.put('customers',id,a);return emails.queueSetup(s,link,a.verified,brands.fromHeaders(h).id);
   });
