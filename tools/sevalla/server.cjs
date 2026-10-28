@@ -19,7 +19,7 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   const send=(status,data,type='text/plain; charset=utf-8',headers={})=>{res.writeHead(status,{...security,'Content-Type':type,...headers});res.end(req.method==='HEAD'?undefined:data)};
   if(url.pathname==='/health/live')return send(200,'ok');
   if(url.pathname==='/health/ready'){await ready();return send(200,'ready')}
-  if(url.pathname==='/.netlify/functions/stripe-webhook'){
+  if(url.pathname==='/.netlify/functions/stripe-webhook'||url.pathname==='/api/stripe-webhook'){
    if(!webhook)return send(503,'Webhook not configured');
    if(req.method!=='POST')return send(405,'Method not allowed');
    const raw=await body(req,512*1024),result=await webhook(raw,req.headers);return send(result.status,result.body,'application/json');
