@@ -11,7 +11,8 @@ async function createStorefronts(store,profiles){
   // Approval and identity come from the server-side API response, never the browser preview.
   if(profile.status!=='approved'||!profile.id||!profile.name.trim()){result.skipped++;continue}
   const old=byId.get(profile.id);
-  if(old){result.existing++;result.storefronts.push({slug:old.slug,name:old.name,active:old.active});continue}
+  // Storefronts made by hand (or imported) may lack GoAffPro's referral code; fill it in once so ?ref= links work.
+  if(old){if(!old.goaffpro_ref_code&&typeof profile.ref_code==='string'&&profile.ref_code){old.goaffpro_ref_code=profile.ref_code;await store.put('affiliates',old.slug,old);result.ref_codes_added=(result.ref_codes_added||0)+1}result.existing++;result.storefronts.push({slug:old.slug,name:old.name,active:old.active});continue}
   const base=nameSlug(profile.name),suffix=crypto.createHash('sha256').update(profile.id).digest('hex').slice(0,8);
   let slug=base;if(!validSlug(slug)||slugs.has(slug))slug=base+'-'+suffix;
   for(let n=2;slugs.has(slug)||!validSlug(slug);n++)slug=base+'-'+suffix+'-'+n;
