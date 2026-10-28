@@ -258,7 +258,7 @@ function isDone(o){return units(o)>0&&tickCount(o)>=units(o)}
 function setTick(o,key,on){var was=isDone(o),s=saved[o.id];if(!s||!sameFp(s.fp,o))s={fp:fp(o),t:serverPacked(o)?allTicks(o):{}};if(on&&!s.start)s.start=Math.min(Date.now(),targetSince[o.id]||Date.now());s.t[key]=on;if(isDoneWith(o,s)){if(!s.at)s.at=Date.now()}else delete s.at;saved[o.id]=s;save(saved);
   var now=isDone(o);if(!o.replacement&&now&&!was)syncPacked(o,true,s.start?(s.at-s.start)/1000:null);else if(!o.replacement&&was&&!now&&o.packed)syncPacked(o,false)}
 function syncPacked(o,on,secs){if(on)o.packed={at:Math.floor(Date.now()/1000),by:'you',fp:fp(o),seconds:secs?Math.round(secs):null};else delete o.packed;
-  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Fpacked',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:o.id,packed:!!on,fp:fp(o),seconds:secs||null})}).then(function(r){return r.ok?r.json():Promise.reject(r.status)}).then(function(d){if(d&&d.packed)o.packed=d.packed;render();if(on&&d&&d.packed)toast('📦 Packed — '+((o.customer&&o.customer.name)||'the customer').split(' ')[0]+'\'s tracking page now says '+(o.status==='shipped'?'Packed and labeled':'Packed'))},function(){toast(on?'Saved on this computer — could not tell the store it is packed yet':'Could not clear packed in the store')})}
+  fetch('/api/admin/order/packed',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:o.id,packed:!!on,fp:fp(o),seconds:secs||null})}).then(function(r){return r.ok?r.json():Promise.reject(r.status)}).then(function(d){if(d&&d.packed)o.packed=d.packed;render();if(on&&d&&d.packed)toast('📦 Packed — '+((o.customer&&o.customer.name)||'the customer').split(' ')[0]+'\'s tracking page now says '+(o.status==='shipped'?'Packed and labeled':'Packed'))},function(){toast(on?'Saved on this computer — could not tell the store it is packed yet':'Could not clear packed in the store')})}
 function isDoneWith(o,s){var n=0;Object.keys(s.t).forEach(function(k){if(s.t[k])n++});return n>=units(o)}
 function hasLabel(o){return !!(o.shipment&&o.shipment.label_url)}
 // What the customer's order page says right now. Packing a box updates it straight away.
@@ -582,20 +582,20 @@ function setLog(id,g,v){var f=logOpen[id];if(!f)return;f.err='';if(g==='problems
 function saveLog(id){var f=logOpen[id],o=all.find(function(x){return x.id===id});if(!f||!o)return;
   if(!f.outcome){f.err='Pick how the call went';render();return}if(f.outcome==='talked'&&!f.feeling){f.err='Pick how they liked it';render();return}if(f.feeling==='problem'&&!(f.problems||[]).length){f.err='Pick what went wrong';render();return}
   f.key=f.key||('c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8));f.saving=true;render();
-  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Fcall-log',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,key:f.key,outcome:f.outcome,feeling:f.feeling||'',problems:f.problems||[],notes:f.notes||''})})
+  fetch('/api/admin/order/call-log',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,key:f.key,outcome:f.outcome,feeling:f.feeling||'',problems:f.problems||[],notes:f.notes||''})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok||!d.entry)throw new Error(d.error||('Not saved ('+x.status+')'));return d})})
   .then(function(d){var l=o.call_log||(o.call_log=[]);if(!l.some(function(e){return e.key===d.entry.key}))l.push(d.entry);delete logOpen[id];delete calls[id];lsSet(CALLK,calls);render();toast(d.entry.feeling==='problem'?'⚠️ Call saved — problem flagged':d.entry.outcome==='noanswer'?'No answer saved — they stay on the list':'✅ Call saved')})
   .catch(function(e){f.saving=false;f.err=(e&&e.message)||'Not saved';render()});
 }
 function removeLog(id,key){var o=all.find(function(x){return x.id===id});if(!o)return;
-  fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Fcall-log',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,key:key,remove:true})})
+  fetch('/api/admin/order/call-log',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,key:key,remove:true})})
   .then(function(x){return x.json().then(function(d){if(!x.ok)throw new Error(d.error||'Not removed');return d})}).then(function(){o.call_log=logsFor(o).filter(function(e){return e.key!==key});render();toast('Removed')}).catch(function(e){toast(e.message)})}
 function allLogs(){var out=[],cut=nowS()-30*86400;all.forEach(function(o){logsFor(o).forEach(function(e){if(e.at>=cut)out.push({e:e,o:o})})});return out.sort(function(a,b){return b.e.at-a.e.at})}
 // Delivery status on each call (Shippo tracking via /admin/orders/track, cached 2 h on the server).
 var trackLoading=false,trackLoadedAt=0;
 function loadTracking(list,force){if(trackLoading||(!force&&Date.now()-trackLoadedAt<10*60*1000))return;var ids=list.map(function(o){return o.id});if(!ids.length)return;trackLoading=true;
   var chunks=[];for(var i=0;i<ids.length;i+=25)chunks.push(ids.slice(i,i+25)); // the server checks 25 orders per request
-  Promise.all(chunks.map(function(c){return fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forders%2Ftrack',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ids:c,force:!!force})}).then(function(x){return x.json()}).then(function(d){var t=d.track||{};all.forEach(function(o){if(t[o.id])o.track=t[o.id]})}).catch(function(){})}))
+  Promise.all(chunks.map(function(c){return fetch('/api/admin/orders/track',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ids:c,force:!!force})}).then(function(x){return x.json()}).then(function(d){var t=d.track||{};all.forEach(function(o){if(t[o.id])o.track=t[o.id]})}).catch(function(){})}))
   .then(function(){trackLoadedAt=Date.now();trackLoading=false;if(view==='calls')render()})}
 function daysAgo(sec){var d=Math.floor((nowS()-sec)/86400);return d<=0?'today':d===1?'yesterday':d+' days ago'}
 function shortDate(sec){return new Date(sec*1000).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
@@ -676,7 +676,7 @@ function restock(){
 // ---- data -------------------------------------------------------------------
 function fetchOrders(quiet){
   var out=document.getElementById('out');
-  return fetch('/.netlify/functions/store-next?route=%2Fadmin%2Fdata',{headers:{'X-Store-Request':'1'},cache:'no-store'}).then(function(r){
+  return fetch('/api/admin/data',{headers:{'X-Store-Request':'1'},cache:'no-store'}).then(function(r){
     if(r.status===401){out.innerHTML='<div class="msg"><b>Sign in first.</b> Open <a href="/store-next/admin" target="_blank" rel="noopener">Management</a>, sign in, then come back and tap <b>Refresh orders</b>.</div>';throw 0}
     if(!r.ok){if(!quiet)out.innerHTML='<div class="msg">The store did not answer ('+r.status+'). Tap Refresh orders to try again.</div>';throw 0}
     return r.json();
@@ -714,7 +714,7 @@ function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id}
   if(override){var ps=priceStops[id];if(!confirm('ADMIN OVERRIDE\n\n'+(ps?ps.text:'This label is over the $15 price check.')+'\n\nBuy the '+name+' label for '+(c.name||id)+' anyway?'))return}
   else if(!confirm('Buy a '+name+' label for '+(c.name||id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+')?'+(blk.length?'\n\n⚠️ Still waiting on: '+blk.map(function(i){return i.name}).join(', '):'')+'\n\nThe label and packing slip print right after.'))return;
   b.disabled=true;b.textContent='Buying…';var t0=Date.now(),early=sendSlipWait(id,name);
-  fetch('/.netlify/functions/store-next?route='+encodeURIComponent(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(override?{id:id,servicelevel:svc,override:true}:{id:id,servicelevel:svc})})
+  fetch('/api'+(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(override?{id:id,servicelevel:svc,override:true}:{id:id,servicelevel:svc})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||('The store answered '+x.status));return d})})
   .then(function(d){if(d.status==='synced'||d.status==='label_bought'){delete priceStops[id];toast('✅ '+name+' label bought for '+(c.name||id)+' in '+((Date.now()-t0)/1000).toFixed(1)+'s — printing label + slip');fetchOrders(true);return sendToPrinter(id,null,{slip:!early,slipHeld:early})}
     if(d.status==='price_check'){svcChoice[id]=svc;priceStops[id]={svc:svc,text:'$'+((d.cents||0)/100).toFixed(2)+' ('+(d.service||name)+') is over the $'+((d.limit_cents||1500)/100).toFixed(2)+' price check. Nothing bought.'};toast('💲 Price check: $'+((d.cents||0)/100).toFixed(2)+' is over $'+((d.limit_cents||1500)/100).toFixed(2)+'. Nothing bought.');return fetchOrders(true)}
@@ -729,7 +729,7 @@ function sendSlip(id){var o=orders.find(function(x){return x.id===id});if(!o||o.
 // after that order's label; if no label comes (price check, failed buy) it is not printed.
 function sendSlipWait(id,service){var o=orders.find(function(x){return x.id===id});if(!o||o.replacement)return false;var o2=Object.assign({},o,{shipment:Object.assign({},o.shipment||{},{service:(o.shipment&&o.shipment.service)||service})});saveFile('glow-slipwait-'+String(o.id).replace(/[^A-Za-z0-9-]/g,'')+'.html',new Blob([slipHTML([o2])],{type:'text/html'}));return true}
 function sendToPrinter(cardId,b,opts){opts=opts||{};var m=String(cardId).match(/^(.*)-R(\d+)$/),id=m?m[1]:cardId,r=m?Number(m[2]):0;if(b)b.disabled=true;
-  return fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Flabel-pdf',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,r:r})})
+  return fetch('/api/admin/order/label-pdf',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,r:r})})
   .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok||!d.pdf)throw new Error(d.error||d.message||('Could not get the label ('+x.status+')'));return d})})
   .then(function(d){var bin=atob(d.pdf),a8=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)a8[i]=bin.charCodeAt(i);
     saveFile(d.name,new Blob([a8],{type:'application/pdf'}));var slip=!r&&opts.slip!==false&&sendSlip(id);
@@ -756,7 +756,7 @@ document.addEventListener('click',function(e){
   if(b.dataset.override){buyLabel(b.dataset.override,b,true);return}
   if(b.dataset.dl){sendToPrinter(b.dataset.dl,b).catch(function(){});return}
   if(b.dataset.refer){var fo=orders.find(function(x){return x.id===b.dataset.refer});if(!fo)return;b.disabled=true;
-    fetch('/.netlify/functions/store-next?route=%2Fadmin%2Forder%2Freferral',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:fo.id})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(x){
+    fetch('/api/admin/order/referral',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:fo.id})}).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d}})}).then(function(x){
       if(x.ok&&x.d.ok){fo.referral_bonus_awarded=x.d.awarded||200;delete fo._refWhy;toast('✅ '+fo.referral_bonus_awarded+' points added to '+String((fo.referrer&&fo.referrer.name)||'the customer').split(' ')[0])}
       else{fo._refWhy=(x.d&&(x.d.reason||x.d.error||x.d.message))||'could not check';toast('Not added: '+fo._refWhy)}render()},function(){b.disabled=false;toast('Could not reach the store')});return}
   if(b.dataset.skip){if(skipped[b.dataset.skip])delete skipped[b.dataset.skip];else skipped[b.dataset.skip]=Date.now();saveSkip();b.blur();render();return}
