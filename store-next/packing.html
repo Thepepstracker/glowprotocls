@@ -288,7 +288,7 @@ function isNew(o){return !seen[o.id]&&lastLoad>0}
 function buildPools(){
   pools={};products.forEach(function(p){var k=p.stock_pool||('p'+p.id);var x=pools[k]||(pools[k]={key:k,name:p.name,stock:null,ids:[],sold:0,days:{},made:MADE_HERE.test(p.name||''),active:false,need:0});
     x.ids.push(p.id);if(p.active)x.active=true;if(x.stock===null||(p.brand!=='zader'))x.stock=Number(p.stock||0);if(p.brand!=='zader'&&(!x.named||!(Number(p.units)>1))){x.name=p.name;x.named=!(Number(p.units)>1)}});
-  var live=all.filter(function(o){return o.is_test===false&&['paid','shipped'].indexOf(o.status)>=0});
+  var live=all.filter(function(o){return o.is_test===false&&!o.legacy_import&&['paid','shipped'].indexOf(o.status)>=0});
   firstSale=live.reduce(function(m,o){var t=o.paid||o.created||0;return t&&(!m||t<m)?t:m},0);
   var cut=nowS()-WINDOW_DAYS*86400;
   live.forEach(function(o){var t=o.paid||o.created||0;if(t<cut)return;var day=new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'});
@@ -376,7 +376,7 @@ function chaChing(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||
   var len=actx.sampleRate*.12,buf=actx.createBuffer(1,len,actx.sampleRate),d=buf.getChannelData(0);for(var i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);var src=actx.createBufferSource(),f=actx.createBiquadFilter(),g2=actx.createGain();f.type='highpass';f.frequency.value=3000;g2.gain.value=.25;src.buffer=buf;src.connect(f);f.connect(g2);g2.connect(actx.destination);src.start(t)}catch(e){}}
 function money(c){return '$'+((c||0)/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
 function etDay(t){return new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'})}
-function liveOrder(o){return o&&o.is_test===false&&['canceled','expired'].indexOf(o.status)<0&&(!o.proof_required||o.submitted_at||o.status!=='order_received')}
+function liveOrder(o){return o&&o.is_test===false&&!o.legacy_import&&['canceled','expired'].indexOf(o.status)<0&&(!o.proof_required||o.submitted_at||o.status!=='order_received')}
 function todayStats(){var k=etDay(nowS()),l=all.filter(function(o){return paidOrder(o)&&etDay(o.created||0)===k});return{count:l.length,total:l.reduce(function(a,o){return a+(o.total||0)},0)}}
 function ordinal(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
 function statusWord(o){return {paid:'PAID',shipped:'SHIPPED',payment_submitted:'RECEIPT IN',awaiting_payment:'AWAITING PAYMENT',order_received:'NEW'}[o.status]||String(o.status||'').toUpperCase()}
@@ -503,7 +503,8 @@ function celebrate(o){
 // Week color (ops charter §5, set by Jonah 23 Oct 2026): week-to-date paid sales vs the $4,500 target.
 var WEEK_TARGET=450000;
 var TIERS=[{k:'purple',dot:'🟣',name:'PURPLE',say:'Record-week territory',at:WEEK_TARGET*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Big week',at:WEEK_TARGET*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Target hit',at:WEEK_TARGET}];
-function paidOrder(o){return o&&o.is_test===false&&(o.status==='paid'||o.status==='shipped')}
+// Orders brought over from the old site were already counted on the old site: they never count toward today or the week.
+function paidOrder(o){return o&&o.is_test===false&&!o.legacy_import&&(o.status==='paid'||o.status==='shipped')}
 function weekKeys(offset){var today=etDay(nowS()),d=new Date(today+'T12:00:00Z'),dow=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-dow-7*(offset||0));var k=[];for(var i=0;i<7;i++){k.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}return{keys:k,dow:dow}}
 function weekSum(keys){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&keys.indexOf(etDay(o.created||0))>=0){n+=o.total||0;c++}});return{cents:n,count:c}}
 function tierOf(cents,finished,lastWeekCents){
