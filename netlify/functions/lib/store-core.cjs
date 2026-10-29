@@ -175,6 +175,37 @@ async function handle({path,method='GET',headers={},body={}}){
   const refund=await shippo.voidLabel(o0.shippo_transaction_id);if(!['QUEUED','PENDING','SUCCESS'].includes(refund.status))fail('Shippo did not accept the label refund ('+(refund.status||'no status')+'). Nothing was changed.');
   const result=await transaction(async s=>{const sid=await session(s,h);const o=await s.get('orders',id);o.label_refund={...refund,requested_at:clock(),tracking:o.tracking||''};o.voided_by=(await s.get('sessions',sid))?.staff_id||'owner';o.status='paid';o.tracking='';delete o.shipment;delete o.shippo_label_url;o.shippo_status='label_refund_'+refund.status.toLowerCase();await s.put('orders',id,o);await audit(s,'shippo_label_voided',id);return{ok:true,id,status:o.status,label_refund:o.label_refund,note:'Order kept. Customer was not emailed.'}});
   return{status:200,headers:{},body:result}}
+ // Old-site orders (the locked Netlify database) that were paid but never shipped: bring each in once, as paid,
+ // with its original order number, lines, totals and address, so it shows in Packing Check and gets a label like any order.
+ // Takes the stock. Never emails, never reports to GoAffPro, never moves points. Refuses a number already in this store.
+ if(path==='/admin/orders/import-legacy'&&method==='POST'){
+  const rows=body.orders;if(!Array.isArray(rows)||!rows.length||rows.length>25)fail('Send 1–25 old orders to import.');
+  if(body.confirm!=='IMPORT '+rows.length)fail('Type IMPORT and the number of orders to confirm.');
+  const result=await transaction(async s=>{await session(s,h);const products=await s.list('products'),seen=new Set(),made=[];
+   for(const r of rows){
+    const id=text(r.id||'',20);if(!/^GLP-[A-F0-9]{10}$/.test(id))fail('Not an old Glow order number: '+id);if(seen.has(id))fail(id+' is listed twice.');seen.add(id);
+    if(await s.get('orders',id))fail(id+' is already in this store. Nothing was imported.',409);
+    const c=r.customer||{},customer={};for(const k of ['name','email','address','city','state','zip'])customer[k]=text(c[k]||'',k==='address'?500:150);
+    if(!customer.name||!customer.address||!customer.city)fail(id+': name, street and city are required.');
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email))fail(id+': email is not valid.');
+    customer.state=customer.state.toUpperCase();if(!/^[A-Z]{2}$/.test(customer.state))fail(id+': state must be two letters.');
+    if(!/^\d{5}(-\d{4})?$/.test(customer.zip))fail(id+': ZIP is not valid.');
+    if(c.phone)customer.phone=contactPhone(c.phone);
+    if(!Array.isArray(r.items)||!r.items.length||r.items.length>40)fail(id+': add its items.');
+    const items=[];for(const l of r.items){const p=products.find(x=>x.sku===text(l.sku||'',60));if(!p)fail(id+': no product with SKU '+l.sku+'.');
+     const quantity=int(l.quantity,1,100),price=int(l.price??p.price,0,10000000);items.push({id:p.id,sku:p.sku,name:p.name,price,amount:price*quantity,quantity,promo_excluded:!!p.promo_excluded});
+     if(p.units>1)items[items.length-1].units=p.units;if(p.components)items[items.length-1].components=p.components}
+    const subtotal=items.reduce((n,i)=>n+i.amount,0),shipping=int(r.shipping??0,0,100000),total=int(r.total,1,10000000),discount=subtotal+shipping-total;
+    if(discount<0)fail(id+': the items cost less than the total. Check the prices.');
+    const paid=int(r.paid_at??clock(),1,4000000000),created=int(r.created_at??paid,1,4000000000);
+    const method=['card_invoice','venmo','paypal','cashapp','zelle'].includes(r.payment_method)?r.payment_method:'card_invoice';
+    const o={id,brand:'glow',created,expires:created+7*86400,status:'paid',paid,is_test:false,customer,items,subtotal,discount,coupon_discount:discount,coupons:[],coupon:'',shipping,tax:0,total,
+     payment_method:method,checkout_stage:'submitted',proof_required:false,tracking:'',affiliate:null,affiliate_name:null,affiliate_source:null,commission:0,goaffpro_status:'not_applicable',
+     points_earned:0,points_to_earn:0,points_redeemed:0,legacy_import:{at:clock(),source:'old site (Netlify, locked)',note:text(r.note||'',300,false)},staff_notes:text('Imported from the old site. '+(r.note||''),400)};
+    for(const line of items)await moveStock(s,line,-1);
+    await s.put('orders',id,o);await audit(s,'legacy_imported',id);made.push({id,name:customer.name,total,items:items.map(i=>i.name+' ×'+i.quantity)})}
+   return{ok:true,imported:made,note:'Marked paid. No customer emails, no GoAffPro report, no points.'}});
+  return{status:200,headers:{},body:result}}
  // Duplicate order: void its unused Shippo label first, then cancel it and put its stock back. Never emails the customer.
  if(path==='/admin/order/cancel-duplicate'&&method==='POST'){const id=text(body.id||'',50);
   const o0=await transaction(async s=>{await session(s,h);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(body.confirm!==id)fail('Type the order number to confirm.');if(o.is_test!==false)fail('Use the normal cancel for test orders.',409);if(!['paid','shipped'].includes(o.status))fail('Only paid or labeled orders can be canceled as a duplicate.',409);if(o.delivery?.first_scan_at)fail('UPS already scanned this package. It cannot be canceled here.',409);if(o.points_redeemed||o.points_earned)fail('This order moved Glow Points. Fix the points before canceling it.',409);if((o.replacements||[]).length)fail('This order has replacement labels. Handle those in Shippo first.',409);return o});
