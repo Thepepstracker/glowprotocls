@@ -14,7 +14,7 @@ function range(b={},now=Date.now()/1000){const today=day(now),start=date(b.start
 const inside=(d,r)=>d>=r.start&&d<=r.end;
 const brandOf=o=>o.brand||'glow';
 const matches=(o,r)=>r.brand==='all'||brandOf(o)===r.brand;
-const paid=o=>o.is_test===false&&Number.isFinite(o.paid)&&o.paid>0;
+const paid=o=>o.is_test===false&&!o.legacy_import&&Number.isFinite(o.paid)&&o.paid>0; // old-site imports were counted on the old site
 const customerKey=o=>String(o.customer?.email||'').trim().toLowerCase()||'order:'+o.id;
 const countUnits=l=>(l.quantity||0)*Math.max(1,l.units||1);
 function allocate(total,weights){const denom=weights.reduce((n,v)=>n+v,0);if(!denom)return weights.map(()=>0);const base=weights.map(w=>Math.floor(total*w/denom));let remainder=total-base.reduce((a,b)=>a+b,0);const ranks=weights.map((w,i)=>({i,fraction:total*w/denom-base[i]})).sort((a,b)=>b.fraction-a.fraction||a.i-b.i);for(let i=0;i<remainder;i++)base[ranks[i%ranks.length].i]++;return base}
