@@ -21,6 +21,7 @@ test('an old paid order imports once, as paid, takes stock, and emails nobody',a
  assert.equal(o.status,'paid');assert.equal(o.is_test,false);assert.equal(o.total,9000);assert.equal(o.subtotal,10000);assert.equal(o.discount,2500);assert.equal(o.shipping,1500);
  assert.equal(o.customer.state,'GA');assert.equal(o.customer.phone,'+15552013344');assert.equal(o.goaffpro_status,'not_applicable');assert.equal(o.points_earned,0);
  assert.equal((await transaction(s=>s.get('products',p.id))).stock,p.stock-2,'stock taken');
+ assert.ok(Array.isArray(o.staff_notes)&&/old site/.test(o.staff_notes[0].text),'note is a normal staff note');
  await assert.rejects(call('/admin/orders/import-legacy',{orders:[order],confirm:'IMPORT 1'},owner),e=>e.status===409,'never twice');
  assert.equal((await transaction(s=>s.get('products',p.id))).stock,p.stock-2,'stock not taken twice');
 });
@@ -32,4 +33,15 @@ test('a bad row stops the whole import and nothing is saved',async()=>{
  await assert.rejects(call('/admin/orders/import-legacy',{orders:[good,bad],confirm:'IMPORT 2'},owner),/no-such-sku/);
  assert.equal(await transaction(s=>s.get('orders','GLP-1111111111')),null);
  assert.equal((await transaction(s=>s.get('products',p.id))).stock,p.stock);
+});
+test('an old label UPS never scanned comes in as shipped with that label, takes no stock, never a second label',async()=>{
+ const owner=cookie(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD}));
+ const p=await transaction(async s=>(await s.list('products')).find(x=>x.active&&!x.components&&!(x.units>1)&&x.stock>=5));
+ const base={id:'GLP-3333333333',customer:{name:'B',email:'b@example.com',address:'2 St',city:'Y',state:'GA',zip:'30107'},items:[{sku:p.sku,quantity:1}],total:p.price};
+ await assert.rejects(call('/admin/orders/import-legacy',{orders:[{...base,label:{tracking:'nope'}}],confirm:'IMPORT 1'},owner),/1Z/);
+ await assert.rejects(call('/admin/orders/import-legacy',{orders:[{...base,label:{tracking:'1Z3G52C30207246991',label_url:'https://evil.example.com/x.pdf'}}],confirm:'IMPORT 1'},owner),/Shippo/);
+ await call('/admin/orders/import-legacy',{orders:[{...base,label:{tracking:'1Z3G52C30207246991',label_url:'https://deliver.goshippo.com/abc.pdf',service:'UPS 2nd Day Air',date:'Oct 26'},note:'label never scanned'}],confirm:'IMPORT 1'},owner);
+ const o=await transaction(s=>s.get('orders','GLP-3333333333'));
+ assert.equal(o.status,'shipped');assert.equal(o.tracking,'1Z3G52C30207246991');assert.equal(o.shipment.label_url,'https://deliver.goshippo.com/abc.pdf');assert.ok(o.shipment.label_created_at>0);
+ assert.equal((await transaction(s=>s.get('products',p.id))).stock,p.stock,'no stock taken for a box already made');
 });
