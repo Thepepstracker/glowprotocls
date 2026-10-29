@@ -45,3 +45,12 @@ test('an old label UPS never scanned comes in as shipped with that label, takes 
  assert.equal(o.status,'shipped');assert.equal(o.tracking,'1Z3G52C30207246991');assert.equal(o.shipment.label_url,'https://deliver.goshippo.com/abc.pdf');assert.ok(o.shipment.label_created_at>0);
  assert.equal((await transaction(s=>s.get('products',p.id))).stock,p.stock,'no stock taken for a box already made');
 });
+test('attach labels: finds the old label in Shippo by tracking and saves its PDF link; reads only, never buys',async()=>{
+ process.env.SHIPPO_API_TOKEN='shippo_live_fixture';const owner=cookie(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD}));const calls=[];
+ global.fetch=async(url,opts)=>{calls.push((opts&&opts.method)||'GET');if(String(url).includes('/transactions/'))return{ok:true,status:200,json:async()=>({next:null,results:[{object_id:'t1',status:'SUCCESS',tracking_number:'1Z3G52C30207246991',label_url:'https://deliver.goshippo.com/real.pdf'},{object_id:'t2',status:'SUCCESS',tracking_number:'1ZOTHER',label_url:'https://deliver.goshippo.com/other.pdf'}]})};return{ok:true,status:200,json:async()=>({id:'x'})}};
+ await assert.rejects(call('/admin/orders/attach-legacy-labels',{}),e=>e.status===401);
+ const r=await call('/admin/orders/attach-legacy-labels',{},owner);
+ assert.deepEqual(r.body.results,[{id:'GLP-3333333333',tracking:'1Z3G52C30207246991',found:true}]);
+ assert.ok(calls.every(m=>m==='GET'),'only reads from Shippo');
+ const o=await transaction(s=>s.get('orders','GLP-3333333333'));assert.equal(o.shipment.label_url,'https://deliver.goshippo.com/real.pdf');assert.equal(o.tracking,'1Z3G52C30207246991');assert.equal(o.status,'shipped');
+});
