@@ -7,9 +7,9 @@ const content={'.html':'text/html; charset=utf-8','.js':'text/javascript; charse
 transaction(seed).then(()=>{
 const server=http.createServer(async(req,res)=>{
  const url=new URL(req.url,'http://127.0.0.1');
- if(url.pathname==='/.netlify/functions/store-next'){
+ if(url.pathname==='/.netlify/functions/store-next'||url.pathname.startsWith('/api/')){
   let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>5*1024*1024){res.writeHead(413);res.end('Request too large');return}}
-  const result=await handler({httpMethod:req.method,headers:req.headers,queryStringParameters:Object.fromEntries(url.searchParams),body:raw});res.writeHead(result.statusCode,result.headers);res.end(result.isBase64Encoded?Buffer.from(result.body,'base64'):result.body);return;
+  const result=await handler({httpMethod:req.method,headers:req.headers,queryStringParameters:url.pathname.startsWith('/api/')?{route:url.pathname.slice(4)}:Object.fromEntries(url.searchParams),body:raw});res.writeHead(result.statusCode,result.headers);res.end(result.isBase64Encoded?Buffer.from(result.body,'base64'):result.body);return;
  }
  if(req.method!=='GET'){res.writeHead(405);res.end('Method not allowed');return}
  let target;

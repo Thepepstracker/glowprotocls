@@ -7,6 +7,7 @@ const receipts=require('./payment-receipts.cjs');
 const reporting=require('./goaffpro-orders.cjs');
 const shipping=require('./shipstation.cjs'),shippo=require('./shippo.cjs'),autoInvoice=require('./auto-invoice.cjs');
 const accounts=require('./customer-accounts.cjs');
+const registry=require('./gift-registry.cjs');
 const nativeAffiliates=require('./native-affiliates.cjs');
 const adjustments=require('./order-adjustments.cjs');
 const emails=require('./store-email.cjs');
@@ -90,6 +91,8 @@ async function handle({path,method='GET',headers={},body={}}){
   if(h['sec-fetch-site']==='cross-site')fail('Cross-site request denied.',403);
   if(!body||typeof body!=='object'||Array.isArray(body))fail('Invalid request.');
  }
+ // Registry operations are isolated from account reconciliation, order expiry and legacy migrations.
+ if(path==='/registry'||path.startsWith('/registry/'))return{status:200,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow, noarchive'},body:await transaction(s=>registry.route(s,{path,method,headers:h,body,brand:brands.fromHeaders(h),project:async(s,p)=>brands.publicProduct(withProductPhotos(await bundleStock(id=>s.get('products',id),p)),true)}))};
  const catalogImage=path.match(/^\/product-images\/([a-f0-9]{32})$/);
  if(catalogImage&&method==='GET'){const image=await transaction(s=>s.get('catalog_images',catalogImage[1]));if(!image)fail('Image not found.',404);return{status:200,headers:{'Cache-Control':'public, max-age=31536000, immutable'},body:{_binary:image.data,_type:image.mime}}}
  const staffAuth=await staff.authRoute(path,body,h,method);if(staffAuth)return staffAuth;
