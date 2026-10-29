@@ -221,6 +221,21 @@ async function handle({path,method='GET',headers={},body={}}){
   const results=await transaction(async s=>{await session(s,h);const out=[];for(const x of list){const t=found[x.tracking],o=await s.get('orders',x.id);if(!t||!o||o.tracking!==x.tracking){out.push({id:x.id,tracking:x.tracking,found:false});continue}
    o.shipment={...(o.shipment||{}),label_url:t.label_url};await s.put('orders',o.id,o);await audit(s,'legacy_label_attached',o.id);out.push({id:x.id,tracking:x.tracking,found:true})}return out});
   return{status:200,headers:{},body:{ok:true,results}}}
+ // Re-price an unpaid order with a new set of codes (Jonah, 29 Oct 2026: add SCARECROW to an order already placed).
+ // Owner only, same items, same affiliate, never emails the customer. Stock and code usage move exactly as a checkout edit does.
+ if(path==='/admin/order/reprice'&&method==='POST'){
+  const r=await transaction(async s=>{const sid=await session(s,h);if((await s.get('sessions',sid))?.staff_id)fail('Only the owner can re-price an order.',403);
+   const id=text(body.id||'',50),o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(body.confirm!==id)fail('Type the order number to confirm.');
+   if(o.is_test!==false||!['order_received','awaiting_payment'].includes(o.status)||o.paid||o.receipt||o.has_receipt)fail('Only an unpaid order can be re-priced.',409);
+   if(o.points_redeemed)fail('This order uses Glow Points. Fix the points before re-pricing it.',409);
+   if(!Array.isArray(body.coupons)||body.coupons.length>5)fail('Send the codes as a list.');
+   const q=await quote(await editStore(s,o),{items:o.items.map(i=>({id:i.id,quantity:i.quantity})),coupons:body.coupons,affiliate:o.affiliate||''},{},brands.orderBrand(o));
+   if((q.affiliate||'')!==(o.affiliate||''))fail('These codes would change who gets credit for the sale. Nothing was changed.',409);
+   const before={total:o.total,discount:o.discount,coupons:couponRules.codes(o)},status=o.status,revision=(o.revision||0)+1;
+   await release(s,o,status);Object.assign(o,q,{status,revision,reservation_version:revision,updated:clock()});await accounts.reserve(s,o);for(const line of o.items)await moveStock(s,line,-1);await couponRules.reserve(s,o,1);
+   const actor=(await s.get('sessions',sid))?.staff_id||'owner';o.staff_notes=[...(Array.isArray(o.staff_notes)?o.staff_notes:[]),{key:'reprice-'+revision,text:'Re-priced by the owner: $'+(before.total/100).toFixed(2)+' → $'+(o.total/100).toFixed(2)+' (codes '+(before.coupons.join(', ')||'none')+' → '+(couponRules.codes(o).join(', ')||'none')+'). Customer not emailed.',actor,author:'Claude (re-price)',created:clock()}];
+   await s.put('orders',o.id,o);await audit(s,'order_repriced',o.id);return{id,before,after:{total:o.total,discount:o.discount,coupons:couponRules.codes(o)}}});
+  return{status:200,headers:{},body:{ok:true,...r}}}
  // Duplicate order: void its unused Shippo label first, then cancel it and put its stock back. Never emails the customer.
  if(path==='/admin/order/cancel-duplicate'&&method==='POST'){const id=text(body.id||'',50);
   const o0=await transaction(async s=>{await session(s,h);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(body.confirm!==id)fail('Type the order number to confirm.');if(o.is_test!==false)fail('Use the normal cancel for test orders.',409);if(!['paid','shipped'].includes(o.status))fail('Only paid or labeled orders can be canceled as a duplicate.',409);if(o.delivery?.first_scan_at)fail('UPS already scanned this package. It cannot be canceled here.',409);if(o.points_redeemed||o.points_earned)fail('This order moved Glow Points. Fix the points before canceling it.',409);if((o.replacements||[]).length)fail('This order has replacement labels. Handle those in Shippo first.',409);return o});
