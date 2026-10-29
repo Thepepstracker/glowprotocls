@@ -201,9 +201,15 @@ async function handle({path,method='GET',headers={},body={}}){
     const method=['card_invoice','venmo','paypal','cashapp','zelle'].includes(r.payment_method)?r.payment_method:'card_invoice';
     const o={id,brand:'glow',created,expires:created+7*86400,status:'paid',paid,is_test:false,customer,items,subtotal,discount,coupon_discount:discount,coupons:[],coupon:'',shipping,tax:0,total,
      payment_method:method,checkout_stage:'submitted',proof_required:false,tracking:'',affiliate:null,affiliate_name:null,affiliate_source:null,commission:0,goaffpro_status:'not_applicable',
-     points_earned:0,points_to_earn:0,points_redeemed:0,legacy_import:{at:clock(),source:'old site (Netlify, locked)',note:text(r.note||'',300,false)},staff_notes:text('Imported from the old site. '+(r.note||''),400)};
-    for(const line of items)await moveStock(s,line,-1);
-    await s.put('orders',id,o);await audit(s,'legacy_imported',id);made.push({id,name:customer.name,total,items:items.map(i=>i.name+' ×'+i.quantity)})}
+     points_earned:0,points_to_earn:0,points_redeemed:0,legacy_import:{at:clock(),source:'old site (Netlify, locked)',note:text(r.note||'',300,false)}};
+    // A label bought on the old site that UPS never scanned: comes in as shipped with that label, so Packing Check shows it
+    // under "needs drop-off" (never offers a second label). Its stock already left with the box, so none is taken here.
+    if(r.label){const tracking=text(r.label.tracking||'',40);if(!/^1Z[0-9A-Z]{16}$/.test(tracking))fail(id+': label tracking must be a UPS 1Z number.');
+     const url=text(r.label.label_url||'',600,false);if(url&&!/^https:\/\/[a-z0-9.-]*goshippo\.com\//i.test(url))fail(id+': label link must be a Shippo link.');
+     o.status='shipped';o.tracking=tracking;o.shipment={carrier:'ups',carrier_name:'UPS',service:text(r.label.service||'UPS',60),label_url:url||null,label_created_at:clock(),legacy_label_date:text(r.label.date||'',30,false)}}
+    else for(const line of items)await moveStock(s,line,-1);
+    o.staff_notes=[{key:'legacy-import-'+id,text:text('Imported from the old site. '+(r.note||''),1900),actor:'owner',author:'Claude (import)',created:clock()}];
+    await s.put('orders',id,o);await audit(s,'legacy_imported',id);made.push({id,name:customer.name,total,status:o.status,tracking:o.tracking||'',items:items.map(i=>i.name+' ×'+i.quantity)})}
    return{ok:true,imported:made,note:'Marked paid. No customer emails, no GoAffPro report, no points.'}});
   return{status:200,headers:{},body:result}}
  // Duplicate order: void its unused Shippo label first, then cancel it and put its stock back. Never emails the customer.
