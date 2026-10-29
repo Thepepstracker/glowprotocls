@@ -159,4 +159,6 @@ async function track(carrier,number){const c=String(carrier||'').toLowerCase(),n
  const hist=Array.isArray(r.tracking_history)?r.tracking_history:[];const scanned=hist.find(h=>String(h.status||'').toUpperCase()!=='PRE_TRANSIT'&&String(h.status||'').toUpperCase()!=='UNKNOWN');
  return{state,status:raw,details:String(st.status_details||'').slice(0,160),last_at:toEpoch(st.status_date),location:where(st.location),delivered_at:state==='delivered'?toEpoch(st.status_date):null,
   first_scan_at:scanned?toEpoch(scanned.status_date):null,eta:toEpoch(r.eta),carrier:c,tracking:n,source:'shippo',checked_at:now()}}
-module.exports={track,voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
+// Read only, never buys: find labels Shippo already has, by tracking number (boxes labeled on the old site).
+async function labelsByTracking(trackings){const want=new Set(trackings),found={};for(let page=1;page<=15&&Object.keys(found).length<want.size;page++){const r=await request('/transactions/?results=100&page='+page);if(!Array.isArray(r.results))fail('Shippo label list needs review.',{uncertain:true});for(const t of r.results)if(want.has(t.tracking_number)&&t.status==='SUCCESS'&&t.label_url&&!found[t.tracking_number])found[t.tracking_number]=t;if(!r.next)break}return found}
+module.exports={labelsByTracking,track,voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};

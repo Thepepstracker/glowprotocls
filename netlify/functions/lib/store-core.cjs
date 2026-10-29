@@ -212,6 +212,15 @@ async function handle({path,method='GET',headers={},body={}}){
     await s.put('orders',id,o);await audit(s,'legacy_imported',id);made.push({id,name:customer.name,total,status:o.status,tracking:o.tracking||'',items:items.map(i=>i.name+' ×'+i.quantity)})}
    return{ok:true,imported:made,note:'Marked paid. No customer emails, no GoAffPro report, no points.'}});
   return{status:200,headers:{},body:result}}
+ // Old-site boxes imported with only a tracking number: look the label up in Shippo by that number and save its PDF link,
+ // so Print label / Send to printer work. Read only: never buys, never voids, never changes the tracking.
+ if(path==='/admin/orders/attach-legacy-labels'&&method==='POST'){
+  const list=await transaction(async s=>{await session(s,h);return(await s.list('orders')).filter(o=>o.legacy_import&&o.status==='shipped'&&/^1Z/.test(o.tracking||'')).map(o=>({id:o.id,tracking:o.tracking}))});
+  if(!list.length)return{status:200,headers:{},body:{ok:true,results:[]}};
+  const found=await shippo.labelsByTracking(list.map(x=>x.tracking));
+  const results=await transaction(async s=>{await session(s,h);const out=[];for(const x of list){const t=found[x.tracking],o=await s.get('orders',x.id);if(!t||!o||o.tracking!==x.tracking){out.push({id:x.id,tracking:x.tracking,found:false});continue}
+   o.shipment={...(o.shipment||{}),label_url:t.label_url};await s.put('orders',o.id,o);await audit(s,'legacy_label_attached',o.id);out.push({id:x.id,tracking:x.tracking,found:true})}return out});
+  return{status:200,headers:{},body:{ok:true,results}}}
  // Duplicate order: void its unused Shippo label first, then cancel it and put its stock back. Never emails the customer.
  if(path==='/admin/order/cancel-duplicate'&&method==='POST'){const id=text(body.id||'',50);
   const o0=await transaction(async s=>{await session(s,h);const o=await s.get('orders',id);if(!o)fail('Order not found.',404);if(body.confirm!==id)fail('Type the order number to confirm.');if(o.is_test!==false)fail('Use the normal cancel for test orders.',409);if(!['paid','shipped'].includes(o.status))fail('Only paid or labeled orders can be canceled as a duplicate.',409);if(o.delivery?.first_scan_at)fail('UPS already scanned this package. It cannot be canceled here.',409);if(o.points_redeemed||o.points_earned)fail('This order moved Glow Points. Fix the points before canceling it.',409);if((o.replacements||[]).length)fail('This order has replacement labels. Handle those in Shippo first.',409);return o});
