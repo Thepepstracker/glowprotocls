@@ -1,11 +1,4 @@
-import database from './lib/store-db.cjs';
-import callList from './lib/call-list.cjs';
-import emails from './lib/store-email.cjs';
-import {getDatabase} from '@netlify/database';
-database.configureHostedDatabase(getDatabase);
-// Hourly; it only acts in the 12 o'clock hour Eastern (DST-safe) and sends at most one call list a day.
-export default async()=>{
- try{const r=await callList.run();if(r.job)await emails.safeDispatch(r.job)}
- catch{console.error('Daily call list requires review.')}
-};
-export const config={schedule:'15 * * * *'};
+// PAUSED 30 Oct 2026 (Jonah OK'd). The live store moved to Sevalla. This timed job must not run against the
+// old Netlify database when it unlocks, or it could re-send old orders to ShipStation or email customers twice.
+// No schedule is exported, so Netlify never runs it. To turn it back on, restore this file from commit 11bce36.
+export default async()=>new Response('store-call-list is paused: the store moved to Sevalla on 28 Oct 2026.',{status:200});
