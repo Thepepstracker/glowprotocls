@@ -32,6 +32,8 @@
  "October 31 flash sale": "Venta relámpago del 31 de octubre",
  "October 31 · Today only": "31 de octubre · Solo hoy",
  "Flash Sale": "Venta relámpago",
+ "Limit 3 per order": "Límite de 3 por pedido",
+ "Limit 3 of each flash-sale item per order": "Límite de 3 de cada artículo de la venta relámpago por pedido",
  "each": "cada uno",
  "Plus 30% off regular-priced items": "Además, 30% de descuento en artículos a precio regular",
  "Shop the flash sale": "Comprar en la venta relámpago",
