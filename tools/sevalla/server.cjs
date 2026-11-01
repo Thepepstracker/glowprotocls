@@ -44,7 +44,7 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   if(type.startsWith('text/html')){data=await transform(data.toString(),req);return send(200,data,type)}
   // Pages stay no-store. Photos may be kept for an hour; scripts and styles are re-checked on every visit (a 304 when unchanged).
   const etag='"'+crypto.createHash('sha1').update(data).digest('base64url')+'"',cache=type.startsWith('image/')?'public, max-age=3600, stale-while-revalidate=86400':'no-cache',headers={ETag:etag,'Cache-Control':cache};
-  if(String(req.headers['if-none-match']||'').split(/\s*,\s*/).includes(etag)){res.writeHead(304,{...security,...headers});return res.end()}
+  if(String(req.headers['if-none-match']||'').split(/\s*,\s*/).map(t=>t.replace(/^W\//,'')).includes(etag)){res.writeHead(304,{...security,...headers});return res.end()}
   return send(200,data,type,headers);
  }catch(e){res.writeHead(e.status||503,{...security,'Content-Type':'application/json'});res.end(JSON.stringify({error:e.status?e.message:'Service temporarily unavailable.'}));}});
 }
