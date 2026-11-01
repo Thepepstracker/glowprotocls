@@ -6,34 +6,16 @@ const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=r
 const variants=[['Selank · 5 mg','selank-5-mg'],['Semax · 5 mg','semax-5-mg'],['GHK-Cu · 100 mg','ghk-cu-100-mg']];
 const call=(p,b)=>handle({path:p,method:b?'POST':'GET',headers:{'x-store-request':'1',host:'glowglps.com'},body:b||{}});
 after(()=>fs.rmSync(dir,{recursive:true,force:true}));
-test('checkout caps the combined sale group at three without reserving rejected stock',async()=>{
- await transaction(async s=>{await seed(s);for(const [i,[name,sku]] of variants.entries())await s.put('products',9000+i,{id:9000+i,name,sku,price:1300,stock:100,active:1,brand:'glow'});await s.put('products',9003,{id:9003,name:'Semax · 10 mg',sku:'semax-10-mg',price:3999,stock:100,active:1,brand:'glow'});});
+test('after the Oct 31 sale the former sale vials sell in normal amounts again',async()=>{
+ await transaction(async s=>{await seed(s);for(const [i,[name,sku]] of variants.entries())await s.put('products',9000+i,{id:9000+i,name,sku,price:2999,stock:100,active:1,brand:'glow'});});
  const catalog=(await call('/catalog')).body;
- for(let i=0;i<3;i++)assert.equal(catalog.products.find(p=>p.id===9000+i).max_order_quantity,3);
- assert.equal(catalog.products.find(p=>p.id===9003).max_order_quantity,undefined);
+ for(let i=0;i<3;i++)assert.equal(catalog.products.find(p=>p.id===9000+i).max_order_quantity,undefined);
+ for(let i=0;i<3;i++)assert.equal((await call('/quote',{items:[{id:9000+i,quantity:4}]})).body.subtotal,4*2999);
+ assert.equal((await call('/quote',{items:variants.map((_,i)=>({id:9000+i,quantity:2}))})).body.subtotal,6*2999);
  const customer={name:'Example Customer',email:'limits@example.com',phone:'2025550101',address:'1 Example Street',city:'Example',state:'GA',zip:'30107'};
- for(let i=0;i<3;i++){
-  const items=[{id:9000+i,quantity:4}];
-  await assert.rejects(call('/quote',{items}),e=>e.status===409&&/Limit 3 sale vials total per order/.test(e.message));
-  await assert.rejects(call('/orders',{items,customer,payment_method:'zelle',idempotency_key:crypto.randomUUID()}),/Limit 3 sale vials total per order/);
- }
- await transaction(async s=>{assert.equal((await s.list('orders')).length,0);for(let i=0;i<3;i++)assert.equal((await s.get('products',9000+i)).stock,100)});
- await assert.rejects(call('/quote',{items:[{id:9000,quantity:2},{id:9000,quantity:2}]}),/Duplicate/);
- const combinations=[[{id:9000,quantity:2},{id:9001,quantity:2}],[{id:9000,quantity:3},{id:9002,quantity:1}],[{id:9000,quantity:1},{id:9001,quantity:1},{id:9002,quantity:2}]];
- for(const items of combinations){
-  await assert.rejects(call('/quote',{items}),/Limit 3 sale vials total per order/);
-  await assert.rejects(call('/orders',{items,customer,payment_method:'zelle',idempotency_key:crypto.randomUUID()}),/Limit 3 sale vials total per order/);
- }
- await transaction(async s=>{assert.equal((await s.list('orders')).length,0);for(let i=0;i<3;i++)assert.equal((await s.get('products',9000+i)).stock,100)});
- for(const items of [[{id:9000,quantity:3}],[{id:9000,quantity:2},{id:9002,quantity:1}],variants.map((_,i)=>({id:9000+i,quantity:1}))])assert.equal((await call('/quote',{items})).body.subtotal,3900);
- const items=variants.map((_,i)=>({id:9000+i,quantity:1}));
- const placed=(await call('/orders',{items,customer,payment_method:'zelle',idempotency_key:crypto.randomUUID()})).body;
- assert.equal(placed.order.items.reduce((n,p)=>n+p.quantity,0),3);
- assert.equal((await call('/quote',{items:[...items,{id:9003,quantity:4}]})).body.subtotal,19896);
- assert.equal((await call('/quote',{items:[{id:9003,quantity:4}]})).body.subtotal,15996);
- for(const sku of ['selank-10-mg','semax-10-mg','ghk-cu-50-mg','selank-5-mg-kit'])assert.equal(maxOrderQuantity({sku}),null);
- assert.equal(maxOrderQuantity({sku:'selank-5-mg',units:10}),null);
- assert.equal(maxOrderQuantity({sku:'selank-5-mg',brand:'zader'}),null);
+ const placed=(await call('/orders',{items:[{id:9000,quantity:5}],customer,payment_method:'zelle',idempotency_key:crypto.randomUUID()})).body;
+ assert.equal(placed.order.items[0].quantity,5);
+ for(const [,sku] of variants)assert.equal(maxOrderQuantity({sku}),null);
 });
 test('storefront shares the group limit across product cards and trims an older nine-vial saved bag',()=>{
  const src=fs.readFileSync(path.join(__dirname,'../../store-next/app.js'),'utf8');
