@@ -2,7 +2,7 @@
 const crypto=require('node:crypto');const {transaction}=require('./store-db.cjs');
 const goaffpro=require('./goaffpro.cjs');
 const {validSlug,createStorefronts,resolveReferral}=require('./storefronts.cjs');
-const photos=require('./affiliate-photos.cjs');
+const photos=require('./affiliate-photos.cjs');const pointsMoved=require('./points-moved-email.cjs');
 const receipts=require('./payment-receipts.cjs');
 const reporting=require('./goaffpro-orders.cjs');
 const shipping=require('./shipstation.cjs'),shippo=require('./shippo.cjs'),autoInvoice=require('./auto-invoice.cjs');
@@ -78,7 +78,7 @@ async function editStore(s,o){const copy={...o,items:[]};for(const line of o.ite
 // Plain letters/digits/space/.'- only: these values end up in a Terminal window and a macOS notification on the shop's computer.
 const safeWord=(v,max)=>String(v||'').normalize('NFKC').replace(/[^\p{L}\p{N} .'-]/gu,'').replace(/\s+/g,' ').trim().slice(0,max);
 async function handle({path,method='GET',headers={},body={}}){
- const h=Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),v]));let setCookie,emailJob,invoiceJob;const staffJobs=[]; // staff new-order alerts queued in this request; sent right after it (Sevalla has no email worker)
+ const h=Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),v]));let setCookie,emailJob,invoiceJob;const staffJobs=[],bulkJobs=[]; // staff new-order alerts queued in this request; sent right after it (Sevalla has no email worker)
  if(!['GET','POST'].includes(method))fail('Method not allowed.',405);
  if(method==='POST'){
   if(h['x-store-request']!=='1')fail('Request protection header required.',403);
@@ -460,6 +460,21 @@ async function handle({path,method='GET',headers={},body={}}){
    if(path==='/admin/customer/setup-link'&&method==='POST'){const r=await accounts.issueSetup(s,text(body.customer_id||'',64));await audit(s,'customer_setup_link_created');return r}
    if(path==='/admin/rewards/import-preview'&&method==='POST')return accounts.previewImport(s,body);
    if(path==='/admin/rewards/reconcile'&&method==='POST'){const r=await accounts.reconcileBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_reconciled');return r}
+   // "Your Glow Points moved with you" (Jonah, 1 Nov 2026). Owner only. mode test: one email to test_to. mode send: one personal
+   // email to every old-site customer whose carried balance is still unclaimed (never twice: one outbox id per customer).
+   // mode dispatch: send whatever is still waiting. Sending happens after this request, within a time budget.
+   if(path==='/admin/rewards/points-moved-email'&&method==='POST'){if(!owner||affiliateManager)fail('Owner only.',403);const mode=body.mode,expires=clock()+3*86400;
+    if(mode==='test'){const to=text(body.test_to||'',150).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to))fail('Enter a test email address.');const pts=int(body.test_points??150,1,10000000);
+     const c=pointsMoved.content({first_name:body.test_first_name||'',points:pts,email:body.test_email_shown||to});const id='points-moved-test-'+crypto.randomBytes(6).toString('hex');
+     await emails.enqueue(s,{id,kind:'points_moved_test',to,related_id:'test',subject:'[TEST] '+c.subject,content:c,expires,brand:'glow'});bulkJobs.push(id);return{ok:true,mode,queued:1}}
+    if(mode==='send'){const names=body.names&&typeof body.names==='object'?body.names:{};const rows=(await s.list('rewards_imports')).filter(r=>!r.claimed&&!r.held&&r.points>0);
+     if(body.confirm!=='SEND '+rows.length)fail('Type SEND '+rows.length+' to confirm.');let queued=0;
+     for(const r of rows){const a=await s.get('customers',r.id);if(a?.verified)continue;const c=pointsMoved.content({first_name:names[r.email]||'',points:r.points,email:r.email});
+      const id='points-moved-'+r.id;if(await s.get('email_outbox',id))continue;await emails.enqueue(s,{id,kind:'points_moved',to:r.email,related_id:r.id,subject:c.subject,content:c,expires,brand:'glow'});bulkJobs.push(id);queued++}
+     await audit(s,'points_moved_email_queued',String(queued));return{ok:true,mode,queued}}
+    if(mode==='dispatch'){for(const j of await s.list('email_outbox'))if(j.kind==='points_moved'&&['pending','retry'].includes(j.status))bulkJobs.push(j.id);return{ok:true,mode,waiting:bulkJobs.length}}
+    if(mode==='status'){const j=(await s.list('email_outbox')).filter(x=>x.kind==='points_moved');const by={};for(const x of j)by[x.status]=(by[x.status]||0)+1;return{ok:true,mode,total:j.length,by_status:by,waiting_to_send:(await s.list('rewards_imports')).filter(r=>!r.claimed&&!r.held&&r.points>0).length}}
+    fail('Choose test, send, dispatch or status.')}
    if(path==='/admin/rewards/import'&&method==='POST'){const r=await accounts.importBatch(s,text(body.batch_id||'',100));await audit(s,'customer_rewards_imported');return r}
    if(path==='/admin/rewards/adjust'&&method==='POST'){const id=text(body.customer_id||'',64),a=await s.get('customers',id);if(!a?.verified)fail('Choose a verified customer.');if(!Number.isSafeInteger(body.points)||!body.points||Math.abs(body.points)>1000000)fail('Enter a nonzero whole-point adjustment.');const key=text(body.idempotency_key||'',100),note=text(body.note||'',500);await accounts.event(s,id,'adjust:'+key,'staff_adjustment',body.points,0,null,note);await audit(s,'rewards_adjusted');return{ok:true}}
    if(path==='/admin/data'&&method==='GET'&&affiliateManager)return{brand:brands.publicBrand(reqBrand),role:'affiliate_manager',owner:false,affiliates:(await s.list('affiliates')).filter(a=>nativeAffiliates.brandOf(a)==='glow'&&!nativeAffiliates.isNative(a)).map(a=>({slug:a.slug,name:a.name,bio:a.bio||'',goaffpro_id:a.goaffpro_id||'',active:a.active,management_revision:a.management_revision||0}))};
@@ -531,6 +546,7 @@ async function handle({path,method='GET',headers={},body={}}){
  });
  if(emailJob){const delivery=await emails.safeDispatch(emailJob);if(result&&typeof result==='object')result.email=delivery}
  for(const id of new Set(staffJobs))await emails.safeDispatch(id);
+ if(bulkJobs.length){const started=Date.now();let sent=0,left=0;for(const id of bulkJobs){if(Date.now()-started>20000){left++;continue}const r=await emails.safeDispatch(id);if(r?.status==='accepted')sent++}if(result&&typeof result==='object'){result.sent=sent;result.left_for_next_dispatch=left}}
  if(invoiceJob){let r;try{r=await autoInvoice.sendFor(invoiceJob)}catch(e){r={status:'failed'}}if(result&&typeof result==='object')result.invoice={status:r.status,via:r.via||null}}
  if(path==='/admin/status'&&method==='POST'&&body.status==='paid'&&result?.ok&&result.affiliate_program!=='native'){try{result.goaffpro=await reporting.report(body.id)}catch{result.goaffpro={status:'failed',message:'Payment is saved. Affiliate reporting needs a later status check.'}}}
  if(path==='/admin/status'&&method==='POST'&&body.status==='paid'&&result?.ok){try{result.shipstation=await shipping.send(body.id)}catch{result.shipstation={status:'failed',message:'Payment saved. Check Shipping for transfer status.'}}}
