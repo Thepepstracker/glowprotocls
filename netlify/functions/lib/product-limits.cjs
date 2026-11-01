@@ -1,9 +1,9 @@
 'use strict';
-// Only the three single-vial Glow flash-sale variants are capped. Other strengths,
-// kits and brands retain their existing quantity and inventory rules.
+// Flash-sale quantity cap. The Oct 31 2026 sale (Selank 5, Semax 5, GHK-Cu 100 at $13, 3 vials max)
+// is over, so no SKU is capped now. To cap a future sale, list its single-vial SKUs here.
 const FLASH_GROUP='glow-13-flash-sale';
 const FLASH_MESSAGE='Limit 3 sale vials total per order. Mix and match.';
-const FLASH_SKUS=new Set(['selank-5-mg','semax-5-mg','ghk-cu-100-mg']);
+const FLASH_SKUS=new Set([]);
 function maxOrderQuantity(p){
  if((p.brand||'glow')!=='glow'||(p.units||1)!==1||p.components?.length)return null;
  return FLASH_SKUS.has(String(p.sku||'').trim().toLowerCase())?3:null;
