@@ -78,7 +78,7 @@ async function editStore(s,o){const copy={...o,items:[]};for(const line of o.ite
 // Plain letters/digits/space/.'- only: these values end up in a Terminal window and a macOS notification on the shop's computer.
 const safeWord=(v,max)=>String(v||'').normalize('NFKC').replace(/[^\p{L}\p{N} .'-]/gu,'').replace(/\s+/g,' ').trim().slice(0,max);
 async function handle({path,method='GET',headers={},body={}}){
- const h=Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),v]));let setCookie,emailJob,invoiceJob;
+ const h=Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),v]));let setCookie,emailJob,invoiceJob;const staffJobs=[]; // staff new-order alerts queued in this request; sent right after it (Sevalla has no email worker)
  if(!['GET','POST'].includes(method))fail('Method not allowed.',405);
  if(method==='POST'){
   if(h['x-store-request']!=='1')fail('Request protection header required.',403);
@@ -338,7 +338,7 @@ async function handle({path,method='GET',headers={},body={}}){
    const beneficiary=assisted?await s.get('customers',accounts.hash(accounts.email(customer.email))):a;
    o.is_test=settings.demo!==false;o.customer_id=beneficiary?.verified&&reqBrand.rewards?beneficiary.id:null;if(assisted){const actor=await s.get('sessions',staffSession);o.created_by_staff=actor.staff_id||'owner';o.order_for_customer=true}o.points_earned=0;delete o.points_multiplier;if(reqBrand.rewards&&!assisted&&typeof body.friend==='string'&&body.friend){const r=await s.get('referral_codes',body.friend.trim().toLowerCase().slice(0,20));if(r&&r.customer_id!==accounts.hash(accounts.email(customer.email)))o.referred_by=r.customer_id}if(o.proof_required){o.expires=clock()+7*86400;o.payment_window_days=7}await accounts.reserve(s,o);
    for(const item of q.items)await moveStock(s,item,-1);await couponRules.reserve(s,q,1);
-   await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);emailJob=await emails.queueOrder(s,o,token);if(!o.proof_required)await emails.queueStaffAlert(s,o);if(autoInvoice.eligible(o,settings))invoiceJob=o.id;return{order:publicOrder(o),token};
+   await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created',id);emailJob=await emails.queueOrder(s,o,token);if(!o.proof_required)staffJobs.push(...await emails.queueStaffAlert(s,o));if(autoInvoice.eligible(o,settings))invoiceJob=o.id;return{order:publicOrder(o),token};
   }
   const edit=path.match(/^\/orders\/([A-Z0-9-]+)\/(edit-context|edit-quote|edit)$/);
   if(edit){const o=await orderAuth(s,edit[1],h);editable(o);const available=await editStore(s,o);
@@ -354,14 +354,14 @@ async function handle({path,method='GET',headers={},body={}}){
    if(q.points_redeemed){const a=await accounts.session(s,h);if(!a||a.id!==o.customer_id)fail('Sign in to the original customer account to use its rewards.',401)}
    const previousPayment=o.payment_method,wasInvoiced=previousPayment==='card_invoice'||!!o.invoice_via;const revision=(o.revision||0)+1;await release(s,o,o.status);Object.assign(o,q,{customer,payment_method:payment,revision,reservation_version:revision,updated:clock()});if(inv){o.proof_required=false;o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();o.status='order_received';o.expires=null;o.invoice_via=via;delete o.invoice_sent_at;delete o.invoice_sent_by;}else if(wasInvoiced){delete o.invoice_via;o.proof_required=!o.order_for_customer;o.checkout_stage='draft';o.submitted_at=null;o.status='order_received';o.expires=o.proof_required?clock()+7*86400:null;delete o.invoice_sent_at;delete o.invoice_sent_by;}if(o.brand==='zader'&&q.commission_provider!=='native'){delete o.commission_provider;delete o.commission_bps;}
    o.goaffpro_affiliate_id=q.affiliate?(await s.get('affiliates',q.affiliate)).goaffpro_id||'':null;await accounts.reserve(s,o);
-   for(const line of o.items)await moveStock(s,line,-1);await couponRules.reserve(s,o,1);await s.put('orders',o.id,o);await audit(s,'checkout_edited',o.id);if(inv)await emails.queueStaffAlert(s,o);if(autoInvoice.eligible(o,settings))invoiceJob=o.id;
+   for(const line of o.items)await moveStock(s,line,-1);await couponRules.reserve(s,o,1);await s.put('orders',o.id,o);await audit(s,'checkout_edited',o.id);if(inv)staffJobs.push(...await emails.queueStaffAlert(s,o));if(autoInvoice.eligible(o,settings))invoiceJob=o.id;
    if(o.is_test===false)emailJob=await emails.enqueue(s,{id:'draft-edit-'+o.id+'-'+revision,kind:'checkout_updated',brand:o.brand,to:o.customer.email,related_id:o.id,subject:'Updated '+brands.orderBrand(o).name+' checkout '+o.id,content:emails.template('Your checkout has been updated.',['Order: '+o.id,'Your latest total is $'+(o.total/100).toFixed(2)+'. Use this amount instead of earlier checkout emails.',inv?(autoInvoice.eligible(o,settings)?'Your order is submitted. Your Glow Lab invoice is on its way by '+(via==='text'?'text message':'email')+'. Pay it by card or Cash App and your order joins the packing queue automatically.':'Your order is submitted. We will email a credit card invoice to '+o.customer.email+'. No payment has been received. Your order enters the fulfillment queue after staff verify payment.'):'Your existing private order link shows the latest items, status and shipping address. After paying, upload your screenshot for staff verification.'],null,null)});return{order:publicOrder(o)};
   }
   const m=path.match(/^\/orders\/([A-Z0-9-]+)(\/receipt)?$/);if(m){const o=await orderAuth(s,m[1],h);if(method==='GET'&&!m[2]){const v=publicOrder(o);if(v.packed)v.packed={at:v.packed.at};return v}if(method==='POST'&&m[2]){
    if(!['order_received','awaiting_payment','payment_submitted'].includes(o.status))fail('This order no longer accepts receipts.',409);
    if((o.revision||0)>0&&body.expected_revision!==o.revision)fail('This checkout changed. Refresh your order and check the latest total before submitting payment proof.',409);
    if(!o.customer.phone)o.customer.phone=contactPhone(body.phone);
-   const method=text(body.payment_method??o.payment_method,20);if(!['venmo','paypal','cashapp','zelle'].includes(method)||o.is_test===false&&!settings.payment_links?.[method])fail('Choose an available payment method.');const reference=text(body.reference||'',100,false);o.payment_method=method;o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);await emails.queueStaffAlert(s,o);await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
+   const method=text(body.payment_method??o.payment_method,20);if(!['venmo','paypal','cashapp','zelle'].includes(method)||o.is_test===false&&!settings.payment_links?.[method])fail('Choose an available payment method.');const reference=text(body.reference||'',100,false);o.payment_method=method;o.receipt=receiptImage.data;o.receipt_type=receiptImage.mime;o.payment_reference=reference;o.status='payment_submitted';o.checkout_stage='submitted';o.submitted_at=o.submitted_at||clock();emailJob=await emails.queueSubmitted(s,o);staffJobs.push(...await emails.queueStaffAlert(s,o));await s.put('orders',o.id,o);await audit(s,'receipt_submitted',o.id);return publicOrder(o);
   }fail('Endpoint not found.',404)}
   if(path==='/admin/login'&&method==='POST'){
    if(!process.env.STORE_ADMIN_PASSWORD||process.env.STORE_ADMIN_PASSWORD.length<12)fail('Admin password is not configured.',503);
@@ -530,6 +530,7 @@ async function handle({path,method='GET',headers={},body={}}){
   fail('Endpoint not found.',404);
  });
  if(emailJob){const delivery=await emails.safeDispatch(emailJob);if(result&&typeof result==='object')result.email=delivery}
+ for(const id of new Set(staffJobs))await emails.safeDispatch(id);
  if(invoiceJob){let r;try{r=await autoInvoice.sendFor(invoiceJob)}catch(e){r={status:'failed'}}if(result&&typeof result==='object')result.invoice={status:r.status,via:r.via||null}}
  if(path==='/admin/status'&&method==='POST'&&body.status==='paid'&&result?.ok&&result.affiliate_program!=='native'){try{result.goaffpro=await reporting.report(body.id)}catch{result.goaffpro={status:'failed',message:'Payment is saved. Affiliate reporting needs a later status check.'}}}
  if(path==='/admin/status'&&method==='POST'&&body.status==='paid'&&result?.ok){try{result.shipstation=await shipping.send(body.id)}catch{result.shipstation={status:'failed',message:'Payment saved. Check Shipping for transfer status.'}}}
@@ -540,7 +541,7 @@ async function handle({path,method='GET',headers={},body={}}){
 async function stripeInvoicePaid(invoiceId){const r=await autoInvoice.paidFromStripe(invoiceId,async(s,o,opts)=>{await markPaid(s,o,opts);await s.put('orders',o.id,o);return emails.queueUpdate(s,o)});
  if(r.status==='paid'){if(r.job){try{await emails.safeDispatch(r.job)}catch{}}const o=await transaction(s=>s.get('orders',r.order_id));
   if(o?.affiliate&&o.commission_provider!=='native'){try{await reporting.report(o.id)}catch{}}try{await shipping.send(o.id)}catch{}delete r.job}
- if(r.status==='review'&&r.order_id){try{await transaction(async s=>{const o=await s.get('orders',r.order_id);if(o)await emails.queueStaffAlert(s,o)})}catch{}} // the email worker sends staff alerts
+ if(r.status==='review'&&r.order_id){try{await transaction(async s=>{const o=await s.get('orders',r.order_id);if(o)return emails.queueStaffAlert(s,o)}).then(ids=>Promise.all((ids||[]).map(emails.safeDispatch)))}catch{}} // send staff alerts now: Sevalla has no email worker
  return r}
 module.exports={handle,quote,shipmentPayload,publicOrder,stripeInvoicePaid};
 
