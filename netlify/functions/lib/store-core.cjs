@@ -351,6 +351,7 @@ async function handle({path,method='GET',headers={},body={}}){
     if((o.last_payment_reminder_at||0)>clock()-300)fail('A reminder was requested recently. Wait five minutes before sending another.',429);
     emailJob=await emails.queueReminder(s,o,reminderToken(o),jobId);o.last_payment_reminder_at=clock();o.last_payment_reminder_job=jobId;await s.put('orders',o.id,o);await audit(s,'payment_reminder_requested',o.id);return{ok:true,job_id:jobId};
    }
+   {const ex=path.match(/^\/admin\/export\/(customers|rewards_wallets|rewards_ledger|rewards_imports)$/);if(ex&&method==='GET'){if(!owner||affiliateManager)fail('Owner only.',403);const rows=await s.list(ex[1]);return{kind:ex[1],count:rows.length,rows:ex[1]==='customers'?rows.map(({password,setup,...r})=>r):rows}}} // read-only raw export for the move to Sevalla (31 Oct 2026)
    if(path==='/admin/customers'&&method==='GET')return accounts.adminData(s);
    if(['/admin/order/items','/admin/order/payment-adjustment'].includes(path)&&method==='POST'){
     const o=await s.get('orders',text(body.id||'',50)),actor=(await s.get('sessions',sessionId)).staff_id||'owner';
