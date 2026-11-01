@@ -279,6 +279,8 @@
  "More views": "Más vistas",
  "Continue shopping the store": "Seguir comprando en la tienda",
  "Added to your bag. Use View bag when you’re ready to review or checkout.": "Agregado a tu bolsa. Selecciona Ver bolsa para revisar tu compra o finalizarla.",
+ "Added to your bag.": "Agregado a tu bolsa.",
+ "Added ✓": "Agregado ✓",
  "Add a product first.": "Primero agrega un producto.",
  "No more stock available.": "No hay más unidades disponibles.",
  "Choose an available size and color.": "Elige una talla y un color disponibles.",
