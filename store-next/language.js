@@ -281,6 +281,7 @@
  "Added to your bag. Use View bag when you’re ready to review or checkout.": "Agregado a tu bolsa. Selecciona Ver bolsa para revisar tu compra o finalizarla.",
  "Added to your bag.": "Agregado a tu bolsa.",
  "Read more": "Leer más",
+ "Mon–Fri, 9 AM–5 PM ET": "Lun–Vie, 9 AM–5 PM (hora del Este)",
  "Pep of the Week": "Péptido de la semana",
  "Pep of the Week price": "Precio del péptido de la semana",
  "This Week’s Spotlight": "Destacados de la semana",

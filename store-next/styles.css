@@ -317,3 +317,7 @@ input[type=file]::file-selector-button:hover{background:#eae1ce}
 /* Pep of the Week (1 Nov 2026) */
 .potw-chip{align-self:flex-start;display:inline-block;font:700 11px Inter,system-ui,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--gold);border-radius:999px;padding:4px 10px;margin-bottom:6px}
 .spotlight-badge.potw{background:var(--gold);color:#fff;border-color:var(--gold)}
+/* Footer support line (2 Nov 2026) */
+.site-footer .foot-brand p.foot-support{margin-top:16px;line-height:1.7;font-size:13.5px;color:#cfc6b4}
+.site-footer .foot-support a{color:#f4ecd9;text-decoration:none;border-bottom:1px solid #5a4a28}
+.site-footer .foot-support a:hover{color:#fff;border-bottom-color:var(--gold)}

@@ -206,7 +206,7 @@ function printSlips(orders){const w=window.open('','_blank');if(!w){toast('Allow
   <table><thead><tr><th class="ck">Packed</th><th class="q">Qty</th><th>Item</th></tr></thead><tbody>${items.map(i=>`<tr><td class="ck">☐</td><td class="q">${esc(i.quantity)}</td><td>${esc(i.name)}</td></tr>`).join('')}</tbody>
   <tfoot><tr><td></td><td class="q">${count}</td><td>item${count===1?'':'s'} in this box</td></tr></tfoot></table>
   <div class="sign"><span>Packed by: ________________</span><span>Checked by: ________________</span></div>
-  <footer>Thank you for your order! Questions? Email jonahglowwithheather@gmail.com · ${esc(orderStore(o).domain)}</footer></section>`};
+  <footer>Thank you for your order! Questions? ${orderStore(o).id==='glow'?'Email support@glowglps.com or call (844) 456-9522 (Mon–Fri, 9–5 ET)':'Email jonahglowwithheather@gmail.com'} · ${esc(orderStore(o).domain)}</footer></section>`};
  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>
  @page{size:letter;margin:0.6in}body{font-family:-apple-system,Helvetica,Arial,sans-serif;color:#111;margin:0}
  .slip{page-break-after:always;font-size:16px}.slip:last-child{page-break-after:auto}
