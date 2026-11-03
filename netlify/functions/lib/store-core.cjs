@@ -533,6 +533,22 @@ async function handle({path,method='GET',headers={},body={}}){
     const o=await s.get('orders',body.id);if(!o)fail('Order not found.',404);const target=body.status;
     if(target==='awaiting_payment'&&o.status==='order_received'){o.status=target;o.invoice_sent_at=clock();o.invoice_sent_by=(await s.get('sessions',sessionId)).staff_id||'owner';o.expires=clock()+7*86400;o.payment_window_days=7;await s.put('orders',o.id,o);await audit(s,'invoice_sent',o.id);return{ok:true}}
     if(target==='canceled'&&['order_received','awaiting_payment','payment_submitted'].includes(o.status)){await release(s,o,target);emailJob=await emails.queueUpdate(s,o);return{ok:true}}
+    if(target==='unpaid'){
+     if(o.status!=='paid')fail('Only an order marked Paid · in queue can be set back to not paid.',409);
+     if(o.payment_verification_source==='stripe_invoice')fail('Stripe confirmed this payment, so it really was paid. If the customer needs money back, refund it in Stripe.',409);
+     if(o.shippo_transaction_id||o.shippo_status==='label_bought')fail('A shipping label was already bought for this order. Void the label first, then undo the payment.',409);
+     if(body.confirm!==true)fail('Confirm that this order was marked paid by mistake.');
+     const by=(await s.get('sessions',sessionId)).staff_id||'owner',was={paid:o.paid,verified_payment_cents:o.verified_payment_cents,source:o.payment_verification_source,by:o.payment_verified_by,packed:o.packed||null};o.packed=null;
+     await accounts.unpaid(s,o);
+     o.status=o.receipt||o.has_receipt?'payment_submitted':(o.invoice_sent_at||o.stripe_invoice)?'awaiting_payment':'order_received';
+     if(o.status==='awaiting_payment'){o.expires=Math.max(o.expires||0,clock()+7*86400);o.payment_window_days=7}
+     o.paid=null;o.verified_payment_cents=0;o.balance_due_cents=0;o.refund_due_cents=0;o.payment_verified_by=null;o.payment_verification_source=null;
+     if(o.shipstation_order_id){o.shipstation_needs_review=true;o.shipstation_status='needs_review';o.shipstation_message='Payment was undone. Put this order on hold or delete it in ShipStation.'}else o.shipstation_status='not_ready';
+     if(o.goaffpro_status==='synced'||o.goaffpro_remote_id){o.goaffpro_needs_review=true;o.goaffpro_status='needs_review';o.goaffpro_message='Payment was undone. Reject or remove this sale in GoAffPro.'}else if(o.goaffpro_status!=='not_applicable')o.goaffpro_status='not_applicable';
+     o.payment_undone=[...(o.payment_undone||[]),{at:clock(),by,was}].slice(-10);
+     await s.put('orders',o.id,o);await nativeAffiliates.reconcileOrder(s,o);await audit(s,'payment_undone',o.id);
+     return{ok:true,status:o.status};
+    }
     if(target==='paid'&&['order_received','awaiting_payment','payment_submitted'].includes(o.status)){if(body.verified!==true)fail('Confirm that the payment was received.');await markPaid(s,o,{by:(await s.get('sessions',sessionId)).staff_id||'owner',source:o.receipt?'screenshot_and_staff':'staff_verified'})}
     else if(target==='shipped'&&o.status==='paid'){if(o.balance_due_cents||o.refund_due_cents)fail('Settle the additional payment or refund before shipping.',409);if(o.shipstation_needs_review&&body.shipping_review!==true)fail('Confirm the updated order was reviewed in ShipStation before shipping.',409);o.shipstation_needs_review=false;o.status='shipped';o.tracking=text(body.tracking||'',150,false);o.shipment=require('./order-tracking.cjs').fromManual(o.tracking);await audit(s,'shipped',o.id)}
     else fail('This status change is not allowed.',409);await s.put('orders',o.id,o);emailJob=await emails.queueUpdate(s,o);return{ok:true,...(o.commission_provider==='native'?{affiliate_program:'native'}:{})};
