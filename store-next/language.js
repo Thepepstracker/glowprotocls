@@ -308,6 +308,7 @@
  "Previous store balance update": "Ajuste del saldo de la tienda anterior",
  "Order change": "Cambio en el pedido",
  "Adjustment by our team": "Ajuste de nuestro equipo",
+ "Payment correction": "Corrección de pago",
  "← Continue shopping": "← Seguir comprando",
  "1 point per $1 of products after discounts (not shipping or tax) · 1.5 at Gold, 2 at Purple · 100 points = $5 off · points never expire · use with up to two promo codes · points post once payment is confirmed.": "1 punto por cada $1 en productos después de descuentos (sin envío ni impuestos) · 1.5 en Gold, 2 en Purple · 100 puntos = $5 de descuento · los puntos no vencen · se pueden usar con hasta dos códigos promocionales · los puntos se acreditan cuando se confirma el pago.",
  "Show less": "Mostrar menos",
