@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Live Show · Glow Lab</title>
+<style>
+:root{--bg:#f7f4ee;--card:#fff;--ink:#1b1b1b;--muted:#6b6459;--line:#e4dccd;--gold:#b88a2e;--ok:#1f7a3a;--okbg:#e7f4ea;--warn:#a23b1d;--warnbg:#fbeae5;--amber:#8a5a00;--amberbg:#fff4d6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif}
+a{color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;padding:12px 16px}
+header .row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;max-width:1180px;margin:0 auto}
+h1{font-size:20px;margin:0;letter-spacing:.02em}
+h1 .dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;margin-right:8px;vertical-align:1px;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.hctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:15px}
+.hctl input{width:110px;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid #555;background:#2a2a2a;color:#fff}
+.hctl label{display:flex;gap:6px;align-items:center}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--ink);background:#fff;color:var(--ink);padding:9px 14px}
+header button{border-color:#666;background:#2a2a2a;color:#fff;padding:6px 12px;font-size:15px}
+header button[aria-pressed=true]{background:var(--gold);border-color:var(--gold);color:#1b1b1b}
+button.mini{padding:4px 10px;font-size:14px;border-radius:8px}
+main{max-width:1180px;margin:0 auto;padding:16px}
+.goal{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:14px}
+.goal .top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.goal .big{font-size:44px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.goal .of{color:var(--muted);font-size:18px}
+.track{height:18px;background:#efe8da;border-radius:10px;overflow:hidden;margin-top:10px}
+.track i{display:block;height:100%;background:linear-gradient(90deg,#c9a24b,#e2bf62);width:0;transition:width .6s ease}
+.track i.done{background:linear-gradient(90deg,#2f9e5b,#5fc27e)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.m b{display:block;font-size:28px;font-variant-numeric:tabular-nums}
+.m small{color:var(--muted);font-size:14px}
+.m input{width:90px;font:inherit;font-size:22px;font-weight:700;padding:2px 6px;border:1px solid var(--line);border-radius:8px}
+.cols{display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
+@media (max-width:860px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+.panel h2{font-size:17px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.feed{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
+.feed li{display:grid;grid-template-columns:78px 1fr auto;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid #f0eadf}
+.feed li.new{animation:flash 2.4s ease}
+@keyframes flash{0%{background:#fff1c9}100%{background:transparent}}
+.feed time{color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums}
+.feed .who b{font-weight:700}.feed .who small{display:block;color:var(--muted);font-size:13px}
+.feed .amt{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.feed .amt small{display:block;font-weight:400;font-size:12px}
+.st-paid{color:var(--ok)}.st-wait{color:var(--amber)}
+.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.tile{position:relative;border:1px solid var(--line);border-radius:12px;padding:12px;background:#fffdf8}
+.tile .n{font-size:14px;font-weight:600;line-height:1.25;min-height:36px;padding-right:18px}
+.tile .left{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile .left small{font-size:14px;font-weight:600;color:var(--muted)}
+.tile .sold{font-size:13px;color:var(--muted)}
+.tile.low{border-color:#e7b9ad;background:var(--warnbg)}.tile.low .left{color:var(--warn)}
+.tile.out{opacity:.6}
+.tile .x{position:absolute;top:6px;right:8px;border:0;background:none;padding:0 4px;font-size:18px;color:var(--muted)}
+.pick{position:relative;margin-top:10px}
+.pick input{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:10px}
+.pick ul{list-style:none;margin:4px 0 0;padding:0;border:1px solid var(--line);border-radius:10px;max-height:240px;overflow:auto;background:#fff}
+.pick li button{width:100%;text-align:left;border:0;border-bottom:1px solid #f3eee4;border-radius:0;padding:8px 10px;font-size:15px}
+.tops{list-style:none;margin:0;padding:0}.tops li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #f3eee4;font-size:15px}
+.muted{color:var(--muted)}.note{font-size:13px;color:var(--muted);margin-top:8px}
+.err{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+/* Stream view: big, dark, no names and no dollar amounts, safe to put on camera */
+body.stream{background:#0d0d0f;color:#fff}
+body.stream .host{display:none!important}
+body:not(.stream) .streamonly{display:none!important}
+.sv{max-width:1180px;margin:0 auto;padding:22px 16px}
+.sv .count{font-size:64px;font-weight:800;text-align:center;letter-spacing:-.02em}
+.sv .count small{display:block;font-size:20px;font-weight:600;color:#d9b45a;letter-spacing:.08em;text-transform:uppercase}
+.sv .feat{grid-template-columns:repeat(auto-fit,minmax(180px,230px));justify-content:center}
+.sv .feat .tile{background:#18181c;border-color:#2c2c33;color:#fff}
+.sv .feat .tile .sold,.sv .feat .tile .left small{color:#aaa}
+.sv .feat .tile.low{background:#3a1512;border-color:#7a2a20}.sv .feat .tile.low .left{color:#ff8a70}
+.sv .feat .tile .x{display:none}
+.sv .tick{list-style:none;padding:0;margin:20px auto 0;max-width:640px}
+.sv .tick li{background:#18181c;border:1px solid #2c2c33;border-radius:14px;padding:14px 18px;margin-bottom:10px;font-size:22px;display:flex;justify-content:space-between;gap:10px}
+.sv .tick li.new{animation:sflash 2.4s ease}
+@keyframes sflash{0%{background:#5a4513;border-color:#d9b45a}100%{background:#18181c}}
+.sv .tick li small{color:#aaa;font-size:16px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-size:16px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header class="host"><div class="row">
+  <h1><span class="dot" aria-hidden="true"></span>Live Show · Glow Lab</h1>
+  <div class="hctl">
+    <label>Live started <input id="start" type="time" aria-label="Live start time"></label>
+    <button id="startNow" type="button">Start now</button>
+    <label>Goal $<input id="goal" type="number" min="0" step="1" aria-label="Goal for tonight in dollars"></label>
+    <button id="sound" type="button" aria-pressed="false">🔕 Sound off</button>
+    <button id="streamBtn" type="button" title="Big, dark screen with no names or dollar amounts, safe to show on camera">📺 Stream view</button>
+    <a href="/store-next/admin" style="font-size:15px">Management</a>
+  </div>
+</div></header>
+
+<main class="host">
+  <div id="err"></div>
+  <section class="goal" aria-label="Tonight's sales against the goal">
+    <div class="top"><div><span class="big" id="sales">$0</span> <span class="of" id="of">of $0 goal</span></div><div class="muted" id="since">Waiting for orders…</div></div>
+    <div class="track"><i id="bar"></i></div>
+  </section>
+  <div class="metrics">
+    <div class="m"><b id="mOrders">0</b><small>Orders tonight</small></div>
+    <div class="m"><b id="mBuyers">0</b><small>Different buyers</small></div>
+    <div class="m"><b id="mAvg">$0</b><small>Average order</small></div>
+    <div class="m"><b id="mPaid">$0</b><small>Paid so far</small></div>
+    <div class="m"><input id="viewers" type="number" min="0" step="1" placeholder="e.g. 250" aria-label="Viewers right now"><small id="conv">Viewers now · type it in to see % buying</small></div>
+  </div>
+  <div class="cols">
+    <section class="panel" aria-label="Orders as they come in"><h2>Orders as they come in <span class="muted" style="font-size:13px;font-weight:400" id="upd"></span></h2><ul class="feed" id="feed"><li class="muted" style="display:block">No orders yet tonight.</li></ul></section>
+    <div>
+      <section class="panel" aria-label="Products you are showing"><h2>Showing on the live</h2><div class="feat" id="feat"></div>
+        <div class="pick"><input id="pickQ" type="search" placeholder="Add a product to watch its stock…" autocomplete="off"><ul id="pickList" hidden></ul></div>
+        <p class="note">Stock left updates every 15 seconds. Red means 5 or fewer left.</p></section>
+      <section class="panel" aria-label="Top sellers tonight"><h2>Top sellers tonight</h2><ul class="tops" id="tops"><li class="muted">Nothing yet.</li></ul></section>
+    </div>
+  </div>
+</main>
+
+<div class="streamonly sv">
+  <div class="count"><span id="sCount">0</span><small>orders tonight</small></div>
+  <div class="feat" id="sFeat" style="margin-top:22px"></div>
+  <ul class="tick" id="sTick"></ul>
+  <p style="text-align:center;margin-top:26px"><button id="exitStream" type="button" class="mini" style="background:#222;color:#aaa;border-color:#333">Exit stream view</button></p>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+'use strict';
+// Live-show command center (Jonah, 4 Nov 2026). Reads the same private management data as Packing Check.
+// Read-only: nothing here changes an order, a price or stock, and nothing is sent to customers.
+var POLL_MS=15000,KEY='glp_live_v1';
+var cfg=load(),data=null,seen=null,lastOk=0;
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){return{}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(cfg))}catch(e){}}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function money(c){return '$'+Math.round((c||0)/100).toLocaleString('en-US')}
+function money2(c){return '$'+((c||0)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function $(id){return document.getElementById(id)}
+function toast(s){var t=$('toast');t.textContent=s;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove('show')},2600)}
+// Eastern-time helpers
+function etParts(ms){var p={};new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZoneName:'shortOffset'}).formatToParts(new Date(ms)).forEach(function(x){p[x.type]=x.value});var off=(p.timeZoneName||'GMT-5').match(/GMT([+-]\d+)(?::(\d+))?/);p.offMin=off?(Number(off[1])*60+(off[1][0]==='-'?-1:1)*Number(off[2]||0)):-300;return p}
+function etEpoch(y,m,d,h,mi){var guess=Date.UTC(y,m-1,d,h,mi),off=etParts(guess).offMin;return Math.floor((guess-off*60000)/1000)}
+// The live night: before 4 AM Eastern still counts as last night's live.
+function liveDay(){var p=etParts(Date.now()-(Number(etParts(Date.now()).hour)<4?86400000:0));return{y:+p.year,m:+p.month,d:+p.day,key:p.year+'-'+p.month+'-'+p.day}}
+function startEpoch(){var day=liveDay(),t=(cfg.day===day.key&&cfg.start)||'20:00',hm=t.split(':');return etEpoch(day.y,day.m,day.d,+hm[0],+hm[1])}
+function goalCents(){var g=Number(cfg.goal);return (g>0?g:3672)*100}
+function isDraft(o){return o.proof_required===true&&o.checkout_stage==='draft'&&!o.has_receipt&&['order_received','expired','canceled'].indexOf(o.status)>=0}
+function counts(o){return o.is_test===false&&!isDraft(o)&&['order_received','awaiting_payment','payment_submitted','paid','shipped'].indexOf(o.status)>=0}
+function isPaid(o){return o.status==='paid'||o.status==='shipped'}
+function first(o){var n=String((o.customer||{}).name||'').trim().split(/\s+/);return (n[0]||'Someone')+(n.length>1?' '+n[n.length-1][0]+'.':'')}
+var STATES={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'D.C.',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',PR:'Puerto Rico'};
+function stateName(o){var s=String((o.customer||{}).state||'').trim().toUpperCase();return STATES[s]||((o.customer||{}).state||'')}
+function hm(ts){return new Date(ts*1000).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})}
+function units(o){return (o.items||[]).reduce(function(n,i){return n+(i.quantity||0)},0)}
+function tonight(){var s=startEpoch();return (data&&data.orders||[]).filter(function(o){return counts(o)&&(o.submitted_at||o.created)>=s}).sort(function(a,b){return (b.submitted_at||b.created)-(a.submitted_at||a.created)})}
+function soldTonight(list){var by={};list.forEach(function(o){(o.items||[]).forEach(function(i){by[i.id]=(by[i.id]||0)+(i.quantity||0)})});return by}
+function product(id){return (data&&data.products||[]).find(function(p){return p.id===id})}
+function tile(p,sold){var left=Math.max(0,p.stock||0),cls=left===0?'out':left<=5?'low':'';return '<div class="tile '+cls+'"><button class="x" data-unfeat="'+p.id+'" aria-label="Stop watching '+esc(p.name)+'">×</button><div class="n">'+esc(p.name)+(p.size?' <span class="muted">'+esc(p.size)+'</span>':'')+'</div><div class="left">'+(left===0?'Sold out':left+' <small>left</small>')+'</div><div class="sold">'+(sold||0)+' sold tonight</div></div>'}
+var beepCtx=null;function beep(){if(!cfg.sound)return;try{beepCtx=beepCtx||new (window.AudioContext||window.webkitAudioContext)();var t=beepCtx.currentTime;[880,1320].forEach(function(f,i){var o=beepCtx.createOscillator(),g=beepCtx.createGain();o.frequency.value=f;o.connect(g);g.connect(beepCtx.destination);g.gain.setValueAtTime(.0001,t+i*.14);g.gain.exponentialRampToValueAtTime(.25,t+i*.14+.02);g.gain.exponentialRampToValueAtTime(.0001,t+i*.14+.22);o.start(t+i*.14);o.stop(t+i*.14+.25)})}catch(e){}}
+function render(){
+  var list=tonight(),fresh={};if(seen){list.forEach(function(o){if(!seen[o.id])fresh[o.id]=1})}var newCount=Object.keys(fresh).length;
+  seen={};list.forEach(function(o){seen[o.id]=1});if(newCount){beep();if(!document.body.classList.contains('stream'))toast('🎉 '+newCount+' new order'+(newCount>1?'s':''))}
+  var sales=list.reduce(function(n,o){return n+(o.total||0)},0),paid=list.filter(isPaid).reduce(function(n,o){return n+(o.verified_payment_cents!=null?o.verified_payment_cents:o.total||0)},0),buyers={};list.forEach(function(o){buyers[String((o.customer||{}).email||o.id).toLowerCase()]=1});
+  var nb=Object.keys(buyers).length,goal=goalCents(),pct=Math.min(100,Math.round(sales/goal*100));
+  $('sales').textContent=money(sales);$('of').textContent='of '+money(goal)+' goal · '+pct+'%';$('bar').style.width=pct+'%';$('bar').className=sales>=goal?'done':'';
+  var mins=Math.max(0,Math.floor((Date.now()/1000-startEpoch())/60));$('since').textContent=sales>=goal?'🎯 Goal hit! '+money(sales-goal)+' over':mins>0?money(goal-sales)+' to go · live for '+(mins>=60?Math.floor(mins/60)+'h ':'')+(mins%60)+'m':'Live starts '+hm(startEpoch());
+  $('mOrders').textContent=list.length;$('mBuyers').textContent=nb;$('mAvg').textContent=list.length?money(sales/list.length):'$0';$('mPaid').textContent=money(paid);
+  var v=Number(cfg.viewers);$('conv').textContent=v>0?(Math.round(nb/v*1000)/10)+'% of '+v+' viewers have bought':'Viewers now · type it in to see % buying';
+  $('feed').innerHTML=list.length?list.slice(0,60).map(function(o){var c=o.customer||{};return '<li class="'+(fresh[o.id]?'new':'')+'"><time>'+hm(o.submitted_at||o.created)+'</time><div class="who"><b>'+esc(c.name||'Customer')+'</b><small>'+esc([c.city,c.state].filter(Boolean).join(', '))+' · '+units(o)+' item'+(units(o)===1?'':'s')+' · <a href="/store-next/admin?order='+encodeURIComponent(o.id)+'" target="_blank" rel="noopener">'+esc(o.id)+'</a></small></div><div class="amt">'+money2(o.total)+'<small class="'+(isPaid(o)?'st-paid">Paid':'st-wait">Not paid yet')+'</small></div></li>'}).join(''):'<li class="muted" style="display:block">No orders yet tonight.</li>';
+  var sold=soldTonight(list),feat=(cfg.feat||[]).map(product).filter(Boolean);
+  var tiles=feat.length?feat.map(function(p){return tile(p,sold[p.id])}).join(''):'<p class="muted" style="margin:0">Add the products you are showing to watch their stock.</p>';$('feat').innerHTML=tiles;$('sFeat').innerHTML=feat.map(function(p){return tile(p,sold[p.id])}).join('');
+  var tops=Object.keys(sold).map(function(id){var p=product(Number(id));return{n:p?p.name+(p.size?' '+p.size:''):'Product '+id,q:sold[id]}}).sort(function(a,b){return b.q-a.q}).slice(0,8);
+  $('tops').innerHTML=tops.length?tops.map(function(t){return '<li><span>'+esc(t.n)+'</span><b>'+t.q+'</b></li>'}).join(''):'<li class="muted">Nothing yet.</li>';
+  $('sCount').textContent=list.length;
+  $('sTick').innerHTML=list.slice(0,5).map(function(o){var st=stateName(o);return '<li class="'+(fresh[o.id]?'new':'')+'"><span>🎉 New order'+(st?' from '+esc(st):'')+'</span><small>'+units(o)+' item'+(units(o)===1?'':'s')+' · '+hm(o.submitted_at||o.created)+'</small></li>'}).join('');
+}
+function fetchData(){return fetch('/api/admin/data',{headers:{'X-Store-Request':'1'},cache:'no-store'}).then(function(r){if(r.status===401){$('err').innerHTML='<div class="err"><b>Sign in first.</b> Open <a href="/store-next/admin" target="_blank" rel="noopener">Management</a>, sign in, then come back. This page refreshes on its own.</div>';throw 0}if(!r.ok)throw new Error('The store answered '+r.status);return r.json()}).then(function(d){data=d;lastOk=Date.now();$('err').innerHTML='';render();$('upd').textContent='updated '+new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'})}).catch(function(e){if(e!==0&&Date.now()-lastOk>60000)$('err').innerHTML='<div class="err">Can’t reach the store right now. It will keep trying every 15 seconds.</div>'})}
+// controls
+function syncControls(){var day=liveDay();$('start').value=(cfg.day===day.key&&cfg.start)||'20:00';$('goal').value=Number(cfg.goal)>0?cfg.goal:3672;$('viewers').value=cfg.viewers||'';$('sound').setAttribute('aria-pressed',String(!!cfg.sound));$('sound').textContent=cfg.sound?'🔔 Sound on':'🔕 Sound off'}
+$('start').addEventListener('change',function(e){cfg.start=e.target.value||'20:00';cfg.day=liveDay().key;save();seen=null;render()});
+$('startNow').addEventListener('click',function(){var p=etParts(Date.now());cfg.start=p.hour+':'+p.minute;cfg.day=liveDay().key;save();syncControls();seen=null;render();toast('Counting orders from '+hm(Date.now()/1000))});
+$('goal').addEventListener('input',function(e){cfg.goal=e.target.value;save();if(data)render()});
+$('viewers').addEventListener('input',function(e){cfg.viewers=e.target.value;save();if(data)render()});
+$('sound').addEventListener('click',function(){cfg.sound=!cfg.sound;save();syncControls();if(cfg.sound)beep()});
+function setStream(on){document.body.classList.toggle('stream',on);if(on&&document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){});if(!on&&document.fullscreenElement)document.exitFullscreen().catch(function(){})}
+$('streamBtn').addEventListener('click',function(){setStream(true)});$('exitStream').addEventListener('click',function(){setStream(false)});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('stream'))setStream(false)});
+document.addEventListener('click',function(e){var b=e.target.closest('[data-unfeat],[data-feat]');if(!b)return;if(b.dataset.unfeat){cfg.feat=(cfg.feat||[]).filter(function(id){return id!==Number(b.dataset.unfeat)})}else{var id=Number(b.dataset.feat);cfg.feat=(cfg.feat||[]).filter(function(x){return x!==id}).concat([id]).slice(-8);$('pickQ').value='';$('pickList').hidden=true}save();render()});
+$('pickQ').addEventListener('input',function(e){var q=e.target.value.trim().toLowerCase(),ul=$('pickList');if(q.length<2||!data){ul.hidden=true;return}var words=q.split(/\s+/),hits=data.products.filter(function(p){var h=(p.name+' '+(p.size||'')+' '+(p.sku||'')).toLowerCase();return p.active&&words.every(function(w){return h.indexOf(w)>=0})}).slice(0,12);ul.innerHTML=hits.length?hits.map(function(p){return '<li><button type="button" data-feat="'+p.id+'">'+esc(p.name)+(p.size?' · '+esc(p.size):'')+' <span class="muted">('+(p.stock||0)+' in stock)</span></button></li>'}).join(''):'<li style="padding:8px 10px" class="muted">No match</li>';ul.hidden=false});
+syncControls();fetchData();setInterval(fetchData,POLL_MS);setInterval(function(){if(data)render()},60000);
+})();
+</script>
+</body>
+</html>

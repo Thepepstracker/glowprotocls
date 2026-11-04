@@ -336,3 +336,13 @@ input[type=file]::file-selector-button:hover{background:#eae1ce}
 .acct-ledger b{font-size:15px;font-weight:600}.acct-pts{text-align:right;white-space:nowrap}.acct-pts b{font-variant-numeric:tabular-nums}.acct-pts.up b{color:#23553a}.acct-pts.down b{color:#92323a}
 @media(max-width:620px){.acct-order-list li{grid-template-columns:1fr auto;grid-template-areas:"main total" "pill btn";row-gap:8px}.acct-o-main{grid-area:main}.acct-o-total{grid-area:total}.acct-pill{grid-area:pill;justify-self:start}.acct-order-list button{grid-area:btn}.acct-sec-h h2{font-size:24px}.acct-head{align-items:flex-start}}
 .glow-levels .lv-tile.locked{opacity:.85;filter:grayscale(.3) brightness(.9)}.lv-spent{margin:6px 0 16px}
+/* Smoother admin (Jonah, 4 Nov 2026): Unpaid tracker, Find customer, tracking links */
+.age-chip{display:inline-block;padding:3px 9px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
+.age-chip.new{background:#e4f2e9;color:#23553a}.age-chip.mid{background:#fdf1d6;color:#7a5a12}.age-chip.old{background:#f8e9ea;color:#92323a}
+.gx-warn{color:#92323a;font-weight:600}
+.gx-acts{display:flex;flex-wrap:wrap;gap:6px}.gx-acts button{padding:6px 10px;font-size:13px;margin:0}
+a.track-link{font-variant-numeric:tabular-nums;white-space:nowrap;text-decoration:underline;text-underline-offset:2px}
+.cust-card h2{margin-bottom:4px}.cust-card .metrics{margin:12px 0}
+.ap-row{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.ap-row button{white-space:nowrap}.ap-pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px}.ap-pill.on{background:#e4f2e9;color:#23553a}.ap-pill.off{background:#eee;color:#666}
+.ap-mail{border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin:10px 0;background:var(--cream)}.ap-mail p{margin:6px 0}
+.sub-row{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.sub-row select{padding:6px;font-size:13px}.sub-start{margin:12px 0;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--cream)}.sub-start summary{cursor:pointer;font-weight:600}
