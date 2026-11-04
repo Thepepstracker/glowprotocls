@@ -10,7 +10,7 @@
 const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs');
 const now=()=>Math.floor(Date.now()/1000);
 const TASKS={
- email:{name:'Email retries',every:60,help:'Re-sends customer emails that failed the first time.'},
+ email:{name:'Email retries',every:60,help:'Re-sends customer emails that failed the first time, and retries automatic Stripe invoices that failed to send.'},
  tracking:{name:'UPS delivery updates',every:300,help:'Checks UPS for each shipped package. Customers get the out-for-delivery and delivered emails.'},
  labels:{name:'Automatic labels',every:60,help:'Buys the UPS label for each paid order through Shippo. The $15 price check, the daily limit and Shippo’s own ON switch still apply.'},
  collect:{name:'Payment reminders',every:3600,help:'Emails invoiced, unpaid customers on day 1, day 3 and day 6. The store releases the order on day 7.'},
@@ -51,7 +51,8 @@ async function collect(limit=10,t=now()){
  return{status:'ok',sent:jobs.length};
 }
 async function runTask(key){
- if(key==='email')return require('./store-email.cjs').dispatchPending(8,20000);
+ // Email retries also retry automatic Stripe invoices that failed to send (up to 5 tries each), which worker.cjs did on Netlify.
+ if(key==='email'){const r=await require('./store-email.cjs').dispatchPending(8,20000);try{await require('./auto-invoice.cjs').retryFailed(5)}catch(e){console.error('Invoice retry failed.',{message:String(e&&e.message||e).slice(0,160)})}return r}
  if(key==='tracking')return require('./order-tracking.cjs').refreshDue(8);
  if(key==='labels'){const shippo=require('./shippo.cjs');if(!await shippo.enabled())return{status:'shippo_off'};return shippo.pending(3)}
  if(key==='collect')return collect();

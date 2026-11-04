@@ -50,7 +50,9 @@ async function sendFor(id,{force=false}={}){
   const found=await stripe('/customers?limit=1&email='+encodeURIComponent(email));
   const cust=found?.data?.[0]||await stripe('/customers',{method:'POST',idem:'glp-cust-'+crypto.createHash('sha256').update(email).digest('hex').slice(0,32),body:{email,name:String(c.name||'').slice(0,100),...(c.phone?{phone:String(c.phone).slice(0,20)}:{})}});
   const inv=await stripe('/invoices',{method:'POST',idem:'glp-inv-'+id+'-r'+rev,body:{customer:cust.id,collection_method:'send_invoice',days_until_due:7,auto_advance:'false',pending_invoice_items_behavior:'exclude',
-   payment_settings:{payment_method_types:['card','cashapp']},metadata:{order_id:id,revision:String(rev),source:'glow-store'}}});
+   // No payment_settings (Jonah, 5 Nov 2026): Stripe uses the account's invoice defaults, the same ways to pay as the
+   // invoices sent by hand (card, Cash App Pay, Link, Affirm, Klarna, Amazon Pay). The one line still says only "Glow Lab".
+   metadata:{order_id:id,revision:String(rev),source:'glow-store'}}});
   await stripe('/invoiceitems',{method:'POST',idem:'glp-ii-'+id+'-r'+rev,body:{customer:cust.id,invoice:inv.id,amount:String(o.total),currency:'usd',description:LABEL}});
   const fin=inv.status==='draft'?await stripe('/invoices/'+inv.id+'/finalize',{method:'POST',idem:'glp-fin-'+inv.id,body:{auto_advance:'false'}}):inv;
   if(fin.amount_due!==o.total)fail('Stripe invoice total $'+(fin.amount_due/100).toFixed(2)+' does not match the order $'+(o.total/100).toFixed(2)+'.',{definite:true});
