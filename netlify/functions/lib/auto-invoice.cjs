@@ -88,4 +88,6 @@ async function paidFromStripe(invoiceId,applyPaid){const inv=await stripe('/invo
 
 // What the checkout page may know: is auto-invoicing live, and can it text.
 const publicFlags=settings=>({auto_invoice:settings?.auto_invoice===true&&!!stripeKey(),invoice_text:settings?.auto_invoice===true&&!!stripeKey()&&!!twilio()});
-module.exports={retryFailed,publicFlags,METHODS,LABEL,status,invoiced,eligible,sendFor,verify,paidFromStripe,sendText,_form:form};
+// For Subscribe & save auto-pay (subscriptions.cjs): the same Stripe connection, never a second copy of the key.
+const stripeReady=()=>!!stripeKey(),stripeLive=()=>stripeKey().includes('_live_');
+module.exports={stripe,stripeReady,stripeLive,retryFailed,publicFlags,METHODS,LABEL,status,invoiced,eligible,sendFor,verify,paidFromStripe,sendText,_form:form};

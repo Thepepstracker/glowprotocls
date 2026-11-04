@@ -249,6 +249,13 @@ async function handle({path,method='GET',headers={},body={}}){
   const batch=todo.slice(0,40),costs=batch.length?await shippo.labelCostsByTracking(batch.map(o=>o.tracking)):{};let updated=0;const missing=[];
   await transaction(async s=>{for(const x of batch){const o=await s.get('orders',x.id);if(!o)continue;const f=costs[x.tracking];if(f){o.label_cost_cents=f.cents;o.label_cost_source='shippo_lookup';o.label_cost_service=f.service;updated++}else{o.label_cost_not_found=true;missing.push(x.id)}await s.put('orders',o.id,o)}await audit(s,'label_costs_backfilled')});
   return{status:200,headers:{},body:{ok:true,checked:batch.length,updated,not_in_shippo:missing,remaining:Math.max(0,todo.length-batch.length)}}}
+ // Subscribe & save (Jonah, 4 Nov 2026): staff start, change, pause or cancel subscriptions. Repeat orders are made by Autopilot.
+ if(path==='/admin/subscriptions'&&method==='GET'){await transaction(s=>session(s,h));return{status:200,headers:{},body:{subscriptions:await require('./subscriptions.cjs').list(),every:require('./subscriptions.cjs').EVERY,discount_pct:require('./subscriptions.cjs').DISCOUNT_PCT,stripe_ready:autoInvoice.stripeReady()}}}
+ if(path==='/admin/subscription/create'&&method==='POST'){const sid=await transaction(s=>session(s,h));const rec=await transaction(s=>s.get('sessions',sid));const r=await require('./subscriptions.cjs').create({order_id:text(body.order_id||'',50),every:text(body.every||'',4),by:rec?.staff_id||'owner'});await transaction(s=>audit(s,'subscription_created',r.source_order));return{status:200,headers:{},body:r}}
+ if(path==='/admin/subscription/update'&&method==='POST'){await transaction(s=>session(s,h));const r=await require('./subscriptions.cjs').update({id:text(body.id||'',20),action:text(body.action||'',10),every:text(body.every||'',4,false),next_date:text(body.next_date||'',10,false)});await transaction(s=>audit(s,'subscription_'+r.status+'_'+text(body.action||'',10),r.source_order));return{status:200,headers:{},body:r}}
+ // Autopilot (Jonah, 4 Nov 2026): background jobs the owner switches on one at a time. Staff can look; only the owner can switch.
+ if(path==='/admin/autopilot'&&method==='GET'){await transaction(s=>session(s,h));return{status:200,headers:{},body:await require('./autopilot.cjs').status()}}
+ if(path==='/admin/autopilot'&&method==='POST'){const sid=await transaction(s=>session(s,h));const rec=await transaction(s=>s.get('sessions',sid));if(rec?.staff_id)fail('Only the owner sign-in can switch Autopilot on or off.',403);const ap=require('./autopilot.cjs'),task=text(body.task||'',20,false);if(!ap.TASKS[task])fail('Choose an Autopilot task.');const r=await ap.set(task,body.on===true,'owner');await transaction(s=>audit(s,'autopilot_'+task+'_'+(r.on?'on':'off')));return{status:200,headers:{},body:await ap.status()}}
  if(path==='/admin/shippo/dryrun'&&method==='POST'){await transaction(s=>session(s,h));const result=await shippo.dryRun();await transaction(s=>audit(s,'shippo_dry_run'));return{status:200,headers:{},body:result}}
  if(['/admin/shippo/check','/admin/shippo/buy','/admin/shippo/retry'].includes(path)&&method==='POST'){
   const sid=await transaction(s=>session(s,h));let result;
@@ -540,7 +547,7 @@ async function handle({path,method='GET',headers={},body={}}){
     if(target==='canceled'&&['order_received','awaiting_payment','payment_submitted'].includes(o.status)){await release(s,o,target);emailJob=await emails.queueUpdate(s,o);return{ok:true}}
     if(target==='unpaid'){
      if(o.status!=='paid')fail('Only an order marked Paid · in queue can be set back to not paid.',409);
-     if(o.payment_verification_source==='stripe_invoice')fail('Stripe confirmed this payment, so it really was paid. If the customer needs money back, refund it in Stripe.',409);
+     if(['stripe_invoice','stripe_autopay'].includes(o.payment_verification_source))fail('Stripe confirmed this payment, so it really was paid. If the customer needs money back, refund it in Stripe.',409);
      if(o.shippo_transaction_id||o.shippo_status==='label_bought')fail('A shipping label was already bought for this order. Void the label first, then undo the payment.',409);
      if(body.confirm!==true)fail('Confirm that this order was marked paid by mistake.');
      const by=(await s.get('sessions',sessionId)).staff_id||'owner',was={paid:o.paid,verified_payment_cents:o.verified_payment_cents,source:o.payment_verification_source,by:o.payment_verified_by,packed:o.packed||null};o.packed=null;
@@ -580,7 +587,26 @@ async function stripeInvoicePaid(invoiceId){const r=await autoInvoice.paidFromSt
   if(o?.affiliate&&o.commission_provider!=='native'){try{await reporting.report(o.id)}catch{}}try{await shipping.send(o.id)}catch{}delete r.job}
  if(r.status==='review'&&r.order_id){try{await transaction(async s=>{const o=await s.get('orders',r.order_id);if(o)return emails.queueStaffAlert(s,o)}).then(ids=>Promise.all((ids||[]).map(emails.safeDispatch)))}catch{}} // send staff alerts now: Sevalla has no email worker
  return r}
-module.exports={handle,quote,shipmentPayload,publicOrder,stripeInvoicePaid};
+// Subscribe & save (Jonah, 4 Nov 2026): builds one repeat order for a subscription, the same way a staff-created
+// card-invoice order is built (stock reserved, normal order email, invoiced like any other order). Products get the
+// subscription discount (15%). One order per subscription per cycle date, ever (idempotency key).
+async function subscriptionOrder(s,sub,cycle){
+ const key='sub-'+sub.id+'-'+cycle,done=await s.get('idempotency',key);if(done)return{existing:done.id};
+ const settings=await s.get('settings','main');if(!(settings&&settings.demo===false&&settings.checkout_enabled===true&&settings.tax_mode==='none'))fail('Live checkout is off, so no repeat order was made.',503);
+ const brand=brands.get(sub.brand||'glow'),q=await quote(s,{items:sub.items.map(i=>({id:i.id,quantity:i.quantity}))},{},brand),customer=checkoutCustomer(sub.customer);
+ const pct=Math.min(50,Math.max(0,Number(sub.discount_pct)||15)),off=Math.round((q.subtotal-q.discount)*pct/100);q.discount+=off;q.total=q.subtotal-q.discount+q.shipping;if(q.points_to_earn)q.points_to_earn=Math.floor(Math.floor((q.subtotal-q.discount)/100)*(q.points_multiplier||1));
+ const autopay=sub.pay==='autopay',inv=!autopay&&autoInvoice.invoiced('card_invoice',settings),id=brand.order_prefix+'-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');
+ const o={id,created:clock(),expires:null,status:'order_received',customer,...q,payment_method:autopay?'card_autopay':'card_invoice',token_hash:hash(token),idempotency_key:key,request_hash:hash(key),checkout_stage:'submitted',proof_required:false,submitted_at:clock(),...(autopay?{autopay:{status:'charging',started:clock()}}:{invoice_via:'email'}),receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:'not_applicable',subscription_id:sub.id,subscription_discount:off,subscription_cycle:cycle,order_for_customer:true,created_by_staff:'subscription'};
+ delete o.points_multiplier;o.goaffpro_affiliate_id=null;o.is_test=false;const beneficiary=await s.get('customers',accounts.hash(accounts.email(customer.email)));o.customer_id=beneficiary?.verified&&brand.rewards?beneficiary.id:null;o.points_earned=0;
+ for(const item of q.items)await moveStock(s,item,-1);
+ await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created_subscription_order',id);
+ // Auto-pay: no order email yet; the customer gets the payment-received email once the card is charged.
+ const jobs=[...(autopay?[]:[await emails.queueOrder(s,o,token)]),...await emails.queueStaffAlert(s,o)].filter(Boolean);
+ return{order:o,jobs,invoice:!autopay&&autoInvoice.eligible(o,settings)?o.id:null,invoiced:inv,autopay};
+}
+// Subscribe & save auto-pay: the saved card was charged in Stripe for exactly this order. Marks it paid the same way a paid Stripe invoice does.
+async function subscriptionChargePaid(s,o,pi){o.payment_reference=pi.id;o.autopay={...(o.autopay||{}),status:'paid',payment_intent:pi.id,amount:pi.amount_received,paid_at:clock()};await markPaid(s,o,{by:'stripe_autopay',source:'stripe_autopay'});await s.put('orders',o.id,o);return emails.queueUpdate(s,o)}
+module.exports={handle,quote,shipmentPayload,publicOrder,stripeInvoicePaid,reminderToken,subscriptionOrder,subscriptionChargePaid};
 
 
 
