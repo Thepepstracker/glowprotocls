@@ -1,0 +1,21 @@
+'use strict';
+// Smoother admin (Jonah, 4 Nov 2026): tracking links, Unpaid tracker, Find customer, Buy label + print link.
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const source=fs.readFileSync(__dirname+'/../../store-next/app.js','utf8');
+const block=source.slice(source.indexOf('// ---- Smoother admin'),source.indexOf('function slipName(n){'));
+const now=Math.floor(Date.now()/1000),day=86400;
+const orders=[
+ {id:'GLP-A',status:'awaiting_payment',is_test:false,total:52523,created:now-12*day,customer:{name:'Ruby Whitson-Mills',email:'Ruby@Example.test',phone:'(404) 555-0101'},stripe_invoice:{status:'open',url:'https://invoice.stripe.com/i/abc'}},
+ {id:'GLP-B',status:'order_received',is_test:false,total:40000,created:now-2*day,customer:{name:'Ruby Mills',email:'ruby@example.test'}},
+ {id:'GLP-C',status:'shipped',is_test:false,total:9000,created:now-30*day,tracking:'1Z3G52C30219143347',customer:{name:'Ruby Mills',email:'ruby@example.test'}},
+ {id:'GLP-D',status:'expired',is_test:false,total:7000,created:now-20*day,customer:{name:'Sam Old',email:'sam@example.test'},stripe_invoice:{status:'open',url:'https://invoice.stripe.com/i/sam'}},
+ {id:'GLP-E',status:'expired',is_test:false,total:7000,created:now-20*day,customer:{name:'Gone',email:'gone@example.test'}},
+ {id:'GLP-F',status:'awaiting_payment',is_test:true,total:100,created:now,customer:{name:'Test',email:'t@example.test'}},
+ {id:'GLP-G',status:'paid',is_test:false,total:10000,balance_due_cents:2500,created:now-1*day,customer:{name:'Pat Balance',email:'pat@example.test'}},
+ {id:'GLP-H',status:'paid',is_test:false,total:10000,created:now,customer:{name:'Lee Ready',email:'lee@example.test'}}];
+function ctx(){const c={state:{admin:{orders}},Date,Intl,Math,encodeURIComponent,esc:v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])),money:n=>'$'+(n/100).toFixed(2),isCheckoutDraft:()=>false,orderTime:()=>'time',orderLabel:o=>o.status,adminOrderUrl:id=>'/store-next/admin?order='+id};vm.createContext(c);vm.runInContext(block,c);return c}
+test('tracking numbers link to UPS or USPS tracking pages',()=>{const c=ctx();assert.equal(c.trackUrl('1Z3G52C30219143347'),'https://www.ups.com/track?loc=en_US&tracknum=1Z3G52C30219143347');assert.match(c.trackUrl('9400111899223197428490'),/^https:\/\/tools\.usps\.com\//);assert.match(c.trackLink('1Z3G52C30219143347'),/target="_blank"/);assert.equal(c.trackLink(''),'')});
+test('unpaid tracker lists live orders still owing, plus expired orders whose Stripe invoice is open',()=>{const c=ctx();const ids=c.unpaidList().map(o=>o.id).sort();assert.equal(ids.join(),'GLP-A,GLP-B,GLP-D,GLP-G');assert.equal(c.owedCents(orders[6]),2500);const html=c.unpaidPanel();assert(html.includes('2 unpaid orders'),'repeat customer flagged');assert(html.includes('$950.23'),'owed total excludes expired: '+html.match(/\$[\d.,]+/)[0]);assert(html.includes('Copy pay link'));assert(html.indexOf('GLP-A')<html.indexOf('GLP-B'),'oldest first');assert(!html.includes('GLP-F')&&!html.includes('GLP-E'))});
+test('find customer matches partial names and groups every order by email',()=>{const c=ctx();const g=c.lookupMatches('ruby mills');assert.equal(g.length,1);assert.equal(g[0].map(o=>o.id).join(),'GLP-B,GLP-A,GLP-C');assert.equal(c.lookupMatches('404-555-0101')[0][0].customer.email,'ruby@example.test');const card=c.customerCard(g[0]);assert(card.includes('Owes $925.23 on 2 orders'));assert(card.includes('ups.com/track'));assert.equal(c.lookupMatches('zzqq').length,0)});
+test('Buy label + print only for live paid orders with no label and nothing owed',()=>{const c=ctx();assert.match(c.buyPrintLink(orders[7]),/packing\.html#buy=GLP-H/);for(const o of [orders[2],orders[6],orders[0],{...orders[7],is_test:true}])assert.equal(c.buyPrintLink(o),'')});
+test('packing page buys from #buy= only once and links tracking numbers',()=>{const p=fs.readFileSync(__dirname+'/../../store-next/packing.html','utf8');assert.match(p,/#buy=\(\[A-Za-z0-9-\]\{3,50\}\)/);assert(p.includes("if(hashBuy){try{location.hash=''}"));assert(p.includes("'<span>'+trkLink(o.tracking)+'</span>"))});
