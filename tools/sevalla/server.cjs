@@ -64,6 +64,8 @@ async function start(){
   const result=await core.stripeInvoicePaid(id);return{status:200,body:JSON.stringify({received:true,result:result.status})};
  }});
  const port=Number(process.env.PORT||8080);server.listen(port,'0.0.0.0',()=>console.log('Glow store listening on port '+port));
+ // Autopilot: background jobs inside this process (Sevalla runs only the web process). Each job is OFF until the owner switches it on.
+ require('../../netlify/functions/lib/autopilot.cjs').start();
  for(const sig of ['SIGTERM','SIGINT'])process.once(sig,()=>{server.close(()=>probe.end().finally(()=>process.exit(0)));setTimeout(()=>process.exit(1),15000).unref()});
 }
 if(require.main===module)start().catch(e=>{console.error(e.message);process.exitCode=1});
