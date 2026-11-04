@@ -18,7 +18,7 @@ const productOffers=require('./product-offers.cjs');
 const businessReports=require('./business-reports.cjs');
 const {ensureMerchCatalog}=require('./merch-catalog.cjs');
 const {withProductPhotos}=require('./product-photos.cjs');const brands=require('./brands.cjs');
-const photoUrl=slug=>'/.netlify/functions/store-next?route='+encodeURIComponent('/storefronts/'+slug+'/photo');
+const photoUrl=slug=>'/api/storefronts/'+encodeURIComponent(slug)+'/photo';
 const clock=()=>Math.floor(Date.now()/1000),hash=s=>crypto.createHash('sha256').update(s).digest('hex');
 const equal=(a,b)=>{const x=Buffer.from(String(a)),y=Buffer.from(String(b));return x.length===y.length&&crypto.timingSafeEqual(x,y)};
 const fail=(message,status=400)=>{throw Object.assign(new Error(message),{status})};

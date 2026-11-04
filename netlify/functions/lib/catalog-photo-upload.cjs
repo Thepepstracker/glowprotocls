@@ -17,7 +17,8 @@ async function encodePhoto(photo){
   return {data:out.toString('base64'),mime:'image/webp',created:Math.floor(Date.now()/1000)};
  }catch(e){if(e.status)throw e;fail('This image could not be read. Choose another JPG, PNG, or WebP photo.')}
 }
-const imageUrl=id=>'/.netlify/functions/store-next?route='+encodeURIComponent('/product-images/'+id);
+// Sevalla (3 Nov 2026): the /.netlify/functions/store-next?route= form is refused at the edge (403); /api/ reaches the same handler.
+const imageUrl=id=>'/api/product-images/'+id;
 async function applyPhotoUpdate(s,product,update){
  if(update===undefined)return product;
  if(update?.expected_revision!==undefined&&update.expected_revision!==(product.photo_revision||0))fail('Photos changed since you opened this product. Refresh and try again.',409);
