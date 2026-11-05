@@ -87,6 +87,11 @@ test('CSV import: lenient headers, level column, dedupe, bad rows skipped; previ
  assert.deepEqual(pv2.counts,{new:1,refreshed:1,level_changed:1,skipped:0});assert.equal(pv2.rows[0].old_level,'vip');
  await call('/admin/members/import',{batch_id:pv2.batch_id},owner);const ann2=await transaction(s=>s.get('members','ann@example.com'));
  assert.equal(ann2.level,'premium');assert(ann2.good_until>now()+29*DAY,'re-upload refreshes good_until');assert.deepEqual(ann2.perks,['price','ship'],'VIP → Premium keeps the first two perks');assert.equal(ann2.perks_saved_at,null,'and may choose again right away');
+ // The real Skool export's columns (5 Nov 2026): Price comes before Tier and must not be read as the level. Free members have no email.
+ const skool='FirstName,LastName,Email,Invited By,JoinedDate,Question1,Answer1,Question2,Answer2,Question3,Answer3,Price,Recurring Interval,Tier,LTV\n'+
+  'Vi,Pat,vi.skool@example.com,,2026-10-21,Q,A,Q,A,Q,A,$49,month,vip,$49\n'+'Pre,Mia,pre.skool@example.com,,2026-10-01,Q,A,Q,A,Q,A,$100,year,premium,$100\n'+'Fre,Ed,,,2026-11-04,Q,A,Q,A,Q,A,,,standard,$0\n'+'Sta,Lee,sta.skool@example.com,,2026-11-04,Q,A,Q,A,Q,A,0,,standard,$0\n';
+ const pvs=(await call('/admin/members/import-preview',{csv:skool},owner)).body;assert.equal(pvs.columns.level,'Tier');assert.equal(pvs.columns.name,'FirstName + LastName');
+ assert.deepEqual(pvs.rows.map(r=>[r.email,r.level]),[['vi.skool@example.com','vip'],['pre.skool@example.com','premium']]);assert.deepEqual(pvs.skipped.map(x=>x.reason),['No email in this row','Not VIP or Premium (“standard”)']);
  await assert.rejects(call('/admin/members/import-preview',{csv:'email,level\n'+'x'.repeat(2*1024*1024)+'\n',level:'vip'},owner),e=>e.status===413);
  await assert.rejects(call('/admin/members/import-preview',{csv:'name,phone\nA,1\n',level:'vip'},owner),e=>/email column/.test(e.message));
  const log=(await call('/admin/data',undefined,owner)).body.audit.map(x=>x.action);assert(log.includes('members_csv_imported'));
