@@ -90,6 +90,17 @@ async function paidFromStripe(invoiceId,applyPaid){const inv=await stripe('/invo
 
 // What the checkout page may know: is auto-invoicing live, and can it text.
 const publicFlags=settings=>({auto_invoice:settings?.auto_invoice===true&&!!stripeKey(),invoice_text:settings?.auto_invoice===true&&!!stripeKey()&&!!twilio()});
+// Void the Stripe invoice of every canceled or expired order (marked void_pending by release() in store-core).
+// If Stripe says it was already paid, the order is flagged for staff review instead (money came in for a closed order).
+async function voidPending(limit=10){if(!stripeKey())return{status:'not_configured',voided:0};
+ const ids=await transaction(async s=>(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(o=>o.stripe_invoice?.void_pending&&['canceled','expired'].includes(o.status)).slice(0,limit).map(o=>o.id));let voided=0;
+ for(const id of ids){const o=await transaction(s=>s.get('orders',id));const inv=o?.stripe_invoice?.id;if(!inv)continue;let patch;
+  try{const cur=await stripe('/invoices/'+encodeURIComponent(inv));if(cur.status==='open'){await stripe('/invoices/'+encodeURIComponent(inv)+'/void',{method:'POST',idem:'glp-void-'+inv});patch={status:'void',void_pending:false,voided_at:now()};voided++}
+   else if(cur.status==='paid')patch={status:'paid_after_close',void_pending:false,note:'Paid in Stripe after the order was '+o.status+'. Check it: reinstate the order or refund in Stripe.'};
+   else patch={status:cur.status||'void',void_pending:false}}
+  catch(e){patch={void_error:String(e.message||e).slice(0,160)}}
+  await transaction(async s=>{const x=await s.get('orders',id);if(x){x.stripe_invoice={...(x.stripe_invoice||{}),...patch};await s.put('orders',id,x)}})}
+ return{status:'ok',voided}}
 // For Subscribe & save auto-pay (subscriptions.cjs): the same Stripe connection, never a second copy of the key.
 const stripeReady=()=>!!stripeKey(),stripeLive=()=>stripeKey().includes('_live_');
-module.exports={stripe,stripeReady,stripeLive,retryFailed,publicFlags,METHODS,LABEL,status,invoiced,eligible,sendFor,verify,paidFromStripe,sendText,_form:form};
+module.exports={stripe,stripeReady,stripeLive,voidPending,retryFailed,publicFlags,METHODS,LABEL,status,invoiced,eligible,sendFor,verify,paidFromStripe,sendText,_form:form};

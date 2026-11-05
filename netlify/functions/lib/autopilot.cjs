@@ -10,11 +10,11 @@
 const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs');
 const now=()=>Math.floor(Date.now()/1000);
 const TASKS={
- email:{name:'Email retries',every:60,help:'Re-sends customer emails that failed the first time, and retries automatic Stripe invoices that failed to send.'},
+ email:{name:'Email retries',every:60,help:'Re-sends customer emails that failed the first time, retries automatic Stripe invoices that failed to send, and voids the Stripe invoice of any canceled or expired order.'},
  tracking:{name:'UPS delivery updates',every:300,help:'Checks UPS for each shipped package. Customers get the out-for-delivery and delivered emails.'},
  labels:{name:'Automatic labels',every:60,help:'Buys the UPS label for each paid order through Shippo. The $15 price check, the daily limit and Shippo’s own ON switch still apply.'},
  collect:{name:'Payment reminders',every:3600,help:'Emails invoiced, unpaid customers on day 1, day 3 and day 6. The store releases the order on day 7.'},
- subscriptions:{name:'Subscribe & save orders',every:3600,help:'On each subscription’s date (10 AM–6 PM Eastern), makes the repeat order at 15% off and charges the customer’s saved card through Stripe. A declined card is flagged; it is never charged twice.'}
+ subscriptions:{name:'Subscribe & save orders',every:3600,help:'Two days before each subscription’s ship date (10 AM–6 PM Eastern), makes the repeat order at the customer’s tier price and charges their saved card through Stripe. Emails the customer 3 days before each charge. Confirms first payments made on Stripe Checkout. While this is OFF, customers cannot start a subscription in the bag. A declined card is flagged; it is never charged twice.'}
 };
 const STEPS=[{key:'d1',days:1},{key:'d3',days:3},{key:'d6',days:6,last:true}];
 const ID=crypto.randomBytes(6).toString('hex');
@@ -52,7 +52,7 @@ async function collect(limit=10,t=now()){
 }
 async function runTask(key){
  // Email retries also retry automatic Stripe invoices that failed to send (up to 5 tries each), which worker.cjs did on Netlify.
- if(key==='email'){const r=await require('./store-email.cjs').dispatchPending(8,20000);try{await require('./auto-invoice.cjs').retryFailed(5)}catch(e){console.error('Invoice retry failed.',{message:String(e&&e.message||e).slice(0,160)})}return r}
+ if(key==='email'){const r=await require('./store-email.cjs').dispatchPending(8,20000);try{await require('./auto-invoice.cjs').retryFailed(5)}catch(e){console.error('Invoice retry failed.',{message:String(e&&e.message||e).slice(0,160)})}try{await require('./auto-invoice.cjs').voidPending(10)}catch(e){console.error('Invoice void failed.',{message:String(e&&e.message||e).slice(0,160)})}return r}
  if(key==='tracking')return require('./order-tracking.cjs').refreshDue(8);
  if(key==='labels'){const shippo=require('./shippo.cjs');if(!await shippo.enabled())return{status:'shippo_off'};return shippo.pending(3)}
  if(key==='collect')return collect();
