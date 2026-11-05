@@ -114,7 +114,8 @@ function readFile(csv,fileLevel){
  if(email<0)fail('We could not find an email column. The first row of the file needs a heading with the word “email”.');
  let name=find((h,i)=>i!==email&&['name','full name','member name','member'].includes(h)),first=-1,last=-1;
  if(name<0){first=find(h=>h.includes('first'));last=find(h=>h.includes('last')&&!h.includes('active')&&!h.includes('login'));if(first<0&&last<0)name=find((h,i)=>i!==email&&h.includes('name')&&!h.includes('user'))}
- const level=find((h,i)=>i!==email&&/(level|tier|membership|plan|price|subscription)/.test(h));
+ // Real Skool export (5 Nov 2026) has both "Price" ($49) and "Tier" (vip/premium/standard): use Tier, never Price.
+ const level=(()=>{for(const re of [/^tier$/,/^(membership )?level$/,/tier|level/,/membership|plan|subscription/]){const i=find((h,j)=>j!==email&&re.test(h));if(i>=0)return i}return -1})();
  const chosen=fileLevel==='vip'||fileLevel==='premium'?fileLevel:null;
  if(level<0&&!chosen)fail('This file has no level column. Choose VIP or Premium for the whole file, then preview again.');
  const body=all.slice(1);if(body.length>MAX_ROWS)fail('That file has more than '+MAX_ROWS.toLocaleString('en-US')+' rows.',413);
