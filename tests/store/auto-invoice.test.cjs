@@ -63,3 +63,12 @@ test('orders placed before the switch was turned on are never invoiced automatic
 test('a failed send is retried by the worker (up to 5 tries)',async()=>{await transaction(async s=>{const st=await s.get('settings','main');st.auto_invoice_since-=7200;await s.put('settings','main',st)});const r=(await call('/orders',body('cashapp'))).body;await transaction(async s=>{const o=await s.get('orders',r.order.id);o.stripe_invoice={status:'failed',tries:1,failed_at:Math.floor(Date.now()/1000)-300,revision:0,amount:o.total};o.created-=120;await s.put('orders',o.id,o)});
  const out=await auto.retryFailed(50);assert.ok(out.out.some(x=>x.status==='sent'));assert.equal((await order(r.order.id)).stripe_invoice.status,'open');
  await transaction(async s=>{const o=await s.get('orders',r.order.id);o.stripe_invoice={status:'failed',tries:5,failed_at:0,revision:0,amount:o.total};await s.put('orders',o.id,o)});const n=stripeCalls().length;await auto.retryFailed(50);assert.equal((await order(r.order.id)).stripe_invoice.status,'failed','gives up after 5')});
+test('cancelling or expiring an order voids its open Stripe invoice; a paid one is flagged instead (5 Nov 2026)',async()=>{
+ const r=(await call('/orders',body('card_invoice'))).body,id=r.order.id;await auto.sendFor(id);let o=await order(id);assert.equal(o.stripe_invoice.status,'open');const inv=o.stripe_invoice.id;
+ await call('/admin/status',{id,status:'canceled'},{cookie:owner});o=await order(id);assert.equal(o.status,'canceled');assert.equal(o.stripe_invoice.void_pending,true);
+ const before=calls.length;assert.equal((await auto.voidPending()).voided,1);assert.equal(invoices[inv].status,'void');o=await order(id);assert.equal(o.stripe_invoice.status,'void');assert.equal(o.stripe_invoice.void_pending,false);
+ assert.equal(calls.slice(before).filter(c=>c.u.endsWith('/void')).length,1);assert.equal((await auto.voidPending()).voided,0,'never voided twice');
+ const r2=(await call('/orders',body('card_invoice'))).body,id2=r2.order.id;await auto.sendFor(id2);const inv2=(await order(id2)).stripe_invoice.id;
+ await call('/admin/status',{id:id2,status:'canceled'},{cookie:owner});invoices[inv2].status='paid';
+ await auto.voidPending();o=await order(id2);assert.equal(o.stripe_invoice.status,'paid_after_close');assert.match(o.stripe_invoice.note,/refund in Stripe/);assert.notEqual(invoices[inv2].status,'void');
+});

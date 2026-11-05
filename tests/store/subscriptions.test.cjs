@@ -1,5 +1,6 @@
 'use strict';
-// Subscribe & save (4 Nov 2026): 15% off, every 1/2/3/4 weeks or monthly, AUTO-PAY through Stripe.
+// Subscribe & save (4 Nov 2026): every 1/2/3/4 weeks or monthly, AUTO-PAY through Stripe.
+// 5 Nov 2026: priced by tier (see subscribe-tiers.test.cjs); the order is made 2 days before next_ship_date.
 // One repeat order per date, ever; one charge per order, ever; a declined card is flagged, never retried blindly.
 const {test,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-subs-'));Object.assign(process.env,{STORE_LOCAL:'1',STORE_SQLITE_PATH:path.join(tmp,'db.sqlite'),STORE_ADMIN_PASSWORD:'owner-test-password',STORE_SESSION_SECRET:'subscription-tests-session-secret-more-than-32',STORE_ORIGIN:'http://127.0.0.1:8787',STORE_EMAIL_ENABLED:'1',STORE_EMAIL_FROM:'team@example.com',RESEND_API_KEY:'test-not-real',STRIPE_SECRET_KEY:'sk_test_NotARealKey123456'});
@@ -23,7 +24,7 @@ test('intervals: weeks add days; monthly keeps the day and clamps to month end',
  assert.throws(()=>subs.addInterval('2026-11-04','5w'));
 });
 
-test('card link → card saved → repeat order made at 15% off and charged once → paid; decline is flagged; skip/pause/cancel',async()=>{
+test('card link → card saved → repeat order made at the tier price and charged once → paid; decline is flagged; skip/pause/cancel',async()=>{
  await transaction(seed);
  const p=await transaction(async s=>{const st=await s.get('settings','main');Object.assign(st,{demo:false,checkout_enabled:true,tax_mode:'none'});await s.put('settings','main',st);const p=(await s.list('products')).find(x=>x.active&&x.price>=2000&&!(x.components||[]).length&&!x.stock_pool);p.stock=20;await s.put('products',p.id,p);
   await s.put('orders','GLP-SRC1',{id:'GLP-SRC1',status:'paid',is_test:false,created:1,paid:2,total:p.price*2,items:[{id:p.id,name:p.name,quantity:2,price:p.price,amount:p.price*2}],customer:{name:'Sue Sub',email:'sue@example.test',phone:'4045550101',address:'1 Main St',city:'Atlanta',state:'GA',zip:'30301'}});
@@ -37,22 +38,22 @@ test('card link → card saved → repeat order made at 15% off and charged once
  await assert.rejects(call('/admin/subscription/create',{order_id:'GLP-SRC1',every:'2w'},owner),e=>e.status===409,'one per order');
  // Waiting for card: due date passes, nothing is made.
  const noon=new Date(subs.todayET()+'T17:00:00Z').getTime();
- await transaction(async s=>{const x=await s.get('subscriptions',created.id);x.next_date=subs.todayET();await s.put('subscriptions',x.id,x)});
+ await transaction(async s=>{const x=await s.get('subscriptions',created.id);x.next_ship_date=x.next_date=subs.addDays(subs.todayET(),2);await s.put('subscriptions',x.id,x)});
  cardSaved=false;assert.equal((await subs.run(10,noon)).made,0,'no card yet: nothing made');
  cardSaved=true;let r=await subs.run(10,noon);assert.equal(r.cards,1);
  let x=await transaction(s=>s.get('subscriptions',created.id));assert.equal(x.status,'active');assert.equal(x.card.last4,'4242');assert(stripe.some(c=>c.p==='/customers/cus_1'&&c.body.get('invoice_settings[default_payment_method]')==='pm_1'));
  assert.equal(r.made,1,'card saved and due today: the repeat is made in the same run');assert.equal(r.paid,1);
  x=await transaction(s=>s.get('subscriptions',created.id));const o=await transaction(s=>s.get('orders',x.orders[0]));
- const sub=p.price*2,off=Math.round(sub*0.15);assert.equal(o.subscription_discount,off);assert.equal(o.total,sub-off+o.shipping,'15% off products only');
+ const pr=subs.priceFor([{id:p.id,quantity:2}],[p],null,2,{settings:{shipping_cents:1500,free_shipping_cents:25000}});assert(pr.ok);assert.equal(o.subscription_tier,pr.tier.id,'a staff-started subscription maps to a tier from its items');assert.equal(o.subscription_discount,p.price*2-pr.price_cents);assert.equal(o.total,pr.total_cents,'tier price + tier shipping');assert(o.total-o.shipping<=Math.floor(p.price*2*0.85),'never above 85% of list');
  assert.equal(o.status,'paid');assert.equal(o.payment_method,'card_autopay');assert.equal(o.payment_verification_source,'stripe_autopay');assert.equal(o.autopay.status,'paid');
  const charges=stripe.filter(c=>c.p==='/payment_intents');assert.equal(charges.length,1);assert.equal(Number(charges[0].body.get('amount')),o.total);assert.equal(charges[0].body.get('description'),'Glow Lab');assert.equal(charges[0].idem,'glow-sub-charge-'+o.id);
  assert(!stripe.some(c=>c.p.startsWith('/invoices')),'auto-pay never also sends an invoice');
  assert.equal((await subs.run(10,noon)).made,0,'same day again: nothing');assert.equal(stripe.filter(c=>c.p==='/payment_intents').length,1,'never charged twice');
  await assert.rejects(call('/admin/order/unpaid',{id:o.id},owner),e=>e.status===409||e.status===404,'a Stripe auto-pay cannot be undone here');
  // Decline on the next cycle: order stays unpaid, subscription shows the problem.
- await transaction(async s=>{const y=await s.get('subscriptions',created.id);y.next_date=subs.todayET();await s.put('subscriptions',y.id,y)});
+ await transaction(async s=>{const y=await s.get('subscriptions',created.id);y.next_ship_date=y.next_date=subs.todayET();await s.put('subscriptions',y.id,y)});
  const tomorrowNoon=noon; // same day, but new cycle key forced below
- await transaction(async s=>{const y=await s.get('subscriptions',created.id);y.next_date=subs.addInterval(subs.todayET(),'1w');await s.put('subscriptions',y.id,y)});
+ await transaction(async s=>{const y=await s.get('subscriptions',created.id);y.next_ship_date=y.next_date=subs.addInterval(subs.todayET(),'1w');await s.put('subscriptions',y.id,y)});
  decline=true;const later=new Date(subs.addInterval(subs.todayET(),'1w')+'T17:00:00Z').getTime();r=await subs.run(10,later);assert.equal(r.made,1);assert.equal(r.failed,1);
  x=await transaction(s=>s.get('subscriptions',created.id));assert.match(x.problem,/declined/);const o2=await transaction(s=>s.get('orders',x.orders.at(-1)));assert.equal(o2.status,'order_received');assert.equal(o2.autopay.status,'failed');
  assert.equal((await subs.run(10,later)).made,0);assert.equal(stripe.filter(c=>c.p==='/payment_intents'&&c.idem==='glow-sub-charge-'+o2.id).length,1,'a declined charge is not retried automatically');
