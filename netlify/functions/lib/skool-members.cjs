@@ -131,8 +131,14 @@ function changeFor(old,r,t){if(!old||old.removed_at)return 'new';if(old.level!==
 async function preview(s,body,by){
  const f=readFile(body.csv,body.level),t=now(),out=[];const counts={new:0,refreshed:0,level_changed:0,skipped:f.skipped.length};
  for(const r of f.rows){const old=await s.get('members',r.email),change=changeFor(old,r,t);counts[change]++;out.push({...r,change,...(change==='level_changed'?{old_level:old.level}:{})})}
- const id=crypto.randomBytes(12).toString('hex');await s.put('member_batches',id,{id,rows:f.rows,created:t,expires:t+3600,by});
- return{batch_id:id,columns:f.columns,file_level:f.file_level,counts,total:f.rows.length,rows:out.slice(0,1000),skipped:f.skipped.slice(0,500)}}
+ // Daily Skool sync (Jonah, 5 Nov 2026): sync:true also ends the perks of anyone listed from an earlier Skool file who is not
+ // in this one (cancelled or churned). Manually added members are never touched. Safety: if the file would remove more
+ // than 3 members and more than a quarter of those listed, nobody is removed and the owner is asked to check the file.
+ let leaving=[],sync_blocked=null;if(body.sync===true){const inFile=new Set(f.rows.map(r=>r.email)),listed=(await s.list('members')).filter(m=>isActive(m,t)&&m.source==='csv');leaving=listed.filter(m=>!inFile.has(m.email)).map(m=>({email:m.email,name:m.name||'',level:m.level}));
+  if(leaving.length>3&&leaving.length>listed.length/4)sync_blocked='This file would end the perks of '+leaving.length+' of '+listed.length+' listed members. Nobody was removed. Check the Skool export before saving.'}
+ if(body.sync===true)counts.leaving=sync_blocked?0:leaving.length;
+ const id=crypto.randomBytes(12).toString('hex');await s.put('member_batches',id,{id,rows:f.rows,created:t,expires:t+3600,by,...(body.sync===true?{sync:true,leaving:sync_blocked?[]:leaving.map(x=>x.email),sync_blocked}:{})});
+ return{batch_id:id,columns:f.columns,file_level:f.file_level,counts,total:f.rows.length,rows:out.slice(0,1000),skipped:f.skipped.slice(0,500),...(body.sync===true?{sync:true,leaving:leaving.slice(0,500),sync_blocked}:{})}}
 // One listing: new (or removed and back) starts fresh; anyone already listed gets confirmed_at/good_until refreshed.
 async function upsert(s,r,source,by,t=now()){
  const old=await s.get('members',r.email);let m;
@@ -142,8 +148,10 @@ async function upsert(s,r,source,by,t=now()){
  delete m.removed_at;delete m.removed_by;await s.put('members',m.email,m);return{change:changeFor(old,r,t),member:m}}
 async function commit(s,id,by){
  const b=await s.get('member_batches',typeof id==='string'?id:'');if(!b||b.expires<=now())fail('Preview the file again before adding the members.',409);if(b.done)return b.done;
- const counts={new:0,refreshed:0,level_changed:0},t=now();for(const r of b.rows){const x=await upsert(s,r,'csv',by,t);counts[x.change]++}
- b.done={ok:true,...counts,total:b.rows.length};await s.put('member_batches',id,b);await audit(s,'members_csv_imported',String(b.rows.length));return b.done}
+ const counts={new:0,refreshed:0,level_changed:0,left:0},t=now();for(const r of b.rows){const x=await upsert(s,r,'csv',by,t);counts[x.change]++}
+ if(b.sync&&!b.sync_blocked)for(const e of b.leaving||[]){const m=await s.get('members',e);if(!m||m.removed_at||m.source!=='csv')continue;m.removed_at=t;m.removed_by='skool-sync';m.removed_reason='Not in the latest Skool export';m.perks=[];m.perks_saved_at=null;await s.put('members',e,m);counts.left++}
+ if(b.sync)await s.put('integrations','members-sync',{id:'members-sync',at:t,by,...counts,total:b.rows.length,blocked:b.sync_blocked||null});
+ b.done={ok:true,...counts,total:b.rows.length,...(b.sync_blocked?{sync_blocked:b.sync_blocked}:{})};await s.put('member_batches',id,b);await audit(s,b.sync?'members_skool_sync':'members_csv_imported',String(b.rows.length));return b.done}
 
 // --- Management ---------------------------------------------------------------------------------------------------
 async function adminView(s,owner){
@@ -153,7 +161,7 @@ async function adminView(s,owner){
   rows.push({email:m.email,name:m.name||'',level:m.level,level_name:LEVEL_NAME[m.level]||m.level,source:m.source,since:m.since||null,confirmed_at:m.confirmed_at||null,good_until:m.good_until||null,active,removed_at:m.removed_at||null,perks,perks_saved_at:m.perks_saved_at||null,saved_cents:saved,
    account:!!acct?.verified,invited_at:m.invited_at||null,ending_soon:active&&m.good_until-t<ENDING_SOON,merch_given_at:m.merch_given_at||null,merch_due:active&&perks.includes('merch')&&(!m.merch_given_at||t-m.merch_given_at>=MERCH_EVERY)})}
  const live=rows.filter(r=>r.active);
- return{settings:cfg,owner:!!owner,counts:{vip:live.filter(r=>r.level==='vip').length,premium:live.filter(r=>r.level==='premium').length,no_account:live.filter(r=>!r.account).length,ending_soon:live.filter(r=>r.ending_soon).length},
+ return{settings:cfg,owner:!!owner,last_sync:await s.get('integrations','members-sync')||null,counts:{vip:live.filter(r=>r.level==='vip').length,premium:live.filter(r=>r.level==='premium').length,no_account:live.filter(r=>!r.account).length,ending_soon:live.filter(r=>r.ending_soon).length},
   members:rows,perks:perkList(cfg,'vip').map(p=>({id:p.id,n:p.n,title:p.id==='ship'?'Free shipping every other order ('+dollars(cfg.ship_min_vip)+' VIP / '+dollars(cfg.ship_min_premium)+' Premium)':p.title,short:SHORT[p.id]})),limits:LIMIT}}
 // For Find customer and order detail: who gets "answer first". Only when the switch is ON.
 async function adminFlags(s){const cfg=await config(s);if(!cfg.enabled)return null;const support={};for(const m of await s.list('members'))if(isActive(m)&&effectivePerks(m).includes('support'))support[m.email]=m.level;return{on:true,support}}
