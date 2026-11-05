@@ -242,3 +242,27 @@ test('Stripe invoice amount = the order total with the member discount and free 
  const item=stripe.find(c=>c.p==='/invoiceitems');assert(item,'an invoice was made');assert.equal(Number(item.body.amount),o.total);
  const saved=await transaction(s=>s.get('orders',o.id));assert.equal(saved.stripe_invoice.amount,saved.total);
 });
+
+test('daily Skool sync: members missing from the new export lose their perks; manual adds untouched; a bad file removes nobody',async()=>{
+ const csvOf=rows=>'FirstName,LastName,Email,Price,Recurring Interval,Tier\n'+rows.map(([e,l])=>'A,B,'+e+',$10,month,'+l).join('\n')+'\n';
+ await listMember('sync-manual@example.com','vip',['price']);
+ const view=(await call('/admin/members',undefined,owner)).body,already=view.members.filter(m=>m.active&&m.source==='csv').map(m=>[m.email,m.level]);
+ const base=[...already,['sync-a@example.com','vip'],['sync-b@example.com','premium'],['sync-c@example.com','premium']];
+ const p1=(await call('/admin/members/import-preview',{csv:csvOf(base),sync:true},owner)).body;assert.equal(p1.sync_blocked,null);assert.equal(p1.counts.leaving,0);
+ const d1=(await call('/admin/members/import',{batch_id:p1.batch_id},owner)).body;assert.equal(d1.left,0);
+ // sync-c cancelled in Skool: not in today's export.
+ const p2=(await call('/admin/members/import-preview',{csv:csvOf(base.filter(r=>r[0]!=='sync-c@example.com')),sync:true},owner)).body;
+ assert.deepEqual(p2.leaving.map(x=>x.email),['sync-c@example.com']);assert.equal(p2.counts.leaving,1);
+ assert.equal((await transaction(s=>s.get('members','sync-c@example.com'))).removed_at,undefined,'preview removes nobody');
+ const d2=(await call('/admin/members/import',{batch_id:p2.batch_id},owner)).body;assert.equal(d2.left,1);
+ const c=await transaction(s=>s.get('members','sync-c@example.com'));assert(c.removed_at);assert.equal(c.removed_by,'skool-sync');assert.deepEqual(c.perks,[]);
+ assert.equal((await transaction(s=>s.get('members','sync-manual@example.com'))).removed_at,undefined,'a manually added member is never removed by the sync');
+ const v2=(await call('/admin/members',undefined,owner)).body;assert.equal(v2.last_sync.left,1);assert.equal(v2.last_sync.total,base.length-1);
+ // A broken or partial export (only one row) would wipe almost everyone: blocked, nobody removed.
+ const p3=(await call('/admin/members/import-preview',{csv:csvOf([['sync-a@example.com','vip']]),sync:true},owner)).body;assert.match(p3.sync_blocked,/Nobody was removed/);assert.equal(p3.counts.leaving,0);
+ const d3=(await call('/admin/members/import',{batch_id:p3.batch_id},owner)).body;assert.equal(d3.left,0);assert(d3.sync_blocked);
+ assert.equal((await transaction(s=>s.get('members','sync-b@example.com'))).removed_at,undefined);
+ // Without sync:true the old behaviour stays: nobody is removed.
+ const p4=(await call('/admin/members/import-preview',{csv:csvOf([['sync-a@example.com','vip']])},owner)).body;assert.equal(p4.sync,undefined);assert.equal(p4.counts.leaving,undefined);
+ await assert.rejects(call('/admin/members/import-preview',{csv:csvOf(base),sync:true},staff),e=>e.status===403);
+});
