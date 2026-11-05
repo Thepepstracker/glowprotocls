@@ -71,6 +71,7 @@ button:disabled{opacity:.45;cursor:default}
 .tag.red{background:var(--warn);color:#fff}
 .tag.amber{background:var(--amberbg);color:var(--amber)}
 .tag.new{background:#5b3fd6;color:#fff}
+.tag.pf{background:#1b1b1b;color:#c9a24b}
 .tag.lbl{background:#e2efe5;color:var(--ok)}
 .tag.nolbl{background:#f3e6e1;color:var(--warn)}
 .items{margin:14px 0 6px;padding:0;list-style:none}
@@ -310,7 +311,9 @@ function chipOk(o){return chip==='all'?true:chip==='label'?hasLabel(o):chip==='n
 function inView(o){return view==='all'?true:view==='skipped'?isSkipped(o):view==='done'?isDone(o):(!isSkipped(o)&&(!isDone(o)||justDone[o.id]))}
 function visibleList(){if(view==='pick'||view==='restock'||view==='stats'||view==='calls')return[];var l=orders.filter(matches).filter(inView).filter(chipOk);
   // To check: label printed first (those can go out today), then no label yet, then anything waiting on stock. Oldest first inside each.
-  if(view==='todo'){var rank=function(o){return isBlocked(o)?2:hasLabel(o)?0:1};l=l.slice().sort(function(a,b){return rank(a)-rank(b)||((a.paid||a.created||0)-(b.paid||b.created||0))})}return l}
+  if(view==='todo'){var rank=function(o){return isBlocked(o)?2:hasLabel(o)?0:1};l=l.slice().sort(function(a,b){return packFirst(a)-packFirst(b)||rank(a)-rank(b)||((a.paid||a.created||0)-(b.paid||b.created||0))})}return l}
+// Skool member "Packed first" perk (5 Nov 2026): these orders go to the top (unless they are waiting on stock), with a PACK FIRST tag.
+function packFirst(o){return o.member_priority===true&&!o.replacement&&!isBlocked(o)?0:1}
 function render(){setTimeout(fitNowBar,0);
   var done=orders.filter(isDone).length,sk=orders.filter(isSkipped).length,todo=orders.filter(function(o){return !isSkipped(o)&&!isDone(o)});
   document.getElementById('count').textContent=done+' of '+orders.length+' orders checked'+(sk?' · '+sk+' skipped':'');
@@ -632,7 +635,7 @@ function card(o){
   }).join('');
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].concat((o.staff_notes||[]).map(function(n){return n&&n.text?'📝 '+n.text+(n.author?' — '+n.author:''):''})).filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
-  var tags=brand+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
+  var tags=brand+(o.member_priority===true&&!o.replacement?'<span class="tag pf" title="Skool member who picked Packed first">⭐ PACK FIRST</span>':'')+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
   var ship=!hasLabel(o)&&canBuy(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||carrierName(o))+'</span>'+(o.tracking?'<span>'+trkLink(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">Paid '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+'<ul class="items">'+rows+'</ul>'
@@ -684,7 +687,7 @@ function fetchOrders(quiet){
   }).then(function(d){
     var before={};orders.forEach(function(o){before[o.id]=1});var hadData=lastLoad>0;
     all=d.orders||[];products=d.products||[];byId={};products.forEach(function(p){byId[p.id]=p});
-    orders=all.filter(needsPacking).concat(replacementCards(all)).sort(function(a,b){return (a.paid||a.created||0)-(b.paid||b.created||0)});
+    orders=all.filter(needsPacking).concat(replacementCards(all)).sort(function(a,b){return ((a.member_priority===true&&!a.replacement?0:1)-(b.member_priority===true&&!b.replacement?0:1))||((a.paid||a.created||0)-(b.paid||b.created||0))});
     var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);var ks={};orders.forEach(function(o){if(skipped[o.id])ks[o.id]=skipped[o.id]});skipped=ks;saveSkip();
     var fresh=hadData?orders.filter(function(o){return !before[o.id]}):[];
     if(!hadData){orders.forEach(function(o){seen[o.id]=1});lsSet(SEEN,seen)}
