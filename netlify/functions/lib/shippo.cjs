@@ -150,9 +150,17 @@ async function pending(limit=3){
 // Packing page and stored in 'manual_shipments'. Same Shippo account, ship-from, $15 price check and daily limit as orders.
 // Rates first (nothing is bought), then one label per shipment: the record holds the purchase claim and the label is
 // tagged GLOW:<SHIP-id> in Shippo, so a lost answer stops for review instead of buying twice.
+// A shipment can carry its own box size and weight (Packing page "Box"); otherwise the Shipping setting's parcel is used.
+function withParcel(cfg,rec){const p=rec&&rec.parcel;return p?{...cfg,parcel:{length:p.length,width:p.width,height:p.height,weight_lb:p.weight_lb}}:cfg}
+// Address check (Packing page button). Shippo charges 2¢ per US validation (goshippo.com/pricing/api, checked 6 Nov 2026),
+// so it only runs when staff press the button. Returns Shippo's verdict and its cleaned-up version of the address.
+async function validateAddress(to){const a=toAddress({customer:to});const r=await request('/addresses/',{...a,validate:true});const v=r.validation_results||{};
+ const sug={address:String(r.street1||''),address2:String(r.street2||''),city:String(r.city||''),state:String(r.state||''),zip:String(r.zip||'')};
+ const norm=x=>String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,''),changed=['address','address2','city','state','zip'].some(k=>norm(sug[k])!==norm(to[k]));
+ return{valid:v.is_valid===true,messages:(Array.isArray(v.messages)?v.messages:[]).map(m=>String(m.text||'').slice(0,200)).filter(Boolean).slice(0,4),suggestion:sug.address?sug:null,changed:!!sug.address&&changed}}
 async function manualRates(id){
  const{rec,cfg}=await transaction(async s=>{const st=status(await s.get('integrations','shippo'));if(!st.connected||!st.carrier_account)fail('Check the Shippo connection and choose the UPS account first.',{definite:true});const rec=await s.get('manual_shipments',id);if(!rec)fail('Shipment not found.',{definite:true});return{rec,cfg:st}});
- const shipment=await request('/shipments/',{...shipmentBody({id,customer:rec.to},cfg),metadata:tag(id)+':rates'});const rates=Array.isArray(shipment.rates)?shipment.rates:[];
+ const shipment=await request('/shipments/',{...shipmentBody({id,customer:rec.to},withParcel(cfg,rec)),metadata:tag(id)+':rates'});const rates=Array.isArray(shipment.rates)?shipment.rates:[];
  const out=[];for(const svc of MANUAL_SERVICES){const r=pickRate(rates,{...cfg,servicelevel:svc});if(r)out.push({service:svc,name:svcName(r),cents:Math.round(Number(r.amount)*100),days:r.estimated_days??r.days??null})}
  const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);
  return{rates:out.sort((a,b)=>a.cents-b.cents),soft_cap_cents:cfg.soft_cap_cents,...(why&&!out.length?{message:'Shippo: '+why}:{})};
@@ -175,7 +183,7 @@ async function manualBuy(id,{servicelevel='',override=false}={}){
  const settle=async patch=>transaction(async s=>{const c=await s.get('manual_shipments',id);if(!c)return;Object.assign(c,patch,{label_lease_until:0});await s.put('manual_shipments',id,c)});
  try{
   const already=await existingLabels(id);if(already.length)fail('Shippo already has a label tagged '+tag(id)+' (tracking '+already[0].tracking_number+'). Nothing more was bought.',{review:true});
-  const shipment=await request('/shipments/',shipmentBody({id,customer:rec.to},cfg));const rates=Array.isArray(shipment.rates)?shipment.rates:[];
+  const shipment=await request('/shipments/',shipmentBody({id,customer:rec.to},withParcel(cfg,rec)));const rates=Array.isArray(shipment.rates)?shipment.rates:[];
   const rate=pickRate(rates,cfg);if(!rate){const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);fail('No '+svc.replace(/_/g,' ')+' rate for this address.'+(why?' Shippo: '+why:''),{definite:true})}
   const cents=Math.round(Number(rate.amount)*100);if(!(cents>0)||cents>cfg.max_label_cents)fail('Label price '+money(cents)+' is over the '+money(cfg.max_label_cents)+' limit.',{definite:true});
   priceCheck(cents,cfg,override,rate);
@@ -209,4 +217,4 @@ async function track(carrier,number){const c=String(carrier||'').toLowerCase(),n
 async function labelsByTracking(trackings){const want=new Set(trackings),found={};for(let page=1;page<=15&&Object.keys(found).length<want.size;page++){const r=await request('/transactions/?results=100&page='+page);if(!Array.isArray(r.results))fail('Shippo label list needs review.',{uncertain:true});for(const t of r.results)if(want.has(t.tracking_number)&&t.status==='SUCCESS'&&t.label_url&&!found[t.tracking_number])found[t.tracking_number]=t;if(!r.next)break}return found}
 // What each label actually cost, for the P&L (3 Nov 2026). Read-only: looks up the purchased rate for each tracking number.
 async function labelCostsByTracking(trackings){const found=await labelsByTracking(trackings),out={};for(const [trk,t] of Object.entries(found)){const rateId=typeof t.rate==='string'?t.rate:t.rate?.object_id;if(!rateId)continue;const r=await request('/rates/'+encodeURIComponent(rateId));const c=Math.round(Number(r.amount)*100);if(Number.isSafeInteger(c)&&c>0)out[trk]={cents:c,service:String(r.servicelevel?.name||r.servicelevel?.token||'').slice(0,60),provider:String(r.provider||'').slice(0,20)}}return out}
-module.exports={manualRates,manualBuy,MANUAL_SERVICES,labelCostsByTracking,labelsByTracking,track,voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
+module.exports={validateAddress,manualRates,manualBuy,MANUAL_SERVICES,labelCostsByTracking,labelsByTracking,track,voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
