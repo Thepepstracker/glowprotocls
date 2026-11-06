@@ -146,6 +146,52 @@ async function pending(limit=3){
  const batch=await transaction(async s=>{if(!status(await s.get('integrations','shippo')).enabled)return[];const outbox=await s.list('outbox');return(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(eligible).filter(o=>{const q=outbox.find(x=>x.id==='shippo-'+o.id);return !(q?.purchase_started&&q.status!=='failed')&&(q?.next_attempt||0)<=now()}).sort((a,b)=>(a.paid||0)-(b.paid||0)).slice(0,limit).map(o=>o.id)});
  const results=[];for(const id of batch)results.push(await buy(id));return{processed:batch.length,results};
 }
+// Manual shipments (Jonah, 6 Nov 2026): a box that is not a store order (a missing item, a resend, a gift), made on the
+// Packing page and stored in 'manual_shipments'. Same Shippo account, ship-from, $15 price check and daily limit as orders.
+// Rates first (nothing is bought), then one label per shipment: the record holds the purchase claim and the label is
+// tagged GLOW:<SHIP-id> in Shippo, so a lost answer stops for review instead of buying twice.
+async function manualRates(id){
+ const{rec,cfg}=await transaction(async s=>{const st=status(await s.get('integrations','shippo'));if(!st.connected||!st.carrier_account)fail('Check the Shippo connection and choose the UPS account first.',{definite:true});const rec=await s.get('manual_shipments',id);if(!rec)fail('Shipment not found.',{definite:true});return{rec,cfg:st}});
+ const shipment=await request('/shipments/',{...shipmentBody({id,customer:rec.to},cfg),metadata:tag(id)+':rates'});const rates=Array.isArray(shipment.rates)?shipment.rates:[];
+ const out=[];for(const svc of MANUAL_SERVICES){const r=pickRate(rates,{...cfg,servicelevel:svc});if(r)out.push({service:svc,name:svcName(r),cents:Math.round(Number(r.amount)*100),days:r.estimated_days??r.days??null})}
+ const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);
+ return{rates:out.sort((a,b)=>a.cents-b.cents),soft_cap_cents:cfg.soft_cap_cents,...(why&&!out.length?{message:'Shippo: '+why}:{})};
+}
+async function manualBuy(id,{servicelevel='',override=false}={}){
+ const svc=MANUAL_SERVICES.includes(servicelevel)?servicelevel:'';if(!svc)fail('Choose a shipping service.',{definite:true});
+ const claim=await transaction(async s=>{
+  const st=status(await s.get('integrations','shippo'));if(!st.connected||!st.carrier_account||!st.accounts.some(a=>a.id===st.carrier_account))fail('Check the Shippo connection and choose the UPS account first.',{definite:true});
+  const rec=await s.get('manual_shipments',id);if(!rec)fail('Shipment not found.',{definite:true});if(rec.status==='canceled')fail('This shipment was canceled.',{definite:true});
+  if(rec.tracking)return{done:rec};
+  if(rec.label_status==='buying'&&(rec.label_lease_until||0)>now())fail('This label is already being bought. Refresh in a minute.',{definite:true});
+  if(rec.label_status==='needs_review')fail('A label purchase may have reached Shippo. Check Shippo for '+tag(id)+' before buying again.',{definite:true});
+  const own=require('./own-contact.cjs').match(rec.to);if(own)fail('The ship-to '+own+' is Glow Lab’s own. Fix the '+own+' first.',{definite:true});
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}),count=await s.get('integrations','shippo-count-'+today)||{n:0};if(count.n>=st.daily_limit)fail('Daily label limit reached ('+st.daily_limit+').',{definite:true});
+  rec.label_status='buying';rec.label_lease_until=now()+120;rec.label_message='';await s.put('manual_shipments',id,rec);
+  return{rec,cfg:{...st,servicelevel:svc},today};
+ });
+ if(claim.done)return{status:'already_bought',tracking:claim.done.tracking,label_url:claim.done.label_url};
+ const{rec,cfg,today}=claim;let started=false;
+ const settle=async patch=>transaction(async s=>{const c=await s.get('manual_shipments',id);if(!c)return;Object.assign(c,patch,{label_lease_until:0});await s.put('manual_shipments',id,c)});
+ try{
+  const already=await existingLabels(id);if(already.length)fail('Shippo already has a label tagged '+tag(id)+' (tracking '+already[0].tracking_number+'). Nothing more was bought.',{review:true});
+  const shipment=await request('/shipments/',shipmentBody({id,customer:rec.to},cfg));const rates=Array.isArray(shipment.rates)?shipment.rates:[];
+  const rate=pickRate(rates,cfg);if(!rate){const why=(shipment.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300);fail('No '+svc.replace(/_/g,' ')+' rate for this address.'+(why?' Shippo: '+why:''),{definite:true})}
+  const cents=Math.round(Number(rate.amount)*100);if(!(cents>0)||cents>cfg.max_label_cents)fail('Label price '+money(cents)+' is over the '+money(cfg.max_label_cents)+' limit.',{definite:true});
+  priceCheck(cents,cfg,override,rate);
+  await settle({label_status:'buying',label_lease_until:now()+120,purchase_started:true});started=true;
+  const t=await request('/transactions/',{rate:rate.object_id,label_file_type:'PDF_4x6',metadata:tag(id),async:false});
+  if(t.status==='ERROR'){started=false;fail('Shippo could not buy the label: '+((t.messages||[]).map(m=>m.text).filter(Boolean).join(' ').slice(0,300)||'no reason given'),{definite:true})}
+  if(t.status!=='SUCCESS'||!t.tracking_number)fail('Shippo has not finished the label yet ('+(t.status||'unknown')+'). Check Shippo for '+tag(id)+' before buying again.',{review:true});
+  const usps=isUsps(svc),label={label_status:'bought',purchase_started:false,tracking:String(t.tracking_number).trim(),label_url:t.label_url||'',label_cost_cents:cents,service:svcName(rate),carrier:usps?'usps':'ups',servicelevel:svc,shippo_transaction_id:t.object_id,label_created_at:now(),price_override:!!(override&&cents>cfg.soft_cap_cents)};
+  await transaction(async s=>{const c=await s.get('manual_shipments',id);Object.assign(c,label,{label_lease_until:0,label_message:''});await s.put('manual_shipments',id,c);const k='shippo-count-'+today,n=await s.get('integrations',k)||{id:k,n:0};n.n++;await s.put('integrations',k,n)});
+  return{status:'label_bought',tracking:label.tracking,label_url:label.label_url,cents,service:label.service};
+ }catch(e){
+  const review=!!e.review||(started&&!e.definite);await settle({label_status:review?'needs_review':'',label_message:String(e.message||'').slice(0,300),purchase_started:review});
+  if(e.price_check)return{status:'price_check',message:e.message,cents:e.cents,service:e.service,limit_cents:cfg.soft_cap_cents};
+  throw e;
+ }
+}
 // Refund (void) an unused label. Shippo answers QUEUED/PENDING and settles the refund within days.
 async function voidLabel(transactionId){const t=String(transactionId||'').replace(/[^A-Za-z0-9_]/g,'').slice(0,64);if(t.length<4)fail('No Shippo label on this order.',{definite:true});const r=await request('/refunds/',{transaction:t,async:false});return{status:String(r.status||'').toUpperCase(),object_id:String(r.object_id||''),transaction:t}}
 // Delivery status from Shippo's tracking API (24 Oct 2026, for the Calls tab). Read-only: it never emails customers.
@@ -163,4 +209,4 @@ async function track(carrier,number){const c=String(carrier||'').toLowerCase(),n
 async function labelsByTracking(trackings){const want=new Set(trackings),found={};for(let page=1;page<=15&&Object.keys(found).length<want.size;page++){const r=await request('/transactions/?results=100&page='+page);if(!Array.isArray(r.results))fail('Shippo label list needs review.',{uncertain:true});for(const t of r.results)if(want.has(t.tracking_number)&&t.status==='SUCCESS'&&t.label_url&&!found[t.tracking_number])found[t.tracking_number]=t;if(!r.next)break}return found}
 // What each label actually cost, for the P&L (3 Nov 2026). Read-only: looks up the purchased rate for each tracking number.
 async function labelCostsByTracking(trackings){const found=await labelsByTracking(trackings),out={};for(const [trk,t] of Object.entries(found)){const rateId=typeof t.rate==='string'?t.rate:t.rate?.object_id;if(!rateId)continue;const r=await request('/rates/'+encodeURIComponent(rateId));const c=Math.round(Number(r.amount)*100);if(Number.isSafeInteger(c)&&c>0)out[trk]={cents:c,service:String(r.servicelevel?.name||r.servicelevel?.token||'').slice(0,60),provider:String(r.provider||'').slice(0,20)}}return out}
-module.exports={labelCostsByTracking,labelsByTracking,track,voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
+module.exports={manualRates,manualBuy,MANUAL_SERVICES,labelCostsByTracking,labelsByTracking,track,voidLabel,configured,status,check,dryRun,replacement,buy,retry,pending,enabled,eligible,shipmentBody,fromAddress,settings,DEFAULTS,tag};
