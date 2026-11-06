@@ -165,22 +165,67 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 @media print{header,.now,.tools,.chips,.alerts,.keys,.noprint,#confetti,.cheer,.toast,.foot .btns{display:none!important}body{background:#fff;font-size:13px}main{padding:0;max-width:none}table{border:1px solid #999}td,th{padding:5px 8px}.order{break-inside:avoid;border:1px solid #999}}
 .sees{font-size:13px;color:#5b6b60;margin-top:4px}.sees b{color:#23553a}
 .tag.refer{background:#efe7fb;color:#4b2a86}.referline{font-size:13px;margin-top:4px;padding:6px 8px;border-radius:6px}.referline.ok{background:#e9f5ee;color:#23553a}.referline.warn{background:#fdf3e1;color:#7a5200}.referline .mini{margin-left:6px}.refer-why{margin-top:4px;color:#7a2e00}
-/* New shipment (Jonah, 6 Nov 2026) */
-.shipnew{background:var(--card);border:2px solid var(--gold);border-radius:14px;padding:16px;margin-bottom:16px}
-.shipnew h2{margin:0 0 4px;font-size:20px}.shipnew .lbl{display:block;font-size:13px;font-weight:700;color:var(--muted);margin:12px 0 4px;letter-spacing:.02em}
-.shipnew input[type=text],.shipnew input[type=search],.shipnew input[type=email],.shipnew input[type=tel],.shipnew textarea,.shipnew input[type=number]{width:100%;font:inherit;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff}
-.shipnew textarea{min-height:60px;resize:vertical}
-.sngrid{display:grid;grid-template-columns:2fr 1fr;gap:8px}.sngrid .full{grid-column:1/-1}.sngrid .row3{grid-column:1/-1;display:grid;grid-template-columns:2fr 70px 110px;gap:8px}
-.snmatches{display:flex;flex-direction:column;gap:4px;margin-top:4px}.snmatches button{text-align:left;border-color:var(--line);padding:8px 12px;font-size:15px}.snmatches button:hover,.snmatches button:focus{border-color:var(--ink);background:#fffaf0}
-.snmatches small{color:var(--muted)}
-.snorders{display:flex;flex-direction:column;gap:6px;margin-top:6px}.snorder{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:15px}.snorder.on{border-color:var(--gold);background:#fffaf0}
-.snorder .adds{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.snreasons{display:flex;flex-wrap:wrap;gap:6px}.snreasons button[aria-pressed=true]{background:var(--ink);color:#fff}
-.snadd{display:grid;grid-template-columns:1fr 80px auto;gap:8px}
-.snlines{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}.snlines li{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}.snlines li .nm{flex:1;font-weight:600}.snlines li .st{font-size:13px;color:var(--muted)}
-.snerr{color:var(--warn);font-weight:700;margin-top:8px}.snacts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+/* New shipment (Jonah, 6 Nov 2026; redesigned same day) */
+.sn{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;margin-bottom:18px}
+.sn-hero{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 2px 2px}
+.sn-hero h2{margin:0;font:700 26px/1.15 Georgia,'Times New Roman',serif;letter-spacing:.01em}.sn-hero p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:560px}
+.sn-step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;margin-bottom:14px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+.sn-step>header{all:unset;display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sn-num{width:28px;height:28px;border-radius:50%;background:var(--ink);color:#f3d58b;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
+.sn-step h3{margin:0;font-size:17px}.sn-step header small{color:var(--muted);font-size:13px;margin-left:auto}
+.sn .lbl{display:block;font-size:11.5px;font-weight:800;color:var(--muted);margin:12px 0 5px;letter-spacing:.08em;text-transform:uppercase}
+.sn input[type=text],.sn input[type=search],.sn input[type=email],.sn input[type=tel],.sn input[type=number],.sn textarea{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;transition:border-color .15s,box-shadow .15s}
+.sn input:focus,.sn textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(184,138,46,.18)}
+.sn textarea{min-height:64px;resize:vertical}
+.sn-find{position:relative}.sn-find input{padding-left:40px!important;font-size:17px!important}.sn-find:before{content:"🔎";position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.6}
+.snmatches{display:grid;gap:6px;margin-top:8px}
+.snmatches button{display:flex;align-items:center;gap:12px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:#fff;font-size:15px}
+.snmatches button:hover,.snmatches button:focus{border-color:var(--gold);background:#fffaf0;outline:none}
+.sn-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#9a6b12,#d9b25b);color:#fff;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
+.sn-who{flex:1;min-width:0}.sn-who b{display:block}.sn-who small{color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sn-pill{font-size:12px;font-weight:700;background:#f4eee2;color:#6a4b0e;border-radius:20px;padding:2px 9px;white-space:nowrap}
+.sn-picked{display:flex;align-items:center;gap:12px;background:#fffaf0;border:1px solid #ecd9ad;border-radius:12px;padding:10px 12px;margin-top:8px}
+.sngrid{display:grid;grid-template-columns:2fr 1fr;gap:0 10px}.sngrid .full{grid-column:1/-1}.sngrid .row3{grid-column:1/-1;display:grid;grid-template-columns:2fr 76px 120px;gap:0 10px}
+.sn-check{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}.sn-addrmsg{font-size:14px;border-radius:10px;padding:8px 12px;margin-top:8px}
+.sn-addrmsg.ok{background:var(--okbg);color:var(--ok)}.sn-addrmsg.warn{background:var(--amberbg);color:var(--amber)}.sn-addrmsg.bad{background:var(--warnbg);color:var(--warn)}.sn-addrmsg button{margin-left:8px}
+.snorders{display:grid;gap:8px}.snorder{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:15px;transition:border-color .15s}.snorder.on{border-color:var(--gold);background:#fffaf0}
+.snorder .adds{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.snorder .adds button{border-color:#e2cf9f;background:#fff}
+.snreasons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.snreasons button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;text-align:left;font-size:15px;font-weight:700}
+.snreasons button span{font-size:20px;line-height:1}.snreasons button small{font-weight:400;color:var(--muted);font-size:12px}
+.snreasons button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}.snreasons button[aria-pressed=true] small{color:#d8d2c6}
+.snadd{display:grid;grid-template-columns:1fr 84px auto;gap:8px}
+.snlines{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.snlines li{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px 8px 14px;background:#fff}
+.snlines li .nm{flex:1;font-weight:700}.snlines li .st{font-size:12.5px;color:var(--muted)}.snlines li .st.low{color:var(--warn);font-weight:700}
+.sn-qty{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden}.sn-qty button{border:0;border-radius:0;padding:6px 11px;background:#faf7f1}.sn-qty b{min-width:30px;text-align:center}
+.sn-empty{color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:12px;padding:12px;text-align:center;margin-top:10px}
+.sn-box{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.sn-box label{font-size:12px;color:var(--muted);font-weight:700}
+.sn-toggle{display:flex;gap:10px;align-items:center;margin-top:14px;font-size:15px}
+.sn-sum{position:sticky;top:120px;background:var(--ink);color:#fff;border-radius:16px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.sn-sum h3{margin:0 0 12px;font:700 18px Georgia,'Times New Roman',serif;color:#f3d58b;letter-spacing:.02em}
+.sn-sum dl{margin:0;display:grid;gap:10px}.sn-sum dt{font-size:11px;letter-spacing:.1em;font-weight:800;color:#a9a294;text-transform:uppercase}.sn-sum dd{margin:2px 0 0;font-size:15px;line-height:1.35}
+.sn-sum ul{margin:2px 0 0;padding-left:18px}.sn-sum .muted{color:#8f897d}
+.sn-sum .go{width:100%;margin-top:16px;background:linear-gradient(135deg,#c9a24b,#e6c677);color:#1b1b1b;border:0;font-weight:800;font-size:17px;padding:13px}
+.sn-sum .go:disabled{opacity:.6}.sn-sum .clr{width:100%;margin-top:8px;background:transparent;color:#cfc8ba;border-color:#4a4740;font-size:14px;padding:8px}
+.snerr{color:#ffb4a6;font-weight:700;margin-top:10px;font-size:14px}.snerr:empty{display:none}
+.sn-sum .fine{font-size:12.5px;color:#a9a294;margin-top:10px;line-height:1.4}
 .tag.manual{background:#fdf0d5;color:#7a4b00}
-@media (max-width:600px){.sngrid{grid-template-columns:1fr}.sngrid .row3{grid-template-columns:1fr 70px 100px}.snadd{grid-template-columns:1fr 64px}.snadd button{grid-column:1/-1}}
+.snhist{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:6px}
+.snhist .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.snhist h3{margin:0;font:700 20px Georgia,'Times New Roman',serif;flex:1}
+.snhist input[type=search]{flex:0 1 260px;min-width:160px;font-size:15px;padding:9px 12px}
+.sn-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:12px}
+.sn-kpi{border:1px solid var(--line);border-radius:12px;padding:10px 12px}.sn-kpi b{display:block;font:700 22px Georgia,serif}.sn-kpi small{color:var(--muted);font-size:12.5px}
+.sn-why{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.sn-why span{font-size:13px;background:#f4eee2;border-radius:20px;padding:3px 10px}
+.snhist table{width:100%;border-collapse:collapse;font-size:14px}.snhist th{text-align:left;font-size:11px;letter-spacing:.08em;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
+.snhist td{padding:9px 8px;border-bottom:1px solid #f0ebe1;vertical-align:top}.snhist td.n{text-align:right;white-space:nowrap}.snhist tr.cx td{color:#a8a296;text-decoration:line-through}
+.st-pill{font-size:12px;font-weight:700;border-radius:20px;padding:2px 8px;white-space:nowrap}.st-pill.open{background:var(--amberbg);color:var(--amber)}.st-pill.lab{background:var(--bluebg);color:var(--blue)}.st-pill.done{background:var(--okbg);color:var(--ok)}.st-pill.cx{background:#eee;color:#777}
+.sn-modal{position:fixed;inset:0;background:rgba(20,18,14,.55);z-index:50;display:grid;place-items:center;padding:16px}
+.sn-modal .box{background:#fff;border-radius:16px;width:min(640px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+.sn-modal .hd{padding:14px 16px;border-bottom:1px solid var(--line)}.sn-modal .hd b{display:block;font-size:16px}.sn-modal .hd small{color:var(--muted)}
+.sn-modal iframe{border:0;width:100%;flex:1;min-height:420px;background:#f4efe6}.sn-modal .ft{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line)}
+@media (max-width:900px){.sn{grid-template-columns:1fr}.sn-sum{position:static}}
+@media (max-width:600px){.sngrid{grid-template-columns:1fr}.sngrid .row3{grid-template-columns:1fr 70px 100px}.snadd{grid-template-columns:1fr 70px}.snadd button{grid-column:1/-1}.snreasons{grid-template-columns:repeat(2,minmax(0,1fr))}.sn-box{grid-template-columns:repeat(2,minmax(0,1fr))}.snhist .hide-sm{display:none}}
 </style>
 </head>
 <body>
@@ -219,32 +264,53 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
     <button data-chip="late" aria-pressed="false">⏰ Waiting 2+ days</button>
     <button data-chip="blocked" aria-pressed="false">⛔ Has an out-of-stock item</button>
   </div>
-  <section class="shipnew noprint" id="shipPanel" hidden>
-    <h2>📮 New shipment</h2>
-    <p class="small" style="margin:0">For a box that is not a store order: a missing item, a replacement, a resend or a gift. It is not a sale and no email goes to the customer. Only the label cost shows up in Reports.</p>
-    <label class="lbl" for="snFind">WHO IS IT GOING TO?</label>
-    <input type="search" id="snFind" placeholder="Type a name, email, phone or city to find a past customer…" autocomplete="off">
-    <div class="snmatches" id="snMatches"></div>
-    <div class="sngrid" style="margin-top:10px">
-      <div class="full"><label class="lbl" for="snName">NAME *</label><input type="text" id="snName" autocomplete="off"></div>
-      <div><label class="lbl" for="snAddr">STREET ADDRESS *</label><input type="text" id="snAddr" autocomplete="off"></div>
-      <div><label class="lbl" for="snAddr2">APT / SUITE</label><input type="text" id="snAddr2" autocomplete="off"></div>
-      <div class="row3"><div><label class="lbl" for="snCity">CITY *</label><input type="text" id="snCity" autocomplete="off"></div><div><label class="lbl" for="snState">STATE *</label><input type="text" id="snState" maxlength="2" autocomplete="off"></div><div><label class="lbl" for="snZip">ZIP *</label><input type="text" id="snZip" maxlength="10" inputmode="numeric" autocomplete="off"></div></div>
-      <div><label class="lbl" for="snPhone">PHONE</label><input type="tel" id="snPhone" autocomplete="off"></div>
-      <div><label class="lbl" for="snEmail">EMAIL</label><input type="email" id="snEmail" autocomplete="off"></div>
+  <section class="sn noprint" id="shipPanel" hidden>
+    <div class="sn-hero"><div><h2>📮 Send a box</h2><p>For a missing item, a replacement, a resend or a gift. It is not a sale. Nothing is emailed unless you press <b>Email tracking</b>. Only the label cost goes into Reports.</p></div></div>
+    <div>
+      <div class="sn-step"><header><span class="sn-num">1</span><h3>Who is it going to?</h3><small>Type to find a past customer</small></header>
+        <div class="sn-find"><input type="search" id="snFind" placeholder="Name, email, phone or city…" autocomplete="off" aria-label="Find a past customer"></div>
+        <div class="snmatches" id="snMatches"></div>
+        <div id="snPicked"></div>
+        <div class="sngrid">
+          <div class="full"><label class="lbl" for="snName">Name *</label><input type="text" id="snName" autocomplete="off"></div>
+          <div><label class="lbl" for="snAddr">Street address *</label><input type="text" id="snAddr" autocomplete="off"></div>
+          <div><label class="lbl" for="snAddr2">Apt / suite</label><input type="text" id="snAddr2" autocomplete="off"></div>
+          <div class="row3"><div><label class="lbl" for="snCity">City *</label><input type="text" id="snCity" autocomplete="off"></div><div><label class="lbl" for="snState">State *</label><input type="text" id="snState" maxlength="2" autocomplete="off"></div><div><label class="lbl" for="snZip">ZIP *</label><input type="text" id="snZip" maxlength="10" inputmode="numeric" autocomplete="off"></div></div>
+          <div><label class="lbl" for="snPhone">Phone</label><input type="tel" id="snPhone" autocomplete="off"></div>
+          <div><label class="lbl" for="snEmail">Email <span style="text-transform:none;letter-spacing:0;font-weight:400">(for the tracking email)</span></label><input type="email" id="snEmail" autocomplete="off"></div>
+        </div>
+        <div class="sn-check"><button type="button" class="mini" id="snCheck" title="Shippo checks the address against the postal database. Shippo charges 2¢ per check.">✓ Check address with Shippo · 2¢</button><span class="small">Catches typos before you pay for a label.</span></div>
+        <div id="snAddrMsg"></div>
+      </div>
+      <div class="sn-step"><header><span class="sn-num">2</span><h3>What's going in the box?</h3></header>
+        <div id="snOrders"></div>
+        <span class="lbl">Why is it going out? *</span>
+        <div class="snreasons" id="snReasons">
+          <button type="button" data-snr="missing" aria-pressed="false"><span>📦</span>Missing item<small>Left out of an order</small></button>
+          <button type="button" data-snr="damaged" aria-pressed="false"><span>💔</span>Damaged<small>Arrived broken or leaking</small></button>
+          <button type="button" data-snr="wrong" aria-pressed="false"><span>🔄</span>Wrong item<small>We sent the wrong one</small></button>
+          <button type="button" data-snr="resend" aria-pressed="false"><span>🚚</span>Resend<small>Package lost on the way</small></button>
+          <button type="button" data-snr="gift" aria-pressed="false"><span>🎁</span>Gift / sample<small>A little extra</small></button>
+          <button type="button" data-snr="other" aria-pressed="false"><span>✏️</span>Something else<small>Say why in the note</small></button>
+        </div>
+        <label class="lbl" for="snProd">Add products</label>
+        <div class="snadd"><input type="search" id="snProd" list="snProdList" placeholder="Type a product, e.g. BAC Water" autocomplete="off"><input type="number" id="snQty" value="1" min="1" max="50" aria-label="How many"><button type="button" id="snAdd">Add</button></div>
+        <datalist id="snProdList"></datalist>
+        <ul class="snlines" id="snLines"></ul>
+        <label class="lbl" for="snNote">Note <span style="text-transform:none;letter-spacing:0;font-weight:400">(shows on the packing card, not to the customer)</span></label>
+        <textarea id="snNote" maxlength="300" placeholder="e.g. Customer texted that the BAC water was missing"></textarea>
+      </div>
+      <div class="sn-step"><header><span class="sn-num">3</span><h3>Box</h3><small id="snBoxStd"></small></header>
+        <div class="sn-box"><div><label for="snL">Length (in)</label><input type="number" id="snL" min="1" max="36" step="0.5"></div><div><label for="snW">Width (in)</label><input type="number" id="snW" min="1" max="36" step="0.5"></div><div><label for="snH">Height (in)</label><input type="number" id="snH" min="1" max="36" step="0.5"></div><div><label for="snLb">Weight (lb)</label><input type="number" id="snLb" min="0.1" max="50" step="0.1"></div></div>
+        <div class="sn-check"><button type="button" class="mini" id="snStd">Use the standard box</button><span class="small">Bigger or heavier boxes cost more to ship.</span></div>
+        <label class="sn-toggle"><input type="checkbox" id="snStock" checked> Take these items out of the store's stock count</label>
+      </div>
     </div>
-    <div id="snOrders"></div>
-    <span class="lbl">WHY IS IT GOING OUT? *</span>
-    <div class="snreasons" id="snReasons"><button type="button" data-snr="missing" aria-pressed="false">Missing item</button><button type="button" data-snr="damaged" aria-pressed="false">Damaged</button><button type="button" data-snr="wrong" aria-pressed="false">Wrong item sent</button><button type="button" data-snr="resend" aria-pressed="false">Lost package, resend</button><button type="button" data-snr="gift" aria-pressed="false">Gift / sample</button><button type="button" data-snr="other" aria-pressed="false">Something else</button></div>
-    <label class="lbl" for="snProd">WHAT GOES IN THE BOX?</label>
-    <div class="snadd"><input type="search" id="snProd" list="snProdList" placeholder="Type a product, e.g. BAC Water" autocomplete="off"><input type="number" id="snQty" value="1" min="1" max="50" aria-label="How many"><button type="button" id="snAdd">Add</button></div>
-    <datalist id="snProdList"></datalist>
-    <ul class="snlines" id="snLines"></ul>
-    <label class="lbl" for="snNote">NOTE (shows on the packing card)</label>
-    <textarea id="snNote" maxlength="300" placeholder="e.g. Customer said the BAC water was missing"></textarea>
-    <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:15px"><input type="checkbox" id="snStock" checked> Take these items out of the store's stock count</label>
-    <div class="snacts"><button type="button" class="primary" id="snSave">Save shipment</button><button type="button" id="snClear">Clear</button><span class="small">After saving it shows up in <b>To check</b> to pack, with a <b>Buy label</b> button.</span></div>
-    <div class="snerr" id="snErr" role="alert"></div>
+    <aside class="sn-sum" aria-label="Shipment summary"><h3>Shipment</h3><dl id="snSum"></dl>
+      <button type="button" class="go" id="snSave">Save shipment</button><button type="button" class="clr" id="snClear">Start over</button>
+      <div class="snerr" id="snErr" role="alert"></div>
+      <div class="fine">After saving, it shows up in <b>To check</b> with a <b>Buy label</b> button. The price shows before anything is bought.</div>
+    </aside>
   </section>
   <div class="alerts" id="alerts"></div>
   <div id="out"><div class="msg">Loading paid orders…</div></div>
@@ -682,6 +748,7 @@ function card(o){
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
   var tags=brand+(o.member_priority===true&&!o.replacement?'<span class="tag pf" title="Skool member who picked Packed first">⭐ PACK FIRST</span>':'')+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.manual?'<span class="tag manual">📮 '+esc(SN_REASONS[o.manual.reason]||'SHIPMENT').toUpperCase()+'</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
   var ship=o.manual&&!hasLabel(o)?manualBuyBox(o):!hasLabel(o)&&canBuy(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||carrierName(o))+'</span>'+(o.tracking?'<span>'+trkLink(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
+  if(o.manual&&hasLabel(o))ship=ship.slice(0,-6)+manualEmailBtn(o)+'</div>';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement||o.manual?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">'+(o.manual?'Made':'Paid')+' '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+(o.manual?'<div class="small">'+esc(manualWhy(o.manual))+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
@@ -722,15 +789,17 @@ function restock(){
      var ord=x.made?(x.status==='ok'||x.status==='idle'?'—':'Make a batch'):(x.status==='out'||x.status==='now'||x.status==='next'?(x.order||Math.max(BOX,Math.ceil((x.target-x.stock)/BOX)*BOX))+(x.status==='next'?' <span class="small">(next)</span>':''):'—');
      return '<tr class="'+cls+'"><td>'+esc(x.name)+(x.made?' <span class="st blue">MADE HERE</span>':'')+'</td><td class="n">'+x.stock+'</td><td class="n hide-sm">'+x.rate.toFixed(1)+'</td><td class="n">'+dl+'</td><td class="n hide-sm">'+x.rop+'</td><td><span class="st '+l[0]+'">'+l[1]+'</span></td><td class="n">'+ord+'</td></tr>'}).join('')+'</tbody></table></div>';
 }
-// ---- New shipment (Jonah, 6 Nov 2026) ----------------------------------------
+// ---- New shipment (Jonah, 6 Nov 2026; history, box, address check, tracking email and redesign added the same day) ----
 // A box that is not a store order. Type a name to find a past customer and fill their latest address; pick which of
 // their orders it is for (its items can be added with one tap). Saved to the store's manual_shipments (never orders),
-// then packed here like any order, with its own Buy label (price shown before buying, same $15 check) and Cancel.
-var SN_REASONS={missing:'Missing item',damaged:'Damaged',wrong:'Wrong item sent',resend:'Resend',gift:'Gift / sample',other:'Shipment'};
+// then packed here like any order, with its own Buy label (price shown before buying, same $15 check), Email tracking
+// (preview first, sent once) and Cancel. History below lists every one with label costs.
+var SN_REASONS={missing:'Missing item',damaged:'Damaged',wrong:'Wrong item sent',resend:'Resend',gift:'Gift / sample',other:'Something else'};
+var SN_ICON={missing:'📦',damaged:'💔',wrong:'🔄',resend:'🚚',gift:'🎁',other:'✏️'};
 var SN_LEAD={missing:'Here is the item that was missing from your order. Thank you for your patience!',damaged:'Here is your replacement. Thank you for your patience!',wrong:'Here is the right item. Thank you for your patience!',resend:'Here is your order, sent again. Thank you for your patience!',gift:'A little something from us. Thank you for being part of Glow Lab!'};
-var sn={key:snKey(),reason:'',order:'',lines:[],cust:null,busy:false};
+var sn={key:snKey(),reason:'',order:'',lines:[],cust:null,busy:false,addr:null},shippoCfg={},snHistQ='',snShowCx=false;
 function snKey(){var a=new Uint8Array(12);(window.crypto||window.msCrypto).getRandomValues(a);return Array.prototype.map.call(a,function(x){return ('0'+x.toString(16)).slice(-2)}).join('')}
-function manualWhy(m){return 'Why: '+(SN_REASONS[m.reason]||m.reason)+(m.order_id?' · for '+m.order_id:'')+(m.note?' · '+m.note:'')+(m.created_by?' · made by '+m.created_by:'')}
+function manualWhy(m){return 'Why: '+(SN_REASONS[m.reason]||m.reason)+(m.order_id?' · for '+m.order_id:'')+(m.note?' · '+m.note:'')+(m.parcel?' · box '+m.parcel.length+'×'+m.parcel.width+'×'+m.parcel.height+' in, '+m.parcel.weight_lb+' lb':'')+(m.created_by?' · made by '+m.created_by:'')}
 function manualCards(list){var cut=nowS()-5*86400;return list.filter(function(m){return m.status!=='canceled'&&(m.created>cut||!m.tracking||!m.packed)}).map(manualCard)}
 function manualCard(m){return {id:m.id,manual:m,brand:'glow',is_test:false,customer:m.to,paid:m.created,created:m.created,status:m.tracking?'shipped':'paid',
   items:(m.items&&m.items.length)?m.items:[{id:'note',name:m.note||'See note',quantity:1}],shipment:m.tracking?{label_url:m.label_url,service:m.service,label_created_at:m.label_created_at,carrier:m.carrier}:null,tracking:m.tracking||'',packed:m.packed||null}}
@@ -740,7 +809,9 @@ function manualBuyBox(o){var m=o.manual,def=svcChoice[o.id]||defaultService(o),p
   return '<div class="ship buy"><select class="svc" data-svc="'+esc(o.id)+'" aria-label="Shipping service">'+opts+'</select><button class="mini buybtn" data-snbuy="'+esc(o.id)+'"'+(m.label_status==='needs_review'?' disabled':'')+'>🏷️ Buy label</button>'
    +(m.label_status==='needs_review'?'<span class="buywarn">⚠️ A label may already be in Shippo (look for GLOW:'+esc(o.id)+'). Check Shippo before doing anything else.</span>':'')
    +(ps?'<span class="buywarn price">💲 '+esc(ps.text)+'</span><button class="mini overbtn" data-snover="'+esc(o.id)+'" title="Owner sign-in only">Admin override: buy anyway</button>':m.label_message&&m.label_status!=='needs_review'?'<span class="buywarn">Last try: '+esc(String(m.label_message).slice(0,140))+'</span>':'')+'</div>'}
-function snPost(path,body){return fetch('/api/admin/'+path,{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||('The store answered '+x.status));return d})})}
+function manualEmailBtn(o){var m=o.manual;if(m.email_sent)return '<span title="Tracking email sent">✉️ Emailed '+esc(whenShort(m.email_sent.at))+'</span>';
+  return m.to&&m.to.email?'<button class="mini" data-snmail="'+esc(o.id)+'" title="Preview, then send the customer their tracking number">✉️ Email tracking</button>':'<span class="small" title="Add an email when you make the shipment to send tracking">No email on file</span>'}
+function snPost(path,body){return fetch('/api/admin/'+path,{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||(x.status===502?'Shippo or the store did not answer (502). Try again in a minute.':'The store answered '+x.status));return d})})}
 function snBuy(id,b,override){var o=orders.find(function(x){return x.id===id});if(!o)return;var sel=document.querySelector('select[data-svc="'+id+'"]'),svc=override&&snStops[id]?snStops[id].svc:(sel?sel.value:defaultService(o)),c=o.customer||{};
   var name=(BUY_SERVICES.find(function(x){return x[0]===svc})||[svc,svc])[1];b.disabled=true;b.textContent=override?'Buying…':'Checking price…';
   var go=function(priceText){if(!confirm((override?'ADMIN OVERRIDE\n\n':'')+'Buy a '+name+' label for '+(c.name||id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+')'+(priceText?' for '+priceText:'')+'?\n\nThe label and packing slip print right after.')){b.disabled=false;b.textContent='🏷️ Buy label';return}
@@ -753,62 +824,109 @@ function snBuy(id,b,override){var o=orders.find(function(x){return x.id===id});i
       return go(money(hit.cents)+(cheap&&cheap.service!==svc&&cheap.cents<hit.cents?'\n\n(Cheapest: '+cheap.name+' '+money(cheap.cents)+')':''))}))
   .catch(function(e){toast((e&&e.message)||'Could not buy the label');b.disabled=false;b.textContent='🏷️ Buy label';fetchOrders(true)});
 }
-function snCancel(id,b){var o=orders.find(function(x){return x.id===id});if(!o)return;var m=o.manual;
-  if(!confirm('Cancel shipment '+id+' to '+((o.customer||{}).name||'')+'?\n\n'+(m.tracking?'The label ('+m.tracking+') is voided in Shippo for a refund. ':'')+(m.stock_taken?'The items go back into stock.':'')))return;b.disabled=true;
+function snCancel(id,b){var o=orders.find(function(x){return x.id===id})||manualCard(manuals.find(function(x){return x.id===id})||{});if(!o||!o.manual)return;var m=o.manual;
+  if(!confirm('Cancel shipment '+id+' to '+((m.to||{}).name||'')+'?\n\n'+(m.tracking?'The label ('+m.tracking+') is voided in Shippo for a refund. ':'')+(m.stock_taken?'The items go back into stock.':'')))return;b.disabled=true;
   snPost('manual-shipment/cancel',{id:id}).then(function(d){toast('Canceled '+id+(d.refund?' · label refund '+String(d.refund).toLowerCase():''));delete saved[id];save(saved);fetchOrders(true)},function(e){b.disabled=false;toast(e.message)})}
-function shipList(){var mine=orders.filter(function(o){return o.manual});
-  return mine.length?'<div class="group">Recent shipments</div>'+mine.map(card).join(''):'<div class="msg">No shipments made here in the last 5 days.</div>'}
+// Tracking email: show exactly what the customer will get, send only on the button inside the preview.
+function snMail(id,b){b.disabled=true;snPost('manual-shipment/email',{id:id,preview:true}).then(function(p){b.disabled=false;var wrap=document.createElement('div');wrap.className='sn-modal';wrap.innerHTML='<div class="box" role="dialog" aria-modal="true" aria-label="Email preview"><div class="hd"><b>'+esc(p.subject)+'</b><small>To '+esc(p.to)+' · this is exactly what they will get</small></div><iframe sandbox="" title="Email preview"></iframe><div class="ft"><button type="button" data-x="1">Not now</button><button type="button" class="primary" data-send="1">Send to '+esc(p.to)+'</button></div></div>';
+    wrap.querySelector('iframe').srcdoc=p.html;document.body.appendChild(wrap);var close=function(){wrap.remove()};
+    wrap.addEventListener('click',function(e){if(e.target===wrap||e.target.dataset.x)close();if(e.target.dataset.send){e.target.disabled=true;e.target.textContent='Sending…';snPost('manual-shipment/email',{id:id}).then(function(d){close();toast(d.already?'Already emailed':'✉️ Tracking emailed to '+p.to);fetchOrders(true)},function(er){e.target.disabled=false;e.target.textContent='Send to '+p.to;toast(er.message)})}})},
+   function(e){b.disabled=false;toast(e.message)})}
+function snStatus(m){return m.status==='canceled'?['cx','Canceled']:m.packed&&m.tracking?['done','Packed + labeled']:m.tracking?['lab','Label bought']:['open','Needs label']}
+function shipList(){var open=orders.filter(function(o){return o.manual&&!(o.manual.packed&&o.manual.tracking)});
+  return (open.length?'<div class="group">Open shipments · pack and label these</div>'+open.map(card).join(''):'')+snHistory()}
+function snHistory(){var q=snHistQ.toLowerCase(),list=manuals.filter(function(m){return snShowCx||m.status!=='canceled'}).filter(function(m){if(!q)return true;var t=m.to||{};return [m.id,t.name,t.city,t.state,t.email,m.order_id,m.note,m.tracking,SN_REASONS[m.reason]].concat((m.items||[]).map(function(i){return i.name})).join(' ').toLowerCase().indexOf(q)>=0});
+  var live=manuals.filter(function(m){return m.status!=='canceled'}),monthKey=etDay(nowS()).slice(0,7),month=live.filter(function(m){return etDay(m.created).slice(0,7)===monthKey});
+  var cost=function(l){return l.reduce(function(n,m){return n+(m.label_refund?0:(m.label_cost_cents||0))},0)},items=function(l){return l.reduce(function(n,m){return n+(m.items||[]).reduce(function(k,i){return k+i.quantity},0)},0)};
+  var by={};month.forEach(function(m){var r=by[m.reason]||(by[m.reason]={n:0,c:0});r.n++;r.c+=m.label_refund?0:(m.label_cost_cents||0)});
+  var monthName=new Date().toLocaleDateString('en-US',{month:'long'});
+  var rows=list.map(function(m){var t=m.to||{},st=snStatus(m);return '<tr class="'+(m.status==='canceled'?'cx':'')+'"><td>'+esc(new Date(m.created*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}))+'</td><td><b>'+esc(t.name||'')+'</b><br><small class="small">'+esc([t.city,t.state].filter(Boolean).join(', '))+'</small></td><td>'+(SN_ICON[m.reason]||'')+' '+esc(SN_REASONS[m.reason]||m.reason)+(m.order_id?'<br><small class="small">'+esc(m.order_id)+'</small>':'')+'</td>'
+    +'<td class="hide-sm">'+esc((m.items||[]).map(function(i){return i.quantity+'× '+i.name}).join(', ')||m.note||'—')+'</td><td class="n">'+(m.label_cost_cents?money(m.label_cost_cents)+(m.label_refund?'<br><small class="small">refunded</small>':''):'—')+'</td><td class="hide-sm">'+(m.tracking?trkLink(m.tracking):'—')+(m.email_sent?'<br><small class="small">✉️ emailed</small>':'')+'</td><td><span class="st-pill '+st[0]+'">'+st[1]+'</span>'+(m.status!=='canceled'&&!(m.packed&&m.tracking)?'':'')+'</td></tr>'}).join('');
+  return '<section class="snhist"><div class="top"><h3>History</h3><input type="search" id="snHistQ" placeholder="Search name, product, tracking…" value="'+esc(snHistQ)+'" autocomplete="off"><button type="button" class="mini" id="snCx" aria-pressed="'+snShowCx+'">'+(snShowCx?'Hide canceled':'Show canceled')+'</button></div>'
+   +'<div class="sn-kpis"><div class="sn-kpi"><b>'+month.length+'</b><small>boxes sent in '+esc(monthName)+'</small></div><div class="sn-kpi"><b>'+money(cost(month))+'</b><small>label cost in '+esc(monthName)+'</small></div><div class="sn-kpi"><b>'+items(month)+'</b><small>items sent free in '+esc(monthName)+'</small></div><div class="sn-kpi"><b>'+money(cost(live))+'</b><small>label cost, last 120 days ('+live.length+' boxes)</small></div></div>'
+   +(Object.keys(by).length?'<div class="sn-why">'+Object.keys(by).map(function(k){return '<span>'+(SN_ICON[k]||'')+' '+esc(SN_REASONS[k]||k)+': <b>'+by[k].n+'</b> · '+money(by[k].c)+'</span>'}).join('')+'</div>':'')
+   +(rows?'<div class="tscroll"><table><thead><tr><th>Date</th><th>To</th><th>Why</th><th class="hide-sm">What</th><th class="n">Label</th><th class="hide-sm">Tracking</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="sn-empty">'+(q?'Nothing matches.':'No shipments yet. Make one above.')+'</div>')+'</section>'}
 // Customers come from past orders: the newest order's address wins.
 function snCustomers(){var by={};all.forEach(function(o){if(o.is_test!==false||!o.customer||!o.customer.name)return;var k=custKey(o);if(!k)return;var x=by[k]||(by[k]={k:k,last:null,orders:[]});x.orders.push(o);if(!x.last||(o.created||0)>(x.last.created||0))x.last=o});
   return Object.keys(by).map(function(k){var x=by[k];x.orders.sort(function(a,b){return (b.created||0)-(a.created||0)});return x})}
+function initials(n){var p=String(n||'').trim().split(/\s+/);return ((p[0]||'')[0]||'?').toUpperCase()+((p.length>1?p[p.length-1][0]:'')||'').toUpperCase()}
 function snFind(q){var box=document.getElementById('snMatches');q=String(q||'').toLowerCase().trim();if(q.length<2){box.innerHTML='';return}
   var words=q.split(/\s+/),qd=q.replace(/\D/g,'');var hits=snCustomers().filter(function(x){var c=x.last.customer,hay=[c.name,c.email,c.city,c.state].join(' ').toLowerCase(),ph=String(c.phone||'').replace(/\D/g,'');
     return words.every(function(w){return hay.indexOf(w)>=0})||(qd.length>=4&&ph.indexOf(qd)>=0)});
   hits.sort(function(a,b){var an=String(a.last.customer.name).toLowerCase().indexOf(q)===0?0:1,bn=String(b.last.customer.name).toLowerCase().indexOf(q)===0?0:1;return an-bn||(b.last.created||0)-(a.last.created||0)});
-  box.innerHTML=hits.length?hits.slice(0,8).map(function(x){var c=x.last.customer,paid=x.orders.filter(paidOrder).length;return '<button type="button" data-sncust="'+esc(x.k)+'"><b>'+esc(c.name)+'</b> · '+esc([c.city,c.state].filter(Boolean).join(', '))+' <small>· '+paid+' paid order'+(paid===1?'':'s')+' · last '+esc(shortDate(x.last.created||0))+(c.email?' · '+esc(c.email):'')+'</small></button>'}).join(''):'<div class="small">No past customer matches. Type the address below.</div>'}
-function snPick(k){var x=snCustomers().find(function(y){return y.k===k});if(!x)return;var c=x.last.customer;sn.cust=x;
+  box.innerHTML=hits.length?hits.slice(0,6).map(function(x){var c=x.last.customer,paid=x.orders.filter(paidOrder).length;return '<button type="button" data-sncust="'+esc(x.k)+'"><span class="sn-av">'+esc(initials(c.name))+'</span><span class="sn-who"><b>'+esc(c.name)+'</b><small>'+esc([c.address,c.city,c.state].filter(Boolean).join(', '))+(c.email?' · '+esc(c.email):'')+'</small></span><span class="sn-pill">'+paid+' order'+(paid===1?'':'s')+' · '+esc(shortDate(x.last.created||0))+'</span></button>'}).join(''):'<div class="sn-empty">No past customer matches. Type the address below.</div>'}
+function snPick(k){var x=snCustomers().find(function(y){return y.k===k});if(!x)return;var c=x.last.customer;sn.cust=x;sn.addr=null;
   [['snName','name'],['snAddr','address'],['snAddr2','address2'],['snCity','city'],['snState','state'],['snZip','zip'],['snPhone','phone'],['snEmail','email']].forEach(function(f){document.getElementById(f[0]).value=c[f[1]]||''});
-  document.getElementById('snMatches').innerHTML='';document.getElementById('snFind').value=c.name||'';sn.order='';snOrders();toast('Filled '+(c.name||'')+'’s address from '+x.last.id)}
+  document.getElementById('snMatches').innerHTML='';document.getElementById('snFind').value='';
+  document.getElementById('snPicked').innerHTML='<div class="sn-picked"><span class="sn-av">'+esc(initials(c.name))+'</span><span class="sn-who"><b>'+esc(c.name)+'</b><small>Address from their latest order, '+esc(x.last.id)+'. Edit it below if it changed.</small></span><button type="button" class="mini" id="snUnpick">Change</button></div>';
+  sn.order='';snOrders();snAddrMsg();snSummary()}
 function snOrders(){var box=document.getElementById('snOrders'),x=sn.cust;if(!x){box.innerHTML='';return}
   var list=x.orders.filter(function(o){return ['paid','shipped'].indexOf(o.status)>=0}).slice(0,5);if(!list.length){box.innerHTML='';return}
-  box.innerHTML='<span class="lbl">WHICH ORDER IS THIS FOR? (optional)</span><div class="snorders">'+list.map(function(o){var on=sn.order===o.id;
+  box.innerHTML='<span class="lbl" style="margin-top:0">Which order is this for? <span style="text-transform:none;letter-spacing:0;font-weight:400">(tap an item to add it)</span></span><div class="snorders">'+list.map(function(o){var on=sn.order===o.id;
     return '<div class="snorder'+(on?' on':'')+'"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="snOrd" value="'+esc(o.id)+'"'+(on?' checked':'')+'> <b>'+esc(o.id)+'</b> · '+esc(shortDate(o.paid||o.created||0))+' · '+esc(o.status==='shipped'?'shipped':'paid')+(o.tracking?' · '+esc(o.tracking):'')+'</label>'
-     +'<div class="adds">'+(o.items||[]).map(function(i){var p=byId[i.id];return p?'<button type="button" class="mini" data-snadd="'+esc(p.id)+'" title="Add 1 to the box">+ '+esc(p.name)+'</button>':''}).join('')+'</div></div>'}).join('')
+     +'<div class="adds">'+(o.items||[]).map(function(i){var p=byId[i.id];return p?'<button type="button" class="mini" data-snadd="'+esc(p.id)+'" data-snord="'+esc(o.id)+'" title="Add 1 to the box">+ '+esc(p.name)+'</button>':''}).join('')+'</div></div>'}).join('')
     +'<label class="small" style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="radio" name="snOrd" value=""'+(sn.order?'':' checked')+'> Not for a past order</label></div>'}
 function snProducts(){var dl=document.getElementById('snProdList');dl.innerHTML=products.filter(function(p){return p.active&&p.brand!=='zader'}).sort(function(a,b){return String(a.name).localeCompare(String(b.name))}).map(function(p){return '<option value="'+esc(p.name)+'">'+esc(p.name)+' · '+Number(p.stock||0)+' in stock</option>'}).join('')}
-function snAddId(id,q){var p=byId[id];if(!p)return;q=Math.max(1,Math.min(50,Number(q)||1));var l=sn.lines.find(function(x){return x.id===p.id});if(l)l.qty=Math.min(50,l.qty+q);else sn.lines.push({id:p.id,name:p.name,qty:q});snLines()}
+function snAddId(id,q){var p=byId[id];if(!p)return;q=Math.max(1,Math.min(50,Number(q)||1));var l=sn.lines.find(function(x){return x.id===p.id});if(l)l.qty=Math.min(50,l.qty+q);else sn.lines.push({id:p.id,name:p.name,qty:q});snLines();toast('Added '+p.name)}
 function snAddTyped(){var inp=document.getElementById('snProd'),v=inp.value.trim().toLowerCase();if(!v)return;var act=products.filter(function(p){return p.active&&p.brand!=='zader'});
   var p=act.find(function(x){return String(x.name).toLowerCase()===v})||(function(){var m=act.filter(function(x){return String(x.name).toLowerCase().indexOf(v)>=0});return m.length===1?m[0]:null})();
   if(!p){snErr('Pick the product from the list (keep typing until it shows, then choose it).');return}snErr('');snAddId(p.id,document.getElementById('snQty').value);inp.value='';document.getElementById('snQty').value=1;inp.focus()}
-function snLines(){var ul=document.getElementById('snLines');ul.innerHTML=sn.lines.map(function(l,i){var p=byId[l.id]||{};return '<li><span class="nm">'+esc(l.name)+'</span><span class="st">'+Number(p.stock||0)+' in stock</span><button type="button" class="mini" data-snq="'+i+'" data-d="-1" aria-label="One fewer">−</button><b>'+l.qty+'</b><button type="button" class="mini" data-snq="'+i+'" data-d="1" aria-label="One more">+</button><button type="button" class="mini" data-snrm="'+i+'">Remove</button></li>'}).join('')}
+function snLines(){var ul=document.getElementById('snLines');ul.innerHTML=sn.lines.length?sn.lines.map(function(l,i){var p=byId[l.id]||{},st=Number(p.stock||0);return '<li><span class="nm">'+esc(l.name)+'</span><span class="st'+(st<l.qty?' low':'')+'">'+st+' in stock</span><span class="sn-qty"><button type="button" data-snq="'+i+'" data-d="-1" aria-label="One fewer">−</button><b>'+l.qty+'</b><button type="button" data-snq="'+i+'" data-d="1" aria-label="One more">+</button></span><button type="button" class="mini" data-snrm="'+i+'" aria-label="Remove '+esc(l.name)+'">✕</button></li>'}).join(''):'<li class="sn-empty" style="display:block">Nothing in the box yet.</li>';snSummary()}
 function snErr(t){document.getElementById('snErr').textContent=t||''}
-function snReset(){sn={key:snKey(),reason:'',order:'',lines:[],cust:null,busy:false};['snFind','snName','snAddr','snAddr2','snCity','snState','snZip','snPhone','snEmail','snNote','snProd'].forEach(function(i){document.getElementById(i).value=''});
-  document.getElementById('snStock').checked=true;document.getElementById('snMatches').innerHTML='';snOrders();snLines();snErr('');document.querySelectorAll('[data-snr]').forEach(function(x){x.setAttribute('aria-pressed','false')})}
-function snSave(b){if(sn.busy)return;var v=function(i){return document.getElementById(i).value.trim()};
-  var to={name:v('snName'),address:v('snAddr'),address2:v('snAddr2'),city:v('snCity'),state:v('snState').toUpperCase(),zip:v('snZip'),phone:v('snPhone'),email:v('snEmail')};
+function snStdBox(){var p=shippoCfg.parcel||{length:8,width:6,height:4,weight_lb:1};return p}
+function snBox(std){var p=snStdBox();if(std){document.getElementById('snL').value=p.length;document.getElementById('snW').value=p.width;document.getElementById('snH').value=p.height;document.getElementById('snLb').value=p.weight_lb}
+  document.getElementById('snBoxStd').textContent='Standard: '+p.length+'×'+p.width+'×'+p.height+' in · '+p.weight_lb+' lb';snSummary()}
+function snParcel(){var g=function(i){return Number(document.getElementById(i).value)},p={length:g('snL'),width:g('snW'),height:g('snH'),weight_lb:g('snLb')},d=snStdBox();
+  return (p.length===Number(d.length)&&p.width===Number(d.width)&&p.height===Number(d.height)&&p.weight_lb===Number(d.weight_lb))?null:p}
+function snVal(i){return document.getElementById(i).value.trim()}
+function snTo(){return{name:snVal('snName'),address:snVal('snAddr'),address2:snVal('snAddr2'),city:snVal('snCity'),state:snVal('snState').toUpperCase(),zip:snVal('snZip'),phone:snVal('snPhone'),email:snVal('snEmail')}}
+function snSummary(){var el=document.getElementById('snSum');if(!el)return;var t=snTo(),p=snParcel()||snStdBox(),n=sn.lines.reduce(function(k,l){return k+l.qty},0);
+  el.innerHTML='<div><dt>To</dt><dd>'+(t.name?'<b>'+esc(t.name)+'</b><br>'+esc([t.address,t.address2].filter(Boolean).join(', '))+'<br>'+esc([t.city,t.state].filter(Boolean).join(', ')+' '+t.zip):'<span class="muted">Pick a customer or type an address</span>')+(sn.addr&&sn.addr.valid&&!sn.addr.changed?'<br><span style="color:#8fd19e">✓ Address checked</span>':'')+'</dd></div>'
+   +'<div><dt>Why</dt><dd>'+(sn.reason?(SN_ICON[sn.reason]+' '+esc(SN_REASONS[sn.reason])):'<span class="muted">Not chosen yet</span>')+(sn.order?'<br><span class="muted">for '+esc(sn.order)+'</span>':'')+'</dd></div>'
+   +'<div><dt>In the box'+(n?' · '+n+' item'+(n===1?'':'s'):'')+'</dt><dd>'+(sn.lines.length?'<ul>'+sn.lines.map(function(l){return '<li>'+l.qty+'× '+esc(l.name)+'</li>'}).join('')+'</ul>':'<span class="muted">Nothing yet</span>')+'</dd></div>'
+   +'<div><dt>Box</dt><dd>'+esc(p.length+'×'+p.width+'×'+p.height+' in · '+p.weight_lb+' lb')+(snParcel()?' <span class="muted">(custom)</span>':'')+'</dd></div>'}
+function snAddrMsg(){var el=document.getElementById('snAddrMsg'),r=sn.addr;if(!r){el.innerHTML='';return}
+  var s2=r.suggestion,sug=s2?[s2.address,s2.address2,s2.city,s2.state,s2.zip].filter(Boolean).join(', '):'';
+  el.innerHTML=r.valid&&!r.changed?'<div class="sn-addrmsg ok">✓ Shippo confirmed this address.</div>'
+   :r.valid?'<div class="sn-addrmsg warn">Shippo knows this address as: <b>'+esc(sug)+'</b><button type="button" class="mini" id="snUseSug">Use it</button></div>'
+   :'<div class="sn-addrmsg bad">⚠️ Shippo could not confirm this address.'+(r.messages.length?' '+esc(r.messages.join(' ')):'')+(sug?'<br>Closest match: <b>'+esc(sug)+'</b><button type="button" class="mini" id="snUseSug">Use it</button>':'')+'</div>'}
+function snCheck(b){var t=snTo();if(!t.address||!t.city||!t.state||!t.zip){snErr('Fill in street, city, state and ZIP first.');return}snErr('');b.disabled=true;b.textContent='Checking…';
+  snPost('manual-shipment/check-address',{to:t}).then(function(r){sn.addr=r;snAddrMsg();snSummary()},function(e){toast(e.message)}).then(function(){b.disabled=false;b.textContent='✓ Check address with Shippo · 2¢'})}
+function snReset(){sn={key:snKey(),reason:'',order:'',lines:[],cust:null,busy:false,addr:null};['snFind','snName','snAddr','snAddr2','snCity','snState','snZip','snPhone','snEmail','snNote','snProd'].forEach(function(i){document.getElementById(i).value=''});
+  document.getElementById('snStock').checked=true;document.getElementById('snMatches').innerHTML='';document.getElementById('snPicked').innerHTML='';snOrders();snAddrMsg();snBox(true);snLines();snErr('');document.querySelectorAll('[data-snr]').forEach(function(x){x.setAttribute('aria-pressed','false')})}
+function snSave(b){if(sn.busy)return;var to=snTo();
   if(!to.name||!to.address||!to.city||!to.state||!to.zip){snErr('Fill in the name, street, city, state and ZIP.');return}
   if(!/^[A-Z]{2}$/.test(to.state)){snErr('State is the two-letter code, like GA.');return}if(!/^\d{5}(-\d{4})?$/.test(to.zip)){snErr('ZIP is 5 digits.');return}
-  if(!sn.reason){snErr('Choose why it is going out.');return}if(!sn.lines.length&&!v('snNote')){snErr('Add what goes in the box, or write a note.');return}
+  if(!sn.reason){snErr('Choose why it is going out (step 2).');return}if(!sn.lines.length&&!snVal('snNote')){snErr('Add what goes in the box, or write a note.');return}
+  var pc=snParcel();if(pc&&!(pc.length>=1&&pc.width>=1&&pc.height>=1&&pc.weight_lb>=0.1)){snErr('Box size needs all three sides and a weight.');return}
   snErr('');sn.busy=true;b.disabled=true;b.textContent='Saving…';
-  snPost('manual-shipment',{key:sn.key,to:to,reason:sn.reason,order_id:sn.order,note:v('snNote'),items:sn.lines.map(function(l){return{id:l.id,quantity:l.qty}}),take_stock:document.getElementById('snStock').checked})
-  .then(function(d){toast('✅ Shipment '+d.id+' saved for '+to.name+'. Buy its label below.');snReset();return fetchOrders(true)},function(e){snErr(e.message)})
+  snPost('manual-shipment',{key:sn.key,to:to,reason:sn.reason,order_id:sn.order,note:snVal('snNote'),items:sn.lines.map(function(l){return{id:l.id,quantity:l.qty}}),take_stock:document.getElementById('snStock').checked,parcel:pc||undefined})
+  .then(function(d){toast('✅ Shipment '+d.id+' saved for '+to.name+'. Buy its label below.');snReset();return fetchOrders(true).then(function(){var el=document.querySelector('[data-id="'+d.id+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})})},function(e){snErr(e.message)})
   .then(function(){sn.busy=false;b.disabled=false;b.textContent='Save shipment'})}
-document.addEventListener('input',function(e){var t=e.target;if(!t)return;if(t.id==='snFind'){sn.cust=null;snOrders();snFind(t.value)}});
-document.addEventListener('change',function(e){var t=e.target;if(t&&t.name==='snOrd'){sn.order=t.value;snOrders()}});
+document.addEventListener('input',function(e){var t=e.target;if(!t)return;if(t.id==='snFind'){snFind(t.value)}else if(t.id==='snHistQ'){snHistQ=t.value;var pos=t.selectionStart;render();var n=document.getElementById('snHistQ');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(x){}}}
+  else if(t.closest&&t.closest('#shipPanel')){if(/^sn(L|W|H|Lb)$/.test(t.id))sn.boxEdited=true;if(/^sn(Addr|Addr2|City|State|Zip)$/.test(t.id)&&sn.addr){sn.addr=null;snAddrMsg()}snSummary()}});
+document.addEventListener('change',function(e){var t=e.target;if(t&&t.name==='snOrd'){sn.order=t.value;snOrders();snSummary()}});
 document.addEventListener('keydown',function(e){var t=e.target;if(!t||e.key!=='Enter')return;if(t.id==='snProd'){e.preventDefault();snAddTyped()}else if(t.id==='snFind'){var f=document.querySelector('[data-sncust]');if(f){e.preventDefault();snPick(f.dataset.sncust)}}});
 document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
   if(b.dataset.sncust){snPick(b.dataset.sncust);return}
-  if(b.dataset.snr){sn.reason=b.dataset.snr;document.querySelectorAll('[data-snr]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});return}
-  if(b.dataset.snadd){snAddId(Number(b.dataset.snadd),1);return}
+  if(b.id==='snUnpick'){sn.cust=null;sn.order='';document.getElementById('snPicked').innerHTML='';snOrders();var f=document.getElementById('snFind');f.focus();snSummary();return}
+  if(b.dataset.snr){sn.reason=b.dataset.snr;document.querySelectorAll('[data-snr]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b))});snSummary();return}
+  if(b.dataset.snadd){if(b.dataset.snord&&!sn.order){sn.order=b.dataset.snord;snOrders()}snAddId(Number(b.dataset.snadd),1);return}
   if(b.dataset.snq){var l=sn.lines[Number(b.dataset.snq)];if(l){l.qty=Math.max(1,Math.min(50,l.qty+Number(b.dataset.d)))}snLines();return}
   if(b.dataset.snrm){sn.lines.splice(Number(b.dataset.snrm),1);snLines();return}
   if(b.id==='snAdd'){snAddTyped();return}
+  if(b.id==='snCheck'){snCheck(b);return}
+  if(b.id==='snUseSug'&&sn.addr&&sn.addr.suggestion){var g=sn.addr.suggestion;document.getElementById('snAddr').value=g.address;document.getElementById('snAddr2').value=g.address2||document.getElementById('snAddr2').value;document.getElementById('snCity').value=g.city;document.getElementById('snState').value=g.state;document.getElementById('snZip').value=g.zip;sn.addr={valid:true,changed:false,messages:[],suggestion:g};snAddrMsg();snSummary();return}
+  if(b.id==='snStd'){snBox(true);return}
   if(b.id==='snSave'){snSave(b);return}
   if(b.id==='snClear'){snReset();return}
+  if(b.id==='snCx'){snShowCx=!snShowCx;render();return}
   if(b.dataset.snbuy){snBuy(b.dataset.snbuy,b);return}
   if(b.dataset.snover){snBuy(b.dataset.snover,b,true);return}
+  if(b.dataset.snmail){snMail(b.dataset.snmail,b);return}
   if(b.dataset.sncancel){snCancel(b.dataset.sncancel,b);return}
 });
+snBox(true);snLines();
 // ---- data -------------------------------------------------------------------
 function fetchOrders(quiet){
   var out=document.getElementById('out');
@@ -819,7 +937,7 @@ function fetchOrders(quiet){
   }).then(function(d){
     var before={};orders.forEach(function(o){before[o.id]=1});var hadData=lastLoad>0;
     all=d.orders||[];products=d.products||[];byId={};products.forEach(function(p){byId[p.id]=p});
-    manuals=d.manual_shipments||[];orders=all.filter(needsPacking).concat(replacementCards(all)).concat(manualCards(manuals)).sort(function(a,b){return ((a.member_priority===true&&!a.replacement?0:1)-(b.member_priority===true&&!b.replacement?0:1))||((a.paid||a.created||0)-(b.paid||b.created||0))});
+    manuals=d.manual_shipments||[];var firstCfg=!shippoCfg.parcel;shippoCfg=d.shippo||{};if(firstCfg&&!sn.boxEdited)snBox(true);orders=all.filter(needsPacking).concat(replacementCards(all)).concat(manualCards(manuals)).sort(function(a,b){return ((a.member_priority===true&&!a.replacement?0:1)-(b.member_priority===true&&!b.replacement?0:1))||((a.paid||a.created||0)-(b.paid||b.created||0))});
     var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);var ks={};orders.forEach(function(o){if(skipped[o.id])ks[o.id]=skipped[o.id]});skipped=ks;saveSkip();
     var fresh=hadData?orders.filter(function(o){return !before[o.id]}):[];
     if(!hadData){orders.forEach(function(o){seen[o.id]=1});lsSet(SEEN,seen)}
