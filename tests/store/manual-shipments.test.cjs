@@ -5,7 +5,7 @@ const {test,before,after}=require('node:test'),assert=require('node:assert/stric
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-manual-ship-'));
 const TOKEN='shippo_test_'+'a'.repeat(30);
 Object.assign(process.env,{STORE_LOCAL:'1',STORE_SQLITE_PATH:path.join(tmp,'store.sqlite'),STORE_ADMIN_PASSWORD:'manual-ship-admin-password',STORE_SESSION_SECRET:'manual-ship-session-secret-long-enough',STORE_ORIGIN:'http://127.0.0.1:8787',
- SHIPPO_API_TOKEN:TOKEN,SHIPPO_FROM_STREET1:'1 Test Way',SHIPPO_FROM_CITY:'Canton',SHIPPO_FROM_STATE:'GA',SHIPPO_FROM_ZIP:'30114',SHIPPO_FROM_NAME:'Glow Lab',SHIPPO_FROM_EMAIL:'ship@example.test'});
+ SHIPPO_API_TOKEN:TOKEN,SHIPPO_FROM_STREET1:'1 Test Way',SHIPPO_FROM_CITY:'Canton',SHIPPO_FROM_STATE:'GA',SHIPPO_FROM_ZIP:'30114',SHIPPO_FROM_NAME:'Glow Lab',SHIPPO_FROM_EMAIL:'ship@example.test',STORE_EMAIL_ENABLED:'1',RESEND_API_KEY:'re_test_key',STORE_EMAIL_FROM:'support@example.test'});
 const {transaction}=require('../../netlify/functions/lib/store-db.cjs'),{seed}=require('../../tools/store/seed-data.cjs'),{handle}=require('../../netlify/functions/lib/store-core.cjs');
 const realFetch=global.fetch;let calls=[],cookie,a,b;
 const call=(p,body,c='')=>handle({path:p,method:body===undefined?'GET':'POST',headers:{'x-store-request':'1',cookie:c,'x-nf-client-connection-ip':'fixture'},body:body||{}});
@@ -22,6 +22,8 @@ before(async()=>{await transaction(seed);cookie=(await call('/admin/login',{pass
   if(u.endsWith('/shipments/'))return j({rates:[rate('r1','12.34','ups_second_day_air','2nd Day Air'),rate('r2','9.10','ups_ground','Ground'),rate('r3','40.00','ups_next_day_air','Next Day Air')]});
   if(u.endsWith('/transactions/'))return j({status:'SUCCESS',tracking_number:'1ZMANUAL1',label_url:'https://deliver.goshippo.com/m.pdf',object_id:'tx0123456789abcdef'});
   if(u.endsWith('/refunds/'))return j({status:'QUEUED',object_id:'rf1'});
+  if(u.endsWith('/addresses/'))return j({street1:'12 SAMPLE RD',street2:'',city:'BOLIVIA',state:'NC',zip:'28422-1234',validation_results:{is_valid:true,messages:[{text:'Address corrected'}]}});
+  if(u.includes('resend.com'))return j({id:'email-1'});
   if(u.startsWith('https://deliver.goshippo.com/'))return j({});
   throw new Error('unexpected fetch '+u)}});
 after(()=>{global.fetch=realFetch;fs.rmSync(tmp,{recursive:true,force:true})});
@@ -60,3 +62,25 @@ test('P&L counts manual label costs on the day bought, not voided ones',async()=
  const ts=x=>Date.parse(x)/1000;const mem=data=>({get:async()=>null,put:async()=>{},list:async k=>structuredClone(data[k]||[]),remove:async()=>{}});
  const ms=[{id:'SHIP-1',brand:'glow',label_created_at:ts('2026-10-10T17:00:00Z'),label_cost_cents:1100},{id:'SHIP-2',brand:'glow',label_created_at:ts('2026-10-11T17:00:00Z'),label_cost_cents:900,label_refund:{status:'QUEUED'}},{id:'SHIP-3',brand:'glow',label_created_at:ts('2026-09-11T17:00:00Z'),label_cost_cents:700}];
  const r=await reports.build(mem({manual_shipments:ms}),{start:'2026-10-01',end:'2026-10-31',brand:'all'},ts('2026-10-20T12:00:00Z'));assert.equal(r.pnl.manual_label_costs,1100);assert.equal(r.pnl.label_costs,1100)});
+test('Shippo problems come back as 409 with the reason, never a 502 that Cloudflare would hide',async()=>{
+ await assert.rejects(call('/admin/manual-shipment/rates',{id:'SHIP-0000000000'},cookie),e=>e.status===409&&/Shipment not found/.test(e.message));
+ await assert.rejects(call('/admin/manual-shipment/buy',{id:'SHIP-0000000000',servicelevel:'ups_ground'},cookie),e=>e.status===409&&/Shipment not found/.test(e.message))});
+test('box size is saved and used for rates; out-of-range sizes refused',async()=>{
+ const r=await admin('/admin/manual-shipment',{key:'click-key-0100',to,reason:'gift',items:[],note:'card',take_stock:true,parcel:{length:12,width:10,height:8,weight_lb:3.5}});
+ await admin('/admin/manual-shipment/rates',{id:r.id});const sent=calls.filter(c=>c.u.endsWith('/shipments/')).at(-1).body.parcels[0];assert.deepEqual([sent.length,sent.width,sent.height,sent.weight],['12','10','8','3.5']);
+ await assert.rejects(admin('/admin/manual-shipment',{key:'click-key-0101',to,reason:'gift',note:'x',parcel:{length:99,width:1,height:1,weight_lb:1}}),/Box size/)});
+test('address check returns Shippo verdict and its cleaned-up address',async()=>{
+ const r=await admin('/admin/manual-shipment/check-address',{to:{address:'12 sample road',city:'bolivia',state:'nc',zip:'28422'}});
+ assert.equal(r.valid,true);assert.equal(r.changed,true);assert.equal(r.suggestion.zip,'28422-1234');assert.deepEqual(r.messages,['Address corrected']);
+ assert.equal(calls.filter(c=>c.u.endsWith('/addresses/')).at(-1).body.validate,true)});
+test('tracking email: preview first, then sent exactly once; needs a label and an email',async()=>{
+ const r=await admin('/admin/manual-shipment',{key:'click-key-0200',to,reason:'missing',note:'x',items:[{id:a.id,quantity:1}]});
+ await assert.rejects(admin('/admin/manual-shipment/email',{id:r.id,preview:true}),/Buy the label first/);
+ await admin('/admin/manual-shipment/buy',{id:r.id,servicelevel:'ups_ground'});
+ const p=await admin('/admin/manual-shipment/email',{id:r.id,preview:true});assert.equal(p.to,'amy@example.test');assert.match(p.subject,/missing item from your order is on the way/);assert.match(p.html,/1ZMANUAL1/);assert.match(p.html,/Ship A/);
+ const outboxBefore=(await transaction(s=>s.list('email_outbox'))).length;
+ const sent=await admin('/admin/manual-shipment/email',{id:r.id});assert.equal(sent.sent,true);
+ const again=await admin('/admin/manual-shipment/email',{id:r.id});assert.equal(again.already,true);
+ assert.equal((await transaction(s=>s.list('email_outbox'))).length,outboxBefore+1);
+ const noMail=await admin('/admin/manual-shipment',{key:'click-key-0201',to:{...to,email:''},reason:'gift',note:'x'});await admin('/admin/manual-shipment/buy',{id:noMail.id,servicelevel:'ups_ground'});
+ await assert.rejects(admin('/admin/manual-shipment/email',{id:noMail.id,preview:true}),/no email/)});
