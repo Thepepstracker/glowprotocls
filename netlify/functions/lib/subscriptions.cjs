@@ -47,14 +47,16 @@ function priceFor(items,products,tier=null,deliveryNumber=1,opts={}){
  for(const l of lines)if(!m.get(l.id))return{ok:false,error:'A product is unavailable.',slots:0};
  const slots=slotsFor(lines,m),wanted=typeof tier==='string'?tierById(tier):tier,t=wanted&&wanted.slots>=slots?wanted:tierFor(slots);
  if(!t)return{ok:false,error:'A subscription box holds up to '+MAX_SLOTS+' slots. Each slot covers up to $65 of an item’s price. Remove some items or buy the rest as a one-time order.',slots,max_slots:MAX_SLOTS};
- const list=lines.reduce((n,l)=>n+m.get(l.id).price*l.quantity,0),cap=Math.floor(list*FAIR_PCT/100),price=Math.min(t.price,cap);
+ // Exactly 15% off list on every box (Jonah, 6 Nov 2026: "it's gotta be 15% nothing more"). Tiers decide slots and perks only;
+ // their old fixed prices ($33.99 to $229.99) gave up to ~32% off and are no longer used for the price.
+ const list=lines.reduce((n,l)=>n+m.get(l.id).price*l.quantity,0),cap=Math.floor(list*FAIR_PCT/100),price=cap;
  const bp=!opts.no_bonus&&bonusDelivery(t,deliveryNumber)?pickBonus(lines,m,opts.bonus_id):null;
  const all=lines.map(l=>({...l}));if(bp){const hit=all.find(l=>l.id===Number(bp.id));if(hit)hit.quantity++;else all.push({id:Number(bp.id),quantity:1})}
  const listAll=list+(bp?bp.price:0),shipping=shippingFor(t,price,opts.settings);
  const standardShipping=shippingFor(null,listAll,opts.settings);
  return{ok:true,tier:publicTier(t),slots,capacity:t.slots+(bp?1:0),open_slots:Math.max(0,t.slots-slots),list_cents:listAll,regular_list_cents:list,price_cents:price,discount_cents:listAll-price,savings_cents:listAll-price,shipping_cents:shipping,shipping_saved_cents:Math.max(0,standardShipping-shipping),total_cents:price+shipping,
   fair_cap_applied:cap<t.price,points_multiplier:t.points,delivery_number:deliveryNumber,bonus:bp?{id:Number(bp.id),name:String(bp.name||''),list_cents:bp.price}:null,lines:all,
-  nudge:t.slots>slots?{open_slots:t.slots-slots,add_max_cents:Math.max(0,t.price-price)}:null}}
+  nudge:null}}
 function count(lines){return (lines||[]).reduce((n,l)=>n+(Number(l.quantity)||0),0)}
 
 // ---- dates ----
