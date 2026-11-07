@@ -463,3 +463,20 @@ a.track-link{font-variant-numeric:tabular-nums;white-space:nowrap;text-decoratio
 button.sk-perk:hover,button.sk-perk:active,button.sk-perk:focus{background:#fff;color:#1b1b1b;transform:none;box-shadow:none}
 button.sk-perk.on,button.sk-perk.on:hover,button.sk-perk.on:active,button.sk-perk.on:focus{background:#fffaf0;color:#1b1b1b;box-shadow:0 0 0 1px var(--gold) inset}
 .sk-metrics{margin:18px 0}
+
+/* Subscribe & save: benefits you can see (6 Nov 2026) */
+.sub-year{margin:4px 0 10px;padding:10px 12px;border-radius:8px;background:linear-gradient(135deg,#fbf4e2,#f3e6c4);display:flex;flex-direction:column;gap:2px}
+.sub-year small{font-size:12px;letter-spacing:.04em;color:#806020}.sub-year strong{font-size:16px;color:#1b1b1b}
+.sub-win{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px;margin:6px 0 18px}
+.sub-saved{background:#1b1b1b;color:#fff;border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.sub-saved small{color:#cfc8ba}.sub-saved strong{font-family:var(--serif);font-size:44px;line-height:1;color:#e4cd8e;font-weight:600}
+.sub-perkcard{border:1px solid #e9d9b0;background:#fffaf0;border-radius:10px;padding:16px 18px}.sub-perkcard .sub-perks{margin:8px 0 0}
+.sub-badge{display:inline-block;vertical-align:middle;margin-left:8px;font-family:'Inter',system-ui,sans-serif;font-size:12px;font-weight:800;letter-spacing:.12em;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#9a6b12,#d9b25b);color:#fff}
+@media(max-width:620px){.sub-win{grid-template-columns:1fr}.sub-saved strong{font-size:38px}}
+
+/* Invoice thank-you pop-up (6 Nov 2026) */
+.inv-thanks{position:fixed;inset:0;z-index:60;background:rgba(27,27,27,.55);display:grid;place-items:center;padding:16px;animation:inv-fade .2s ease}
+.inv-thanks-box{background:#fff;border-radius:14px;max-width:440px;width:100%;padding:28px 26px 22px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.25);border-top:4px solid var(--gold)}
+.inv-thanks-icon{font-size:40px;line-height:1;margin-bottom:10px}.inv-thanks-box h2{font-family:var(--serif);font-size:36px;margin:6px 0 4px}
+.inv-thanks-lead{font-size:19px;font-weight:700;color:#1b1b1b;margin-bottom:14px}.inv-thanks-box p{font-size:15px;line-height:1.5}.inv-thanks-box button{margin-top:6px}
+@keyframes inv-fade{from{opacity:0}to{opacity:1}}@media(prefers-reduced-motion:reduce){.inv-thanks{animation:none}}
