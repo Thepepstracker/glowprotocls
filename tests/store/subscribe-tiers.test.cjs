@@ -34,17 +34,17 @@ test('slots: one per $65.00 of list price, rounded up (kits and bundles too); ti
  assert.equal(subs.slotsFor([{id:1,quantity:2},{id:10,quantity:1}],P),4);assert.equal(subs.slotsFor([{id:56,quantity:1}],P),9,'a $530 bundle is 9 slots, so it cannot ride a $229.99 tier');assert.equal(subs.slotsFor([{id:56,quantity:2}],P),18);assert.equal(subs.slotsFor([{id:99,quantity:1},{id:98,quantity:1}],P),3);
  assert.deepEqual([1,2,3,4,5,6,7,8].map(n=>subs.tierFor(n).id),['T1','T2','T3','T4','T4','T5','T5','T5']);assert.equal(subs.tierFor(9),null);assert.equal(subs.tierFor(0),null);
  assert.deepEqual(subs.TIERS.map(t=>[t.slots,t.price,t.points]),[[1,3399,2],[2,6499,2],[3,9499,2],[5,14999,3],[8,22999,4]]);
- const r=subs.priceFor([{id:1,quantity:4}],P,null,1,{settings:SET});assert.equal(r.tier.id,'T4');assert.deepEqual(r.nudge,{open_slots:1,add_max_cents:14999-Math.floor(4*4399*0.85)},'4 slots in a 5-slot tier: a 5th item adds at most the gap to the tier price');
+ const r=subs.priceFor([{id:1,quantity:4}],P,null,1,{settings:SET});assert.equal(r.tier.id,'T4');assert.equal(r.nudge,null,'no "add one more at no extra cost" nudge: every item is 15% off, so adding one always costs more');assert.equal(r.price_cents,Math.floor(4*4399*0.85));
  const big=subs.priceFor([{id:10,quantity:5}],P,null,1,{settings:SET});assert.equal(big.ok,false);assert.equal(big.slots,10);assert.match(big.error,/up to 8 slots/);
 });
 
-test('fairness: the products are never charged more than 85% of list, and never more than the tier price',()=>{
+test('exactly 15% off: every box is charged 85% of list, never less, whatever the tier (Jonah, 6 Nov 2026)',()=>{
  const rose=subs.priceFor([{id:37,quantity:1}],P,null,1,{settings:SET});assert.equal(rose.tier.id,'T1');assert.equal(rose.price_cents,Math.floor(1900*0.85),'$19 item: $16.15, not the $33.99 tier price');assert(rose.fair_cap_applied);
- const full=subs.priceFor([{id:26,quantity:3}],P,null,1,{settings:SET});assert.equal(full.price_cents,9499,'3 × $64.99 = $194.97 list → Tier 3 price $94.99');assert.equal(full.discount_cents,19497-9499);
+ const full=subs.priceFor([{id:26,quantity:3}],P,null,1,{settings:SET});assert.equal(full.price_cents,Math.floor(19497*0.85),'3 × $64.99 = $194.97 list → $165.72, not the old $94.99 tier price');assert.equal(full.discount_cents,19497-Math.floor(19497*0.85));
  const ids=[1,31,37,26,10,56];let checked=0;
  for(let seedN=1;seedN<400;seedN++){const items=[];let x=seedN;for(const id of ids){x=(x*1103515245+12345)%2147483648;const q=x%3;if(q)items.push({id,quantity:q})}if(!items.length)continue;
   const r=subs.priceFor(items,P,null,1+seedN%9,{settings:SET});if(!r.ok)continue;checked++;const list=items.reduce((n,i)=>n+P.find(p=>p.id===i.id).price*i.quantity,0);
-  assert(r.price_cents<=Math.floor(list*0.85),'never above 85% of list');assert(r.price_cents<=r.tier.price_cents);assert.equal(r.total_cents,r.price_cents+r.shipping_cents);assert.equal(r.discount_cents,r.list_cents-r.price_cents)}
+  assert.equal(r.price_cents,Math.floor(list*0.85),'exactly 85% of list');assert.equal(r.total_cents,r.price_cents+r.shipping_cents);assert.equal(r.discount_cents,r.list_cents-r.price_cents)}
  assert(checked>50);
 });
 
