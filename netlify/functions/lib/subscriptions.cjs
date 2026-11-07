@@ -231,7 +231,13 @@ async function remind(limit=20,t=Date.now()){const emails=require('./store-email
   return out});
  if(jobs===null)return{status:'switch_off',sent:0};for(const j of jobs)await emails.safeDispatch(j);return{status:'ok',sent:jobs.length}}
 // Customer screen data: their subscriptions with tier, items, price per delivery, dates and card.
-function customerView(x,m,settings){const p=pricingOf(x,m,settings);return{id:x.id,status:x.status,every:x.every,every_label:EVERY[x.every]?.label||x.every,next_ship_date:x.status==='active'||x.status==='paused'?shipDate(x):'',charge_date:x.status==='active'?chargeDate(x):'',
+// What the customer has saved on this subscription so far (Jonah, 6 Nov 2026: "so they see they're benefitting"):
+// the 15% on every paid box plus the shipping they didn't pay (standard shipping for that box minus what was charged).
+function savedOf(x,orders,settings){let saved=0,boxes=0;for(const o of orders||[]){if(o.subscription_id!==x.id||o.is_test!==false||!['paid','shipped'].includes(o.status))continue;boxes++;
+ const off=Number.isInteger(o.subscription_discount)?o.subscription_discount:0,std=shippingFor(null,Number(o.subtotal)||0,settings),ship=Number(o.shipping)||0;saved+=off+Math.max(0,std-ship)}return{saved_cents:saved,boxes}}
+function customerView(x,m,settings,orders){const p=pricingOf(x,m,settings),t=p.tier?tierById(p.tier.id):null,done=deliveriesDone(x),sv=savedOf(x,orders,settings);
+ const bonusIn=t&&t.bonus_every?(t.bonus_every-(done%t.bonus_every))%t.bonus_every||t.bonus_every:0;
+ return{saved_cents:sv.saved_cents,boxes_paid:sv.boxes,bonus_in:bonusIn,id:x.id,status:x.status,every:x.every,every_label:EVERY[x.every]?.label||x.every,next_ship_date:x.status==='active'||x.status==='paused'?shipDate(x):'',charge_date:x.status==='active'?chargeDate(x):'',
  items:(x.items||[]).map(i=>{const pr=m.get(i.id);return{id:i.id,quantity:i.quantity,name:pr?.name||i.name||'Product',price_cents:pr?.price||0,slots:pr?slotsOf(pr):1}}),pricing:p,card:x.card?{brand:x.card.brand,last4:x.card.last4}:null,
  checkout_url:x.status==='pending_first_payment'&&x.checkout?.url&&(x.checkout.expires||0)>now()+300?x.checkout.url:'',problem:x.status==='pending_first_payment'&&x.problem?COPY.pending:'',created:x.created}}
 async function customerRoute(path,body,h,method){
@@ -245,14 +251,15 @@ async function customerRoute(path,body,h,method){
   // A checkout the customer left open: ask Stripe once more so the page shows the truth.
   const pending=await transaction(async s=>(await s.list('subscriptions')).filter(x=>owns(x,a)&&x.status==='pending_first_payment').map(x=>x.id));for(const id of pending){try{await settleFirst(id)}catch{}}
   return ok(await transaction(async s=>{const m=await productsOf(s),settings=await s.get('settings','main');const list=(await s.list('subscriptions')).filter(x=>owns(x,a)&&!(x.status==='canceled'&&x.canceled_by==='checkout')).sort((p,q)=>(p.status==='canceled'?1:0)-(q.status==='canceled'?1:0)||(q.created||0)-(p.created||0));
-   return{subscriptions:list.map(x=>customerView(x,m,settings)),every:CUSTOMER_EVERY.map(k=>({id:k,label:EVERY[k].label})),tiers:TIERS.map(publicTier),max_slots:MAX_SLOTS,slot_max_cents:SLOT_MAX_CENTS}}))}
+   const orders=await (s.listLite?s.listLite('orders'):s.list('orders'));
+   return{discount_pct:FAIR_PCT?100-FAIR_PCT:15,subscriptions:list.map(x=>customerView(x,m,settings,orders)),every:CUSTOMER_EVERY.map(k=>({id:k,label:EVERY[k].label})),tiers:TIERS.map(publicTier),max_slots:MAX_SLOTS,slot_max_cents:SLOT_MAX_CENTS}}))}
  if(path==='/account/subscriptions/confirm'&&method==='POST'){const a=await me(),x=await mine(a,body.id);const r=await settleFirst(x.id);return ok({status:r.status,message:r.status==='active'?'':r.status==='pending'||r.status==='needs_review'?COPY.pending:''})}
  if(path==='/account/subscriptions/abandon'&&method==='POST'){const a=await me(),x=await mine(a,body.id);if(x.status==='pending_first_payment')await settleFirst(x.id,{close:true});return ok({ok:true})}
  if(path==='/account/subscriptions/preview'&&method==='POST'){const a=await me(),x=await mine(a,body.id);
   return ok(await transaction(async s=>{const m=await productsOf(s),lines=await validItems(s,body.items,x.brand||'glow',m);return require('./store-core.cjs').subscriptionQuote(s,{items:lines,h:{},brand:brands.get(x.brand||'glow'),deliveryNumber:deliveriesDone(x)+1,bonus_id:x.bonus_id,stockCheck:false})}))}
  if(path==='/account/subscriptions/update'&&method==='POST'){const a=await me(),x=await mine(a,body.id),action=String(body.action||'').slice(0,10);if(!['every','skip','pause','resume','cancel','items'].includes(action))bad('Choose what to change.');
   await update({id:x.id,action,every:String(body.every||'').slice(0,4),items:body.items},{customer:true,owner:a});
-  return ok(await transaction(async s=>customerView(await s.get('subscriptions',x.id),await productsOf(s),await s.get('settings','main'))))}
+  return ok(await transaction(async s=>customerView(await s.get('subscriptions',x.id),await productsOf(s),await s.get('settings','main'),await (s.listLite?s.listLite('orders'):s.list('orders')))))}
  return null}
 
 // Autopilot: settle first payments; check waiting cards; retry unknown charges; then (10 AM–6 PM Eastern) make each
