@@ -71,7 +71,7 @@ test('no new card in 5 days: box skipped, items back in stock, never charged',as
  assert.equal(await subs.skipStale(Math.floor(Date.now()/1000)+4*86400),0,'still waiting on day 4');
  assert.equal(await subs.skipStale(Math.floor(Date.now()/1000)+6*86400),1);
  const o=await transaction(s=>s.get('orders',oid)),y=await transaction(s=>s.get('subscriptions',id));
- assert.equal(o.status,'canceled');assert.equal(o.autopay.status,'skipped');assert.equal(await stockOf(P.id),held+1);assert.equal(y.status,'active','subscription stays on');assert.equal(y.payment_issue,undefined);assert.equal(y.deliveries,1);assert.match(y.problem,/skipped/);
+ assert.equal(o.status,'canceled');assert.equal(o.autopay.status,'skipped');assert.equal(await stockOf(P.id),held+1);assert.equal(y.status,'active','subscription stays on');assert.equal(y.payment_issue,undefined);assert.equal(y.deliveries,1);assert.match(y.problem,/canceled/);
  assert.equal(charges().length,n);assert.equal((await subs.retryFailed(id)).tried,0);
  await transaction(async s=>{const z=await s.get('subscriptions',id);z.status='canceled';await s.put('subscriptions',id,z)});
 });
