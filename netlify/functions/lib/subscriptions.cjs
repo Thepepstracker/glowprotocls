@@ -19,6 +19,8 @@ const pay=()=>require('./auto-invoice.cjs');
 const SLOT_MAX_CENTS=6500,CHARGE_DAYS_BEFORE=2,REMIND_DAYS_BEFORE_CHARGE=3,FAIR_PCT=85;
 // A declined box waits this long for a new card, then it is skipped and its items go back into stock (Jonah, 8 Nov 2026).
 const AUTO_SKIP_DAYS=5;
+// The Subscribe & save terms customers tick at checkout (terms.html#subscribe-and-save). Change the date when the terms change.
+const TERMS_VERSION='2026-11-08';
 const TIERS=[
  {id:'T1',level:1,name:'Tier 1',slots:1,price:3399,free_shipping:false,points:2,early_access:false,packed_first:false,bonus_every:0},
  {id:'T2',level:2,name:'Tier 2',slots:2,price:6499,free_shipping:false,points:2,early_access:false,packed_first:false,bonus_every:0},
@@ -48,11 +50,16 @@ function priceFor(items,products,tier=null,deliveryNumber=1,opts={}){
  const m=productMap(products),lines=cleanItems(items);if(!lines.length)return{ok:false,error:'Add at least one product.',slots:0};
  for(const l of lines)if(!m.get(l.id))return{ok:false,error:'A product is unavailable.',slots:0};
  const slots=slotsFor(lines,m),wanted=typeof tier==='string'?tierById(tier):tier,t=wanted&&wanted.slots>=slots?wanted:tierFor(slots);
- if(!t)return{ok:false,error:'A subscription box holds up to '+MAX_SLOTS+' slots. Each slot covers up to $65 of an item’s price. Remove some items or buy the rest as a one-time order.',slots,max_slots:MAX_SLOTS};
+ if(!t)return{ok:false,error:'A subscription package holds up to '+MAX_SLOTS+' slots. Each slot covers up to $65 of an item’s price. Remove some items or buy the rest as a one-time order.',slots,max_slots:MAX_SLOTS};
  // Exactly 15% off list on every box (Jonah, 6 Nov 2026: "it's gotta be 15% nothing more"). Tiers decide slots and perks only;
  // their old fixed prices ($33.99 to $229.99) gave up to ~32% off and are no longer used for the price.
- const list=lines.reduce((n,l)=>n+m.get(l.id).price*l.quantity,0),cap=Math.floor(list*FAIR_PCT/100),price=cap;
- const bp=!opts.no_bonus&&bonusDelivery(t,deliveryNumber)?pickBonus(lines,m,opts.bonus_id):null;
+ // Items already on sale (Jonah, 8 Nov 2026: "better of the two"): the subscriber pays the sale price or 15% off the
+ // regular price, whichever is lower, never both. Everything else: exactly 15% off, rounded down on the total as before.
+ const list=lines.reduce((n,l)=>n+m.get(l.id).price*l.quantity,0);let full=0,sale=0;
+ for(const l of lines){const p=m.get(l.id),reg=Math.max(Number(p.regular_price)||0,p.price);if(reg>p.price)sale+=Math.min(p.price,Math.floor(reg*FAIR_PCT/100))*l.quantity;else full+=p.price*l.quantity}
+ const cap=Math.floor(full*FAIR_PCT/100)+sale,price=cap;
+ // Tier 5 bonus: every 4th package IN A ROW at Tier 5 (opts.streak), so nobody can jump to Tier 5 for one package to collect it.
+ const bp=!opts.no_bonus&&bonusDelivery(t,opts.streak!=null?opts.streak:deliveryNumber)?pickBonus(lines,m,opts.bonus_id):null;
  const all=lines.map(l=>({...l}));if(bp){const hit=all.find(l=>l.id===Number(bp.id));if(hit)hit.quantity++;else all.push({id:Number(bp.id),quantity:1})}
  const listAll=list+(bp?bp.price:0),shipping=shippingFor(t,price,opts.settings);
  const standardShipping=shippingFor(null,listAll,opts.settings);
@@ -60,6 +67,12 @@ function priceFor(items,products,tier=null,deliveryNumber=1,opts={}){
   fair_cap_applied:cap<t.price,points_multiplier:t.points,delivery_number:deliveryNumber,bonus:bp?{id:Number(bp.id),name:String(bp.name||''),list_cents:bp.price}:null,lines:all,
   nudge:null}}
 function count(lines){return (lines||[]).reduce((n,l)=>n+(Number(l.quantity)||0),0)}
+// One line at subscriber price: 15% off, or the sale price if that is lower (never both).
+function subLinePrice(p,qty){const reg=Math.max(Number(p.regular_price)||0,p.price);return reg>p.price?Math.min(p.price,Math.floor(reg*FAIR_PCT/100))*qty:Math.floor(p.price*qty*FAIR_PCT/100)}
+// "Add to next package" (Jonah, 8 Nov 2026): one-time extras charged with the next package at subscriber price.
+// They do not change the tier, slots or shipping, and they are cleared once that package is made.
+const ADDON_MAX_LINES=10,ADDON_MAX_QTY=5;
+function addonsPrice(addons,m){let list=0,price=0;const lines=[];for(const a of cleanItems(addons)){const p=productMap(m).get(a.id);if(!p)continue;list+=p.price*a.quantity;price+=subLinePrice(p,a.quantity);lines.push({id:a.id,quantity:a.quantity,name:p.name,price_cents:subLinePrice(p,a.quantity),list_cents:p.price*a.quantity})}return{list_cents:list,price_cents:price,lines}}
 
 // ---- dates ----
 function todayET(t=Date.now()){return new Date(t).toLocaleDateString('en-CA',{timeZone:'America/New_York'})}
@@ -79,11 +92,34 @@ function longDay(d){return d?new Date(d+'T12:00:00Z').toLocaleDateString('en-US'
 function deliveriesDone(x){return Number.isInteger(x.deliveries)?x.deliveries:1+(x.orders||[]).length}
 
 function origin(){return String(process.env.STORE_ORIGIN||'https://glowglps.com').replace(/\/$/,'')}
-function publicSub(x){return{id:x.id,status:x.status,pay:x.pay||'invoice',every:x.every,every_label:EVERY[x.every]?.label||x.every,discount_pct:x.discount_pct,next_date:shipDate(x),next_ship_date:shipDate(x),charge_date:chargeDate(x),customer:{name:x.customer?.name||'',email:x.customer?.email||'',phone:x.customer?.phone||'',city:x.customer?.city||'',state:x.customer?.state||''},items:x.items,source_order:x.source_order,orders:x.orders||[],created:x.created,problem:x.problem||'',last_run:x.last_run||0,card:x.card?{brand:x.card.brand,last4:x.card.last4}:null,card_link:x.status==='needs_card'&&x.card_session&&(x.card_session.expires||0)>now()+600?x.card_session.url:'',card_link_expires:x.card_session?.expires||0,source:x.source||'staff',deliveries:deliveriesDone(x)}}
+function publicSub(x){return{id:x.id,status:x.status,pay:x.pay||'invoice',every:x.every,every_label:EVERY[x.every]?.label||x.every,discount_pct:x.discount_pct,next_date:shipDate(x),next_ship_date:shipDate(x),charge_date:chargeDate(x),customer:{name:x.customer?.name||'',email:x.customer?.email||'',phone:x.customer?.phone||'',city:x.customer?.city||'',state:x.customer?.state||''},items:x.items,source_order:x.source_order,orders:x.orders||[],created:x.created,problem:x.problem||'',last_run:x.last_run||0,card:x.card?{brand:x.card.brand,last4:x.card.last4}:null,card_link:x.status==='needs_card'&&x.card_session&&(x.card_session.expires||0)>now()+600?x.card_session.url:'',card_link_expires:x.card_session?.expires||0,source:x.source||'staff',deliveries:deliveriesDone(x),addons:(x.addons||[]).map(a=>({id:a.id,quantity:a.quantity,name:a.name||''})),cancel_reason:x.cancel_reason||'',cancel_note:x.cancel_note||'',canceled_at:x.canceled_at||0}}
 async function productsOf(s){return productMap(await s.list('products'))}
 // Tier and price of the NEXT delivery, for the admin and customer screens (no stock check; the order itself checks stock).
-function pricingOf(x,m,settings){try{const r=priceFor(x.items,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings});if(r.ok)return{tier:r.tier,slots:r.slots,price_cents:r.price_cents,shipping_cents:r.shipping_cents,total_cents:r.total_cents,list_cents:r.list_cents,bonus:r.bonus};return{tier:null,slots:r.slots,error:r.error}}catch(e){return{tier:null,slots:0,error:String(e.message)}}}
+function streakOf(x){return (Number(x.t5_run)||0)+1}
+function pricingOf(x,m,settings){try{const r=priceFor(x.items,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings,streak:streakOf(x)});if(r.ok)return{tier:r.tier,slots:r.slots,price_cents:r.price_cents,shipping_cents:r.shipping_cents,total_cents:r.total_cents,list_cents:r.list_cents,bonus:r.bonus};return{tier:null,slots:r.slots,error:r.error}}catch(e){return{tier:null,slots:0,error:String(e.message)}}}
 async function list(){return transaction(async s=>{const m=await productsOf(s),settings=await s.get('settings','main');return(await s.list('subscriptions')).map(x=>({...publicSub(x),pricing:pricingOf(x,m,settings)})).sort((a,b)=>(a.status==='canceled'?1:0)-(b.status==='canceled'?1:0)||String(a.next_date).localeCompare(String(b.next_date)))})}
+// Management dashboard numbers (Jonah, 8 Nov 2026). Everything is read from the store's own records.
+// Monthly recurring revenue is an estimate: each active subscription's next package total × packages per month.
+const PER_MONTH={'1w':52/12,'2w':26/12,'3w':52/36,'4w':13/12,'1m':1};
+async function stats(t=Date.now()){return transaction(async s=>{const all=await s.list('subscriptions'),orders=await (s.listLite?s.listLite('orders'):s.list('orders')),m=await productsOf(s),settings=await s.get('settings','main');
+ const ts=Math.floor(t/1000),today=todayET(t),week=addDays(today,7),month=today.slice(0,7),first=n=>String(n||'').trim();
+ const active=all.filter(x=>x.status==='active');let mrr=0;const upcoming=[],items=new Map();
+ for(const x of active){const p=pricingOf(x,m,settings);const ad=addonsPrice(x.addons||[],m);if(p.total_cents!=null)mrr+=p.total_cents*(PER_MONTH[x.every]||1);const cd=chargeDate(x);
+  if(cd&&cd<=week&&p.total_cents!=null)upcoming.push({id:x.id,name:first(x.customer?.name),charge_date:cd,ship_date:shipDate(x),amount_cents:p.total_cents+ad.price_cents,addons:ad.lines.length,payment_issue:!!x.payment_issue});
+  for(const i of x.items||[]){const k=m.get(i.id)?.name||i.name||'Product';items.set(k,(items.get(k)||0)+(Number(i.quantity)||0))}}
+ const subOrders=orders.filter(o=>o.subscription_id&&o.is_test===false),paid=subOrders.filter(o=>['paid','shipped'].includes(o.status)&&o.paid);
+ const paidMonth=paid.filter(o=>todayET(o.paid*1000).slice(0,7)===month);
+ const attention=[...all.filter(x=>x.payment_issue).map(x=>{const o=orders.find(o=>o.id===x.payment_issue);return{kind:'declined',id:x.id,name:first(x.customer?.name),order_id:x.payment_issue,amount_cents:o?.total||0,since:o?.autopay?.failed_at||0}}),
+  ...subOrders.filter(o=>o.autopay?.status==='needs_review').map(o=>({kind:'review',id:o.subscription_id,name:first(o.customer?.name),order_id:o.id,amount_cents:o.total||0,message:o.autopay.message||''})),
+  ...all.filter(x=>x.status==='active'&&x.problem&&!x.payment_issue).map(x=>({kind:'problem',id:x.id,name:first(x.customer?.name),message:x.problem}))];
+ const canceled=all.filter(x=>x.status==='canceled'&&['customer','staff'].includes(x.canceled_by)&&(x.canceled_at||0)>=ts-30*86400),reasons={};
+ for(const x of canceled){const k=x.cancel_reason||'none';reasons[k]=(reasons[k]||0)+1}
+ return{active:active.length,paused:all.filter(x=>x.status==='paused').length,waiting:all.filter(x=>['needs_card','pending_first_payment'].includes(x.status)).length,
+  mrr_cents:Math.round(mrr),upcoming:upcoming.sort((a,b)=>a.charge_date.localeCompare(b.charge_date)),attention,
+  month:{label:month,revenue_cents:paidMonth.reduce((n,o)=>n+(o.total||0),0),packages:paidMonth.length},
+  lifetime:{revenue_cents:paid.reduce((n,o)=>n+(o.total||0),0),packages:paid.length,customer_saved_cents:paid.reduce((n,o)=>n+(Number(o.subscription_discount)||0),0)},
+  cancels_30d:{count:canceled.length,reasons:Object.entries(reasons).map(([k,n])=>({reason:k,label:CANCEL_REASONS[k]||'No reason given',count:n})).sort((a,b)=>b.count-a.count),notes:canceled.filter(x=>x.cancel_note).slice(-5).map(x=>({name:first(x.customer?.name),note:x.cancel_note}))},
+  top_products:[...items].sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,qty])=>({name,qty}))}})}
 // Start one from a paid (or shipped) live order: same items, same ship-to. It waits for the card ("needs_card"),
 // then the first repeat ships today + the interval.
 async function create({order_id,every,by='staff'}){if(!EVERY[every])bad('Choose how often.');if(!pay().stripeReady())bad('Stripe is not connected on the store yet, so auto-pay cannot start. Add the Stripe secret key in Sevalla → Environment variables.',409);
@@ -113,7 +149,9 @@ async function checkCard(id){const x=await transaction(s=>s.get('subscriptions',
  return transaction(async s=>{const y=await s.get('subscriptions',x.id);if(y.status!=='needs_card')return publicSub(y);y.payment_method=pmId;y.card={brand:detail?.card?.brand||'card',last4:detail?.card?.last4||''};y.status='active';y.card_saved_at=now();if(chargeDate(y)<todayET())setShip(y,nextFrom(todayET(),y.every,todayET()));y.problem='';delete y.card_session;await s.put('subscriptions',y.id,y);return publicSub(y)})}
 // Changes (staff, or the customer through customerUpdate): how often, pause / resume, cancel, skip the next one,
 // move the next ship date, new items, new card link, check card.
-async function update({id,action,every,next_date,items,address},{customer=false,owner=null}={}){
+// Why customers cancel (optional, asked once on the cancel screen). Keys are stored; labels are shown.
+const CANCEL_REASONS={too_much:'I have too much right now',price:'It costs too much',not_needed:'I don’t need it anymore',switching:'I’m trying something else',delivery:'Shipping or delivery problem',other:'Something else'};
+async function update({id,action,every,next_date,items,address,reason,note},{customer=false,owner=null}={}){
  if(action==='link')return cardLink(id);
  if(action==='check')return checkCard(String(id||'').slice(0,20));
  let jobs=[];
@@ -124,13 +162,14 @@ async function update({id,action,every,next_date,items,address},{customer=false,
  else if(action==='pause'){if(x.status==='needs_card')bad('Waiting for the card. Cancel it instead.',409);x.status='paused'}
  else if(action==='resume'){if(x.status!=='paused')bad('Only a paused subscription can be resumed.',409);x.status='active';if(chargeDate(x)<today)setShip(x,nextFrom(today,x.every,today))}
  else if(action==='cancel'){x.status='canceled';x.canceled_at=now();x.canceled_by=customer?'customer':'staff';
+  if(CANCEL_REASONS[reason])x.cancel_reason=reason;if(typeof note==='string'&&note.trim())x.cancel_note=note.trim().replace(/\s+/g,' ').slice(0,200);
   // A declined box still waiting for a card is not shipped or charged after a cancel: its items go back into stock.
   if(x.payment_issue){const o=await s.get('orders',x.payment_issue);if(o&&o.status==='order_received'&&o.autopay?.status==='failed'){o.autopay={...o.autopay,status:'skipped',skipped_at:now()};await require('./store-core.cjs').subscriptionRelease(s,o,'canceled')}delete x.payment_issue}
   // Tell the customer it is done, and tell the shop (Jonah, 8 Nov 2026). Only for a subscription that had started.
-  if(['active','paused'].includes(was))jobs=[await queueCanceled(s,x),...await staffAlert(s,{id:'sub-canceled-'+x.id,brand:x.brand,subject:'Subscription canceled'+(customer?' by the customer':'')+' · '+(x.customer?.name||x.id)+' · '+x.id,lines:[(x.customer?.name||'A customer')+' canceled '+x.id+'.','Items: '+(x.items||[]).map(i=>(i.name||'Product')+' × '+i.quantity).join(', ')+'.','How often: '+(EVERY[x.every]?.label||x.every)+'.','Boxes so far: '+deliveriesDone(x)+'.']})]}
+  if(['active','paused'].includes(was))jobs=[await queueCanceled(s,x),...await staffAlert(s,{id:'sub-canceled-'+x.id,brand:x.brand,subject:'Subscription canceled'+(customer?' by the customer':'')+' · '+(x.customer?.name||x.id)+' · '+x.id,lines:[(x.customer?.name||'A customer')+' canceled '+x.id+'.','Items: '+(x.items||[]).map(i=>(i.name||'Product')+' × '+i.quantity).join(', ')+'.','How often: '+(EVERY[x.every]?.label||x.every)+'.','Packages so far: '+deliveriesDone(x)+'.',...(x.cancel_reason?['Reason: '+CANCEL_REASONS[x.cancel_reason]+'.']:[]),...(x.cancel_note?['They wrote: “'+x.cancel_note+'”']:[])]})]}
  else if(action==='skip'){let next=addInterval(shipDate(x),x.every);while(addDays(next,-CHARGE_DAYS_BEFORE)<today)next=addInterval(next,x.every);setShip(x,next)}
  else if(action==='date'){if(!validDate(next_date)||next_date<today)bad('Choose a date from today on.');if(customer&&addDays(next_date,-CHARGE_DAYS_BEFORE)<today)bad('Choose a ship date at least 2 days from today.');setShip(x,next_date)}
- else if(action==='items'){const m=await productsOf(s),lines=await validItems(s,items,x.brand||'glow',m);const r=priceFor(lines,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings:await s.get('settings','main')});if(!r.ok)bad(r.error,409);x.items=lines.map(l=>({id:l.id,quantity:l.quantity,name:m.get(l.id).name}));x.tier=r.tier.id}
+ else if(action==='items'){const m=await productsOf(s),lines=await validItems(s,items,x.brand||'glow',m);const r=priceFor(lines,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings:await s.get('settings','main'),streak:streakOf(x)});if(!r.ok)bad(r.error,409);x.items=lines.map(l=>({id:l.id,quantity:l.quantity,name:m.get(l.id).name}));x.tier=r.tier.id}
  else if(action==='address'){x.customer=shipTo(x,address);x.address_changed_at=now()}
  else bad('Choose what to change.');
  x.problem=action!=='cancel'&&x.payment_issue?x.problem:'';
@@ -222,6 +261,7 @@ const COPY={
  sign_in:'Sign in to your Glow account to subscribe, so you can change, skip or cancel any time.',
  not_found:'Subscription not found.',
  checkout_failed:'We could not open the secure card page. Nothing was charged. Please try again.',
+ agree:'Please check the box to agree to the Subscribe & save terms.',
  pending:'Your first payment is still being confirmed. Refresh in a minute.',
  paid_late:'Your payment arrived after this checkout had closed. We will contact you to sort it out. Please do not pay again.'
 };
@@ -233,6 +273,7 @@ async function customerQuote(s,h,brand,body){const closed=await offerOpen(s,bran
 async function startCheckout(h,body,brand){
  const accounts=require('./customer-accounts.cjs'),core=require('./store-core.cjs');
  const every=String(body.every||'');if(!CUSTOMER_EVERY.includes(every))bad('Choose how often.');
+ if(body.agree!==true)bad(COPY.agree);
  const key=String(body.idempotency_key||'').slice(0,100);if(key.length<8)bad('Refresh the page and try again.');
  const prior=await transaction(async s=>{const a=await accounts.session(s,h);if(!a)bad(COPY.sign_in,401);const done=await s.get('idempotency','subscribe-'+key);if(done){const x=await s.get('subscriptions',done.id);if(x&&owns(x,a)&&x.status==='pending_first_payment'&&x.checkout?.url&&(x.checkout.expires||0)>now()+300)return{again:{id:x.id,url:x.checkout.url}};bad('This subscription was already started. Check your account.',409)}
   const closed=await offerOpen(s,brand);if(closed)bad(closed,503);return{a,old:(await s.list('subscriptions')).filter(x=>x.status==='pending_first_payment'&&owns(x,a)).map(x=>x.id)}});
@@ -240,6 +281,8 @@ async function startCheckout(h,body,brand){
  for(const id of prior.old){try{await settleFirst(id,{close:true})}catch{}} // an earlier unfinished checkout gives its items back first
  const made=await transaction(async s=>{const a=await accounts.session(s,h);if(!a)bad(COPY.sign_in,401);if(await s.get('idempotency','subscribe-'+key))bad('This subscription was already started. Check your account.',409);
   const r=await core.subscriptionFirstOrder(s,{account:a,customer:body.customer,items:body.items,every,brand,h});
+  // What they agreed to, kept with the subscription (proof for a dispute): the terms version, the price and how often.
+  r.sub.consent={terms_version:TERMS_VERSION,agreed_at:now(),amount_cents:r.order.total,every,user_agent:String(h['user-agent']||'').slice(0,200)};r.sub.t5_run=0;await s.put('subscriptions',r.sub.id,r.sub);
   await s.put('idempotency','subscribe-'+key,{id:r.sub.id});return{sub:r.sub,order:r.order,account:a}});
  const {sub,order,account}=made,st=pay().stripe;
  try{let customer=account.stripe_customer;
@@ -276,20 +319,20 @@ async function settleFirst(id,{close=false}={}){
  const jobs=await transaction(async s=>{const y=await s.get('subscriptions',x.id),c=await s.get('orders',x.first_order);if(!y||y.status!=='pending_first_payment')return[];
   if(c.status!=='order_received'){y.problem=COPY.paid_late+' (order '+c.id+' is '+c.status+'; Stripe '+pi.id+')';await s.put('subscriptions',y.id,y);return[]}
   const out=await core.subscriptionCheckoutPaid(s,c,pi,sess);
-  const today=todayET();y.status='active';y.payment_method=pmId||'';y.card={brand:detail?.card?.brand||'card',last4:detail?.card?.last4||''};y.card_saved_at=now();y.first_paid_at=now();y.deliveries=1;y.orders=[c.id];setShip(y,nextFrom(today,y.every,today));y.problem='';delete y.checkout_url;y.checkout={id:x.checkout.id,expires:0};
+  const today=todayET();y.status='active';y.payment_method=pmId||'';y.card={brand:detail?.card?.brand||'card',last4:detail?.card?.last4||''};y.card_saved_at=now();y.first_paid_at=now();y.deliveries=1;y.t5_run=c.subscription_tier==='T5'?1:0;y.orders=[c.id];setShip(y,nextFrom(today,y.every,today));y.problem='';delete y.checkout_url;y.checkout={id:x.checkout.id,expires:0};
   await s.put('subscriptions',y.id,y);out.push(await queueWelcome(s,y,c));return out.filter(Boolean)});
  for(const j of jobs)await emails.safeDispatch(j);
  const y=await transaction(s=>s.get('subscriptions',x.id));return{status:y.status==='active'?'active':y.status,sub:publicSub(y)}}
 async function skipStale(ts){const core=require('./store-core.cjs');
  const ids=await transaction(async s=>(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(o=>o.payment_method==='card_autopay'&&o.status==='order_received'&&o.autopay?.status==='failed'&&todayET(ts*1000)>addDays(todayET((o.autopay.failed_at||ts)*1000),AUTO_SKIP_DAYS)).map(o=>o.id));let n=0;
  for(const id of ids){const done=await transaction(async s=>{const o=await s.get('orders',id);if(!o||o.status!=='order_received'||o.autopay?.status!=='failed')return false;o.autopay={...o.autopay,status:'skipped',skipped_at:ts};await core.subscriptionRelease(s,o,'canceled');
-   const x=o.subscription_id&&await s.get('subscriptions',o.subscription_id);if(x){if(Number.isInteger(x.deliveries)&&x.deliveries>0)x.deliveries--;if(x.payment_issue===o.id)delete x.payment_issue;x.problem='Package '+o.id+' was canceled: no new card within '+AUTO_SKIP_DAYS+' days.';await s.put('subscriptions',x.id,x)}return true});if(done)n++}
+   const x=o.subscription_id&&await s.get('subscriptions',o.subscription_id);if(x){if(Number.isInteger(x.deliveries)&&x.deliveries>0)x.deliveries--;if(o.subscription_tier==='T5'&&x.t5_run>0)x.t5_run--;if(x.payment_issue===o.id)delete x.payment_issue;x.problem='Package '+o.id+' was canceled: no new card within '+AUTO_SKIP_DAYS+' days.';await s.put('subscriptions',x.id,x)}return true});if(done)n++}
  return n}
 async function closeFirst(id,why){const core=require('./store-core.cjs');await transaction(async s=>{const x=await s.get('subscriptions',id);if(!x||x.status!=='pending_first_payment')return;const o=x.first_order&&await s.get('orders',x.first_order);if(o&&o.status==='order_received')await core.subscriptionRelease(s,o,'expired');x.status='canceled';x.canceled_at=now();x.canceled_by='checkout';x.problem='';x.closed_reason=why;await s.put('subscriptions',x.id,x)})}
 async function queueWelcome(s,x,o){const emails=require('./store-email.cjs');const c=welcomeEmail(x,o);return emails.enqueue(s,{id:'sub-welcome-'+x.id,kind:'subscription_started',brand:x.brand||'glow',to:x.customer.email,related_id:x.id,subject:c.subject,content:emails.template(c.title,c.lines,manageLink(),c.button)})}
 function manageLink(){return (require('./store-email.cjs').configuration().origin||origin())+'/store-next/account#subscriptions'}
-function welcomeEmail(x,o){const n=count(o.items);return{subject:'Your Glow Lab subscription is set',title:'Your subscription is set.',button:'Manage your subscription',
- lines:['Hi '+(String(x.customer?.name||'').trim().split(/\s+/)[0]||'there')+',','Thank you for subscribing. Your first box is paid and in our packing queue.','How often: '+(EVERY[x.every]?.label||x.every)+'.','Next box ships on: '+longDay(shipDate(x))+'.','Box: '+n+' item'+(n===1?'':'s')+'.','We charge your saved card 2 days before each ship date, and we email you 3 days before every charge.','You can skip a box, change your items or how often it arrives, pause or cancel any time from your account.']}}
+function welcomeEmail(x,o){const n=count(o.items);return{subject:'You’re subscribed: 15% off every Glow Lab package',title:'You’re in. 15% off every package from here on.',button:'Manage your subscription',
+ lines:['Hi '+(String(x.customer?.name||'').trim().split(/\s+/)[0]||'there')+',','Thank you for subscribing. Your first package is paid and in our packing queue.','You saved $'+((Number(o.subscription_discount)||0)/100).toFixed(2)+' on it, and you save 15% on every package after it. You never have to reorder or worry about running out.','How often: '+(EVERY[x.every]?.label||x.every)+'.','Next package ships on: '+longDay(shipDate(x))+'.','Package: '+n+' item'+(n===1?'':'s')+'.','We charge your saved card 2 days before each ship date, and we email you 3 days before every charge.','Once a package is charged it is final and ships. If anything arrives damaged or missing, just reply to this email.','You can skip a package, change your items or how often it arrives, pause or cancel any time from your account.']}}
 // Sent when the saved card is declined for a box. One function, so the owner can approve the wording.
 function declinedEmail({name,card,items,amount_cents,skip_date}){const n=count(items),cd=card&&card.last4?String(card.brand||'card').replace(/^./,c=>c.toUpperCase())+' ending in '+card.last4:'your saved card';return{subject:'Action needed: update your card for your Glow Lab package',title:'We couldn’t charge your card.',button:'Update your card',
  lines:['Hi '+(String(name||'').trim().split(/\s+/)[0]||'there')+',','We tried to charge '+cd+' for your next subscription package, but it did not go through. Nothing was charged.','Package: '+n+' item'+(n===1?'':'s')+'.','Amount: $'+((amount_cents||0)/100).toFixed(2)+' (shipping included).','To keep this package on schedule, update your card on your Subscriptions page. We charge the new card right away and your package ships.','If your card isn’t updated by '+skip_date+', we’ll stop delivering this package. Your subscription stays on.','Questions? Just reply to this email.']}}
@@ -297,16 +340,16 @@ function declinedEmail({name,card,items,amount_cents,skip_date}){const n=count(i
 function canceledEmail({name}){return{subject:'Your Glow Lab subscription is canceled',title:'Your subscription is canceled.',button:'Your account',
  lines:['Hi '+(String(name||'').trim().split(/\s+/)[0]||'there')+',','Your subscription is canceled. No more packages will be charged or shipped.','Any package already paid for still ships.','Changed your mind? You can start a new subscription from your bag any time.','Questions? Just reply to this email.']}}
 // The reminder sent 3 days before each charge. One function, so the owner can approve the wording.
-function reminderEmail({name,items,amount_cents,charge_date,ship_date}){const n=count(items);return{subject:'Your next Glow Lab box · card charged '+longDay(charge_date),title:'Your next box is coming up.',button:'Skip, change or cancel',
- lines:['Hi '+(String(name||'').trim().split(/\s+/)[0]||'there')+',','Your next subscription box ships on the date you chose. Here are the details:','Box: '+n+' item'+(n===1?'':'s')+'.','Amount: $'+(amount_cents/100).toFixed(2)+' (shipping included).','Card charged on: '+longDay(charge_date)+'.','Ships on: '+longDay(ship_date)+'.','Want to skip this box, change your items or how often it arrives, or cancel? Do it any time before '+longDay(charge_date)+' on your Subscriptions page.','Nothing to do if everything looks right. It arrives on schedule.']}}
+function reminderEmail({name,items,amount_cents,charge_date,ship_date,saved_cents=0}){const n=count(items);return{subject:'Your next Glow Lab package · card charged '+longDay(charge_date),title:'Your next package is coming up.',button:'Skip, change or cancel',
+ lines:['Hi '+(String(name||'').trim().split(/\s+/)[0]||'there')+',','Your next subscription package ships on the date you chose. Here are the details:','Package: '+n+' item'+(n===1?'':'s')+'.','Amount: $'+(amount_cents/100).toFixed(2)+' (shipping included).',...(saved_cents>0?['As a subscriber you save $'+(saved_cents/100).toFixed(2)+' on this package.']:[]),'Card charged on: '+longDay(charge_date)+'.','Ships on: '+longDay(ship_date)+'.','Want to skip this package, change your items or how often it arrives, or cancel? Do it any time before '+longDay(charge_date)+' on your Subscriptions page.','Once your card is charged, this package is final and ships.','Nothing to do if everything looks right. It arrives on schedule.']}}
 // Reminders: active subscriptions whose charge is 1–3 days away, once per ship date, only while the Autopilot
 // "Subscribe & save orders" switch is ON.
 async function remind(limit=20,t=Date.now()){const emails=require('./store-email.cjs');
  const jobs=await transaction(async s=>{if(!await switchOn(s))return null;if(!emails.configuration().ready)return[];const today=todayET(t),m=await productsOf(s),settings=await s.get('settings','main'),out=[];
   for(const x of (await s.list('subscriptions')).filter(x=>x.status==='active'&&x.pay==='autopay').slice(0,500)){if(out.length>=limit)break;const cd=chargeDate(x),cycle=shipDate(x);
    if(!cd||!(today>=addDays(cd,-REMIND_DAYS_BEFORE_CHARGE)&&today<cd)||x.reminded_for===cycle||x.payment_issue)continue;
-   const r=priceFor(x.items,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings});if(!r.ok)continue;
-   const c=reminderEmail({name:x.customer?.name,items:r.lines,amount_cents:r.total_cents,charge_date:cd,ship_date:cycle});
+   const r=priceFor(x.items,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings,streak:streakOf(x)});if(!r.ok)continue;
+   const ad=addonsPrice(x.addons||[],m);const c=reminderEmail({name:x.customer?.name,items:[...r.lines,...ad.lines],amount_cents:r.total_cents+ad.price_cents,charge_date:cd,ship_date:cycle,saved_cents:(r.discount_cents||0)+(r.shipping_saved_cents||0)+(ad.list_cents-ad.price_cents)});
    const job=await emails.enqueue(s,{id:'sub-remind-'+x.id+'-'+cycle,kind:'subscription_reminder',brand:x.brand||'glow',to:x.customer.email,related_id:x.id,subject:c.subject,content:emails.template(c.title,c.lines,manageLink(),c.button)});
    if(!job)continue;x.reminded_for=cycle;x.reminded_at=now();await s.put('subscriptions',x.id,x);out.push(job)}
   return out});
@@ -320,9 +363,9 @@ function savedOf(x,orders,settings){let saved=0,boxes=0;for(const o of orders||[
 function issueOf(x,orders){if(!x.payment_issue)return null;const o=(orders||[]).find(o=>o.id===x.payment_issue);if(!o||o.status!=='order_received'||o.autopay?.status!=='failed')return null;
  const f=o.autopay.failed_at||now();return{order_id:o.id,amount_cents:o.total||0,ship_date:o.ship_date||o.subscription_cycle||'',skip_date:addDays(todayET(f*1000),AUTO_SKIP_DAYS)}}
 function customerView(x,m,settings,orders){const p=pricingOf(x,m,settings),t=p.tier?tierById(p.tier.id):null,done=deliveriesDone(x),sv=savedOf(x,orders,settings);
- const bonusIn=t&&t.bonus_every?(t.bonus_every-(done%t.bonus_every))%t.bonus_every||t.bonus_every:0;
- const c=x.customer||{};
- return{payment_issue:issueOf(x,orders),ship_to:{name:c.name||'',address:c.address||'',address2:c.address2||'',city:c.city||'',state:c.state||'',zip:c.zip||'',phone:c.phone||''},saved_cents:sv.saved_cents,boxes_paid:sv.boxes,bonus_in:bonusIn,id:x.id,status:x.status,every:x.every,every_label:EVERY[x.every]?.label||x.every,next_ship_date:x.status==='active'||x.status==='paused'?shipDate(x):'',charge_date:x.status==='active'?chargeDate(x):'',
+ const run=Number(x.t5_run)||0,bonusIn=t&&t.bonus_every?(t.bonus_every-(run%t.bonus_every))%t.bonus_every||t.bonus_every:0;void done;
+ const c=x.customer||{},ad=addonsPrice(x.addons||[],m);
+ return{addons:ad.lines,addons_cents:ad.price_cents,next_total_cents:p.total_cents!=null?p.total_cents+ad.price_cents:null,payment_issue:issueOf(x,orders),ship_to:{name:c.name||'',address:c.address||'',address2:c.address2||'',city:c.city||'',state:c.state||'',zip:c.zip||'',phone:c.phone||''},saved_cents:sv.saved_cents,boxes_paid:sv.boxes,bonus_in:bonusIn,id:x.id,status:x.status,every:x.every,every_label:EVERY[x.every]?.label||x.every,next_ship_date:x.status==='active'||x.status==='paused'?shipDate(x):'',charge_date:x.status==='active'?chargeDate(x):'',
  items:(x.items||[]).map(i=>{const pr=m.get(i.id);return{id:i.id,quantity:i.quantity,name:pr?.name||i.name||'Product',price_cents:pr?.price||0,slots:pr?slotsOf(pr):1}}),pricing:p,card:x.card?{brand:x.card.brand,last4:x.card.last4}:null,
  checkout_url:x.status==='pending_first_payment'&&x.checkout?.url&&(x.checkout.expires||0)>now()+300?x.checkout.url:'',problem:x.status==='pending_first_payment'&&x.problem?COPY.pending:'',created:x.created}}
 async function customerRoute(path,body,h,method){
@@ -342,10 +385,16 @@ async function customerRoute(path,body,h,method){
  if(path==='/account/subscriptions/confirm'&&method==='POST'){const a=await me(),x=await mine(a,body.id);const r=await settleFirst(x.id);return ok({status:r.status,message:r.status==='active'?'':r.status==='pending'||r.status==='needs_review'?COPY.pending:''})}
  if(path==='/account/subscriptions/abandon'&&method==='POST'){const a=await me(),x=await mine(a,body.id);if(x.status==='pending_first_payment')await settleFirst(x.id,{close:true});return ok({ok:true})}
  if(path==='/account/subscriptions/preview'&&method==='POST'){const a=await me(),x=await mine(a,body.id);
-  return ok(await transaction(async s=>{const m=await productsOf(s),lines=await validItems(s,body.items,x.brand||'glow',m);return require('./store-core.cjs').subscriptionQuote(s,{items:lines,h:{},brand:brands.get(x.brand||'glow'),deliveryNumber:deliveriesDone(x)+1,bonus_id:x.bonus_id,stockCheck:false})}))}
+  return ok(await transaction(async s=>{const m=await productsOf(s),lines=await validItems(s,body.items,x.brand||'glow',m);return require('./store-core.cjs').subscriptionQuote(s,{items:lines,h:{},brand:brands.get(x.brand||'glow'),deliveryNumber:deliveriesDone(x)+1,bonus_id:x.bonus_id,streak:streakOf(x),stockCheck:false})}))}
  if(path==='/account/subscriptions/update'&&method==='POST'){const a=await me(),x=await mine(a,body.id),action=String(body.action||'').slice(0,10);if(!['every','skip','pause','resume','cancel','items','address'].includes(action))bad('Choose what to change.');
-  await update({id:x.id,action,every:String(body.every||'').slice(0,4),items:body.items,address:body.address},{customer:true,owner:a});
+  await update({id:x.id,action,every:String(body.every||'').slice(0,4),items:body.items,address:body.address,reason:String(body.reason||'').slice(0,20),note:typeof body.note==='string'?body.note.slice(0,400):''},{customer:true,owner:a});
   return ok(await transaction(async s=>customerView(await s.get('subscriptions',x.id),await productsOf(s),await s.get('settings','main'),await (s.listLite?s.listLite('orders'):s.list('orders')))))}
+ if(path==='/account/subscriptions/addons'&&method==='POST'){const a=await me(),x=await mine(a,body.id);
+  return ok(await transaction(async s=>{const y=await s.get('subscriptions',x.id);if(y.status!=='active')bad('Add-ons can be added to an active subscription.',409);
+   const m=await productsOf(s),brands=require('./brands.cjs'),lines=cleanItems(body.items);if(lines.length>ADDON_MAX_LINES)bad('Up to '+ADDON_MAX_LINES+' add-ons per package.');const seen=new Set();
+   for(const l of lines){if(seen.has(l.id))bad('Duplicate product.');seen.add(l.id);if(l.quantity>ADDON_MAX_QTY)bad('Up to '+ADDON_MAX_QTY+' of one add-on.');const p=m.get(l.id);if(!p||!p.active||brands.productBrand(p)!==(y.brand||'glow'))bad('A product is unavailable.');if((Number(p.stock)||0)<l.quantity)bad(p.name+' does not have enough stock right now.',409)}
+   y.addons=lines.map(l=>({id:l.id,quantity:l.quantity,name:m.get(l.id).name}));y.updated_at=now();await s.put('subscriptions',y.id,y);
+   return customerView(y,m,await s.get('settings','main'),await (s.listLite?s.listLite('orders'):s.list('orders')))}))}
  if(path==='/account/subscriptions/card'&&method==='POST'){const a=await me(),x=await mine(a,body.id);return ok(await cardUpdateLink(x.id,a))}
  if(path==='/account/subscriptions/card-check'&&method==='POST'){const a=await me(),x=await mine(a,body.id);const r=await checkCardUpdate(x.id);
   return ok({status:r.status,charged:r.retry?.charged||0,failed:r.retry?.failed||0,subscription:await transaction(async s=>customerView(await s.get('subscriptions',x.id),await productsOf(s),await s.get('settings','main'),await (s.listLite?s.listLite('orders'):s.list('orders'))))})}
@@ -376,8 +425,8 @@ async function run(limit=10,t=Date.now()){
   try{made=await transaction(async s=>{const x=await s.get('subscriptions',id);if(!x||x.status!=='active'||chargeDate(x)>today)return null;const cycle=shipDate(x);
     // Never two unpaid boxes: while a declined box waits for a new card, the next one is not made yet.
     if(x.payment_issue){const w=await s.get('orders',x.payment_issue);if(w&&w.status==='order_received'&&w.autopay?.status==='failed')bad('Waiting for a new card for '+w.id+' before the next box is made.',409);delete x.payment_issue}
-    const r=await core.subscriptionOrder(s,x,cycle);const orderId=r.existing||r.order.id;x.orders=[...(x.orders||[]).filter(o=>o!==orderId),orderId].slice(-50);if(!r.existing)x.deliveries=deliveriesDone(x)+1;
-    setShip(x,nextFrom(cycle,x.every,today));x.problem='';x.last_run=ts;await s.put('subscriptions',x.id,x);return r})}
+    const r=await core.subscriptionOrder(s,x,cycle);const orderId=r.existing||r.order.id;x.orders=[...(x.orders||[]).filter(o=>o!==orderId),orderId].slice(-50);if(!r.existing){if((x.addons||[]).length){x.addons_last={order:r.order.id,lines:x.addons,dropped:!!r.order.addons_dropped};x.addons=[]}x.deliveries=deliveriesDone(x)+1;x.t5_run=r.order.subscription_tier==='T5'?(Number(x.t5_run)||0)+1:0}
+    setShip(x,nextFrom(cycle,x.every,today));x.problem=r.order?.addons_dropped&&!r.existing?'Add-ons were left off '+r.order.id+': '+r.order.addons_dropped:'';x.last_run=ts;await s.put('subscriptions',x.id,x);return r})}
   catch(e){const msg=String(e&&e.message||e).slice(0,200);const jobs=await transaction(async s=>{const x=await s.get('subscriptions',id);if(!x)return[];const first=x.problem!==msg;x.problem=msg;x.last_run=ts;await s.put('subscriptions',x.id,x);
     // Tell the shop once per problem per box (sold out, product off, checkout off), not every hour.
     if(!first||/^Waiting for a new card/.test(msg))return[];return staffAlert(s,{id:'sub-problem-'+x.id+'-'+shipDate(x)+'-'+crypto.createHash('sha256').update(msg).digest('hex').slice(0,8),brand:x.brand,subject:'Subscription box not made · '+(x.customer?.name||x.id)+' · '+x.id,lines:['The repeat box for '+(x.customer?.name||'this customer')+' ('+x.id+', ships '+longDay(shipDate(x))+') was not made yet.','Reason: '+msg,'It is tried again every hour. Nothing has been charged.']})});
@@ -388,7 +437,7 @@ async function run(limit=10,t=Date.now()){
  try{out.reminded=(await remind(20,t)).sent||0}catch{}
  return out;
 }
-module.exports={EVERY,CUSTOMER_EVERY,DISCOUNT_PCT,TIERS,SLOT_MAX_CENTS,MAX_SLOTS,CHARGE_DAYS_BEFORE,REMIND_DAYS_BEFORE_CHARGE,FAIR_PCT,COPY,
+module.exports={CANCEL_REASONS,TERMS_VERSION,EVERY,CUSTOMER_EVERY,DISCOUNT_PCT,TIERS,SLOT_MAX_CENTS,MAX_SLOTS,CHARGE_DAYS_BEFORE,REMIND_DAYS_BEFORE_CHARGE,FAIR_PCT,COPY,
  slotsOf,slotsFor,tierFor,tierById,priceFor,bonusDelivery,shippingFor,publicTier,addInterval,addDays,todayET,shipDate,chargeDate,deliveriesDone,
  list,create,update,cardLink,checkCard,charge,run,remind,publicSub,owns,offerOpen,customerRoute,startCheckout,settleFirst,checkoutBody,reminderEmail,welcomeEmail,
- AUTO_SKIP_DAYS,cardUpdateLink,checkCardUpdate,retryFailed,skipStale,declinedEmail,canceledEmail,customerView};
+ stats,AUTO_SKIP_DAYS,ADDON_MAX_LINES,ADDON_MAX_QTY,addonsPrice,subLinePrice,cardUpdateLink,checkCardUpdate,retryFailed,skipStale,declinedEmail,canceledEmail,customerView};

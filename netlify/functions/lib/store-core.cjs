@@ -326,7 +326,7 @@ async function handle({path,method='GET',headers={},body={}}){
   await transaction(async s=>{for(const x of batch){const o=await s.get('orders',x.id);if(!o)continue;const f=costs[x.tracking];if(f){o.label_cost_cents=f.cents;o.label_cost_source='shippo_lookup';o.label_cost_service=f.service;updated++}else{o.label_cost_not_found=true;missing.push(x.id)}await s.put('orders',o.id,o)}await audit(s,'label_costs_backfilled')});
   return{status:200,headers:{},body:{ok:true,checked:batch.length,updated,not_in_shippo:missing,remaining:Math.max(0,todo.length-batch.length)}}}
  // Subscribe & save (Jonah, 4 Nov 2026): staff start, change, pause or cancel subscriptions. Repeat orders are made by Autopilot.
- if(path==='/admin/subscriptions'&&method==='GET'){await transaction(s=>session(s,h));return{status:200,headers:{},body:{subscriptions:await require('./subscriptions.cjs').list(),every:require('./subscriptions.cjs').EVERY,discount_pct:require('./subscriptions.cjs').DISCOUNT_PCT,stripe_ready:autoInvoice.stripeReady()}}}
+ if(path==='/admin/subscriptions'&&method==='GET'){await transaction(s=>session(s,h));return{status:200,headers:{},body:{subscriptions:await require('./subscriptions.cjs').list(),stats:await require('./subscriptions.cjs').stats(),every:require('./subscriptions.cjs').EVERY,discount_pct:require('./subscriptions.cjs').DISCOUNT_PCT,stripe_ready:autoInvoice.stripeReady()}}}
  if(path==='/admin/subscription/create'&&method==='POST'){const sid=await transaction(s=>session(s,h));const rec=await transaction(s=>s.get('sessions',sid));const r=await require('./subscriptions.cjs').create({order_id:text(body.order_id||'',50),every:text(body.every||'',4),by:rec?.staff_id||'owner'});await transaction(s=>audit(s,'subscription_created',r.source_order));return{status:200,headers:{},body:r}}
  if(path==='/admin/subscription/update'&&method==='POST'){await transaction(s=>session(s,h));const r=await require('./subscriptions.cjs').update({id:text(body.id||'',20),action:text(body.action||'',10),every:text(body.every||'',4,false),next_date:text(body.next_date||'',10,false),address:body.address});await transaction(s=>audit(s,'subscription_'+r.status+'_'+text(body.action||'',10),r.source_order));return{status:200,headers:{},body:r}}
  // Autopilot (Jonah, 4 Nov 2026): background jobs the owner switches on one at a time. Staff can look; only the owner can switch.
@@ -393,7 +393,7 @@ async function handle({path,method='GET',headers={},body={}}){
   if(!await s.get('migrations','nad-promo-excluded-20261014')){const nad=await s.get('products',7);if(nad&&nad.sku==='nad-500-mg'&&brands.productBrand(nad)==='glow'){nad.promo_excluded=true;await s.put('products',nad.id,nad);await s.put('migrations','nad-promo-excluded-20261014',{applied:clock(),product_id:nad.id});await audit(s,'nad_promo_exclusion_enabled');}}
   if(reqBrand.id==='zader')await brands.ensureZaderCatalog(s,validSlug);
   await ensureMerchCatalog(s);
-  if(path==='/catalog'&&method==='GET'){const mctx=await members.context(s,(await accounts.session(s,h))?.email,reqBrand.id);return{products:await (async()=>{const all=await s.list('products'),byId=new Map(all.map(x=>[x.id,x])),out=[];for(const p of all.filter(p=>p.active&&brands.productBrand(p)===reqBrand.id&&members.visible(mctx,p)))out.push(productLimits.publicLimits(brands.publicProduct(withProductPhotos(await bundleStock(async id=>byId.get(id),p)),settings.demo===false)));return out})(),brand:brands.publicBrand(reqBrand),settings:{...settings,...autoInvoice.publicFlags(settings),email_enabled:emails.configuration().ready,...(reqBrand.waitlist?{checkout_enabled:false,waitlist:true}:{})},...(mctx?{members_on:true}:{})}}
+  if(path==='/catalog'&&method==='GET'){const mctx=await members.context(s,(await accounts.session(s,h))?.email,reqBrand.id);return{products:await (async()=>{const all=await s.list('products'),byId=new Map(all.map(x=>[x.id,x])),out=[];for(const p of all.filter(p=>p.active&&brands.productBrand(p)===reqBrand.id&&members.visible(mctx,p)))out.push(productLimits.publicLimits(brands.publicProduct(withProductPhotos(await bundleStock(async id=>byId.get(id),p)),settings.demo===false)));return out})(),brand:brands.publicBrand(reqBrand),settings:{...settings,...autoInvoice.publicFlags(settings),email_enabled:emails.configuration().ready,subscribe_open:!(await require('./subscriptions.cjs').offerOpen(s,reqBrand)),...(reqBrand.waitlist?{checkout_enabled:false,waitlist:true}:{})},...(mctx?{members_on:true}:{})}}
   if(path.startsWith('/native-affiliates')){
    if(reqBrand.id!=='zader')fail('Affiliate program not found.',404);
    const customer=await accounts.session(s,h,true);
@@ -667,20 +667,23 @@ async function stripeInvoicePaid(invoiceId){const r=await autoInvoice.paidFromSt
 // stockCheck (default): runs the normal quote too, so stock, active products and the brand are checked like any order,
 // and returns `order`: the quote with the subscription price applied (discount, shipping, total, points kept consistent).
 // Never more than 85% of list for the products; points use max(tier multiplier, the customer's normal multiplier).
-async function subscriptionQuote(s,{items,h={},brand,deliveryNumber=1,bonus_id,stockCheck=true,member_email}){
+async function subscriptionQuote(s,{items,h={},brand,deliveryNumber=1,bonus_id,streak,stockCheck=true,member_email,extras=[]}){
  const subs=require('./subscriptions.cjs'),settings=await s.get('settings','main');
  if(!Array.isArray(items)||!items.length||items.length>100)fail('Add at least one product.');
  const lines=items.map(i=>({id:int(i.id,1),quantity:int(i.quantity,1,100)})),m=new Map();
  for(const l of lines){if(m.has(l.id))fail('Duplicate product in the cart.');const p=await s.get('products',l.id);if(!p||!p.active||brands.productBrand(p)!==brand.id)fail('A product is unavailable.');m.set(p.id,p)}
  if(bonus_id&&!m.has(Number(bonus_id))){const bp=await s.get('products',Number(bonus_id));if(bp&&bp.active&&brands.productBrand(bp)===brand.id)m.set(bp.id,bp)}
- let r=subs.priceFor(lines,m,null,deliveryNumber,{bonus_id,settings});if(!r.ok)return r;
+ let r=subs.priceFor(lines,m,null,deliveryNumber,{bonus_id,settings,streak});if(!r.ok)return r;
  if(!stockCheck)return{...r,points_to_earn:brand.rewards?Math.floor(Math.floor(r.price_cents/100)*r.points_multiplier):0};
- const mo={subscription:true,...(member_email?{member_email}:{})};let q;try{q=await quote(s,{items:r.lines},h,brand,mo)}catch(e){if(!r.bonus)throw e;r=subs.priceFor(lines,m,null,deliveryNumber,{settings,no_bonus:true});q=await quote(s,{items:r.lines},h,brand,mo)}
- if(q.subtotal!==r.list_cents)fail('Prices changed. Refresh and try again.',409);
+ // Add-ons for this package (one-time extras at subscriber price; they never change the tier or shipping).
+ const ex=[];for(const e of (Array.isArray(extras)?extras:[]).slice(0,10)){const id=Number(e?.id),qty=Math.floor(Number(e?.quantity)||0);if(!Number.isInteger(id)||qty<1)continue;const p=m.get(id)||await s.get('products',id);if(!p||!p.active||brands.productBrand(p)!==brand.id)fail('An add-on is unavailable.',409);m.set(p.id,p);ex.push({id,quantity:Math.min(qty,5)})}
+ const xa=subs.addonsPrice(ex,m),merge=ls=>{const out=new Map();for(const l of [...ls,...ex])out.set(l.id,(out.get(l.id)||0)+l.quantity);return [...out].map(([id,quantity])=>({id,quantity}))};
+ const mo={subscription:true,...(member_email?{member_email}:{})};let q;try{q=await quote(s,{items:merge(r.lines)},h,brand,mo)}catch(e){if(!r.bonus)throw e;r=subs.priceFor(lines,m,null,deliveryNumber,{settings,no_bonus:true});q=await quote(s,{items:merge(r.lines)},h,brand,mo)}
+ if(q.subtotal!==r.list_cents+xa.list_cents)fail('Prices changed. Refresh and try again.',409);
  const normal=q.points_multiplier||(brand.rewards?1:0),mult=brand.rewards?Math.max(r.points_multiplier,normal):0;
- q.subscription_discount=q.subtotal-r.price_cents;q.discount=q.subscription_discount;q.coupon_discount=0;q.rewards_discount=0;q.points_redeemed=0;q.shipping=r.shipping_cents;q.total=q.subtotal-q.discount+q.shipping;
+ q.subscription_discount=q.subtotal-(r.price_cents+xa.price_cents);q.discount=q.subscription_discount;q.coupon_discount=0;q.rewards_discount=0;q.points_redeemed=0;q.shipping=r.shipping_cents;q.total=q.subtotal-q.discount+q.shipping;
  q.points_multiplier=mult;q.points_to_earn=brand.rewards?Math.floor(Math.floor((q.subtotal-q.discount)/100)*mult):0;q.commission=0;
- return{...r,normal_points_multiplier:normal,points_multiplier:mult,points_to_earn:q.points_to_earn,items:q.items,order:q}}
+ return{...r,addons:xa.lines,addons_cents:xa.price_cents,normal_points_multiplier:normal,points_multiplier:mult,points_to_earn:q.points_to_earn,items:q.items,order:q}}
 function subscriptionFields(r,n){return{subscription_tier:r.tier.id,subscription_points_multiplier:r.tier.points_multiplier,subscription_delivery:n,subscription_bonus:r.bonus||null,subscription_perks:{early_access:r.tier.early_access,packed_first:r.tier.packed_first}}}
 // Builds one repeat order for a subscription (stock reserved, staff alert; auto-pay: charged by subscriptions.charge).
 // Price: the tier price for its items (see subscriptionQuote). An older staff-started subscription too big for any tier
@@ -689,13 +692,16 @@ async function subscriptionOrder(s,sub,cycle){
  const key='sub-'+sub.id+'-'+cycle,done=await s.get('idempotency',key);if(done)return{existing:done.id};
  const settings=await s.get('settings','main');if(!(settings&&settings.demo===false&&settings.checkout_enabled===true&&settings.tax_mode==='none'))fail('Live checkout is off, so no repeat order was made.',503);
  const subs=require('./subscriptions.cjs'),brand=brands.get(sub.brand||'glow'),customer=checkoutCustomer(sub.customer),n=subs.deliveriesDone(sub)+1,lines=sub.items.map(i=>({id:i.id,quantity:i.quantity}));
- const sq=await subscriptionQuote(s,{items:lines,h:{},brand,deliveryNumber:n,bonus_id:sub.bonus_id,member_email:sub.customer?.email});let q,extra;
+ // Add-ons ride along; if one cannot be filled (sold out, turned off) the package still goes out without it.
+ const base={items:lines,h:{},brand,deliveryNumber:n,bonus_id:sub.bonus_id,streak:(Number(sub.t5_run)||0)+1,member_email:sub.customer?.email};let sq,dropped='';
+ if((sub.addons||[]).length){try{sq=await subscriptionQuote(s,{...base,extras:sub.addons})}catch(e){dropped=String(e&&e.message||e).slice(0,160);sq=null}}
+ if(!sq)sq=await subscriptionQuote(s,base);let q,extra;
  if(sq.ok){q=sq.order;extra=subscriptionFields(sq,n)}
  else if(sq.slots>subs.MAX_SLOTS){q=await quote(s,{items:lines},{},brand,{subscription:true,...(sub.customer?.email?{member_email:sub.customer.email}:{})});const pct=Math.min(50,Math.max(0,Number(sub.discount_pct)||15)),off=Math.round((q.subtotal-q.discount)*pct/100);q.discount+=off;q.subscription_discount=off;q.total=q.subtotal-q.discount+q.shipping;if(q.points_to_earn)q.points_to_earn=Math.floor(Math.floor((q.subtotal-q.discount)/100)*(q.points_multiplier||1));extra={subscription_tier:null,subscription_delivery:n}}
  else fail(sq.error||'This subscription could not be priced.',409);
  const autopay=sub.pay==='autopay',inv=!autopay&&autoInvoice.invoiced('card_invoice',settings),id=brand.order_prefix+'-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url');
  const o={id,created:clock(),expires:null,status:'order_received',customer,...q,payment_method:autopay?'card_autopay':'card_invoice',token_hash:hash(token),idempotency_key:key,request_hash:hash(key),checkout_stage:'submitted',proof_required:false,submitted_at:clock(),...(autopay?{autopay:{status:'charging',started:clock()}}:{invoice_via:'email'}),receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:'not_applicable',subscription_id:sub.id,subscription_discount:q.subscription_discount,subscription_cycle:cycle,ship_date:cycle,order_for_customer:true,created_by_staff:'subscription',...extra};
- delete o.points_multiplier;o.goaffpro_affiliate_id=null;o.is_test=false;const beneficiary=await s.get('customers',accounts.hash(accounts.email(customer.email)));o.customer_id=beneficiary?.verified&&brand.rewards?beneficiary.id:null;o.points_earned=0;
+ delete o.points_multiplier;o.goaffpro_affiliate_id=null;o.is_test=false;if((sub.addons||[]).length){o.subscription_addons=dropped?[]:sub.addons.map(a=>({id:a.id,quantity:a.quantity,name:a.name||''}));if(dropped)o.addons_dropped=dropped}const beneficiary=await s.get('customers',accounts.hash(accounts.email(customer.email)));o.customer_id=beneficiary?.verified&&brand.rewards?beneficiary.id:null;o.points_earned=0;
  for(const item of q.items)await moveStock(s,item,-1);
  await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created_subscription_order',id);
  // Auto-pay: no order email yet; the customer gets the payment-received email once the card is charged.
