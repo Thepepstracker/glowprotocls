@@ -484,3 +484,15 @@ button.sk-perk.on,button.sk-perk.on:hover,button.sk-perk.on:active,button.sk-per
 /* Checkout promo box (7 Nov 2026) */
 .co-promo{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}.co-promo summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--gold-dark);list-style-position:inside}
 .co-promo .inline{margin-top:6px}.co-promo label{margin:6px 0}.co-promo-codes{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.co-promo-codes .badge button{margin-left:6px;padding:4px 10px;min-height:32px;font-size:13px}
+
+/* Subscriptions: declined card, ship-to, update card (8 Nov 2026) */
+.sub-issue{display:flex;flex-direction:column;gap:10px;border-left:4px solid #b4442c;background:#fbeee9;padding:12px 14px;border-radius:8px;margin:10px 0}
+.sub-issue p{margin:0}.sub-issue button{align-self:flex-start;margin:0}
+.linkish{background:none;border:0;padding:0;margin-top:4px;color:var(--ink,#2b2620);text-decoration:underline;font:inherit;font-size:13px;cursor:pointer;align-self:flex-start;min-height:0}
+.sub-shipto{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;background:var(--cream);border-radius:8px;padding:10px 12px;margin:0 0 12px}
+.sub-shipto>div{display:flex;flex-direction:column;gap:2px;min-width:0}.sub-shipto small{font-size:12.5px}.sub-shipto span{overflow-wrap:anywhere}
+.sub-addr{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:8px;padding:14px;margin:0 0 12px}
+.sub-addr h3{margin:0;font-size:16px}.sub-addr label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
+.sub-addr input{font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;min-width:0}
+.sub-addr-row{display:grid;grid-template-columns:2fr 1fr 1.2fr;gap:10px}.sub-addr .actions{display:flex;flex-wrap:wrap;gap:8px;margin:0}.sub-addr .muted{margin:0;font-size:13px}
+@media (max-width:560px){.sub-shipto{flex-direction:column;align-items:flex-start}.sub-addr-row{grid-template-columns:1fr 1fr}.sub-addr-row label:first-child{grid-column:1/-1}}
