@@ -617,19 +617,29 @@ function celebrate(o){
     if(e<2600)requestAnimationFrame(frame);else ctx.clearRect(0,0,W,H)})(start);
 }
 // ---- week color, regulars, check-in calls ---------------------------------
-// Week color (ops charter §5, set by Jonah 23 Oct 2026): week-to-date paid sales vs the $4,500 target.
-var WEEK_TARGET=450000;
-var TIERS=[{k:'purple',dot:'🟣',name:'PURPLE',say:'Record-week territory',at:WEEK_TARGET*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Big week',at:WEEK_TARGET*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Target hit',at:WEEK_TARGET}];
+// Week color (ops charter §5, set by Jonah 23 Oct 2026): week-to-date paid sales vs the week target.
+// The standard rises (Jonah, 8 Nov 2026: "every month or week should be better than the last"): the target for a week
+// is what the week before it made, never less than the old $4,500 floor. Blue = beat last week, Gold = 1.5×, Purple = 2×.
+// The day target is that week's target ÷ 7.
+var WEEK_FLOOR=450000;
+// Weeks from before the new store, so the first new-store week has a real week to beat (old store, claude/october-2026-recap.md).
+var WEEK_HISTORY={'2026-10-19':825227};
+function weekTotal(offset){var k=weekKeys(offset).keys;return WEEK_HISTORY[k[0]]!=null?WEEK_HISTORY[k[0]]:weekSum(k).cents}
+function targetFor(offset){return Math.max(WEEK_FLOOR,weekTotal((offset||0)+1))}
+function tiersFor(t){return [{k:'purple',dot:'🟣',name:'PURPLE',say:'Double last week',at:t*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Way past last week',at:t*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Beat last week',at:t}]}
+var WEEK_TARGET=WEEK_FLOOR,TIERS=tiersFor(WEEK_TARGET);
+function setTargets(){WEEK_TARGET=targetFor(0);TIERS=tiersFor(WEEK_TARGET);DAY_TARGET=Math.round(WEEK_TARGET/7);DAY_TIERS=dayTiersFor(DAY_TARGET)}
 // Orders brought over from the old site were already counted on the old site: they never count toward today or the week.
 function paidOrder(o){return o&&o.is_test===false&&!o.legacy_import&&(o.status==='paid'||o.status==='shipped')}
 function weekKeys(offset){var today=etDay(nowS()),d=new Date(today+'T12:00:00Z'),dow=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-dow-7*(offset||0));var k=[];for(var i=0;i<7;i++){k.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}return{keys:k,dow:dow}}
 function weekSum(keys){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&keys.indexOf(etDay(o.created||0))>=0){n+=o.total||0;c++}});return{cents:n,count:c}}
 function tierOf(cents,finished,lastWeekCents){
   for(var i=0;i<TIERS.length;i++)if(cents>=TIERS[i].at)return TIERS[i];
-  if(!finished){var lw=lastWeekCents||0;if(lw>=WEEK_TARGET)return{k:'green',dot:'🟢',name:'GREEN',say:'New week — last week hit the target'};return{k:'yellow',dot:'🟡',name:'YELLOW',say:'New week — last week missed the target'}}
+  if(!finished){var lw=lastWeekCents||0;if(lw>=targetFor(1))return{k:'green',dot:'🟢',name:'GREEN',say:'New week — last week beat the week before'};return{k:'yellow',dot:'🟡',name:'YELLOW',say:'New week — last week fell short'}}
   var pace=WEEK_TARGET*finished/7,r=cents/pace;
   if(r>=1)return{k:'green',dot:'🟢',name:'GREEN',say:'On pace',pace:pace};if(r>=.75)return{k:'yellow',dot:'🟡',name:'YELLOW',say:'Slipping behind pace',pace:pace};return{k:'red',dot:'🔴',name:'RED',say:'Behind pace',pace:pace}}
 function weekBanner(){var box=document.getElementById('week');if(!box)return;if(!all.length){box.innerHTML='';return}
+  setTargets();
   var w=weekKeys(0),cur=weekSum(w.keys),last=weekSum(weekKeys(1).keys),t=tierOf(cur.cents,w.dow,last.cents),pace=WEEK_TARGET*w.dow/7;
   var steps=[{at:pace*.75,dot:'🟡',name:'Yellow'},{at:pace,dot:'🟢',name:'Green'},{at:WEEK_TARGET,dot:'🔵',name:'Blue'},{at:WEEK_TARGET*1.5,dot:'🟨',name:'Gold'},{at:WEEK_TARGET*2,dot:'🟣',name:'Purple'}].filter(function(x){return x.at>cur.cents&&x.at>0});
   var nx=steps[0],floor=0;[pace*.75,pace,WEEK_TARGET,WEEK_TARGET*1.5,WEEK_TARGET*2].forEach(function(v){if(v<=cur.cents&&v>floor)floor=v});
@@ -637,29 +647,29 @@ function weekBanner(){var box=document.getElementById('week');if(!box)return;if(
   var best=0;for(var i=1;i<=8;i++){var s2=weekSum(weekKeys(i).keys).cents;if(s2>best)best=s2}
   var rec=cur.cents>best&&cur.cents>=WEEK_TARGET?'<span class="rec">🏆 Best week since the new store opened</span>':'';
   var ts=todayStats();
-  box.innerHTML='<section class="week t-'+t.k+'" title="Week color: Red under 75% of pace · Yellow 75–99% · Green on pace · Blue $4,500 · Gold $6,750 · Purple $9,000"><div><div class="wk-c">'+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
+  box.innerHTML='<section class="week t-'+t.k+'" title="Week color: Red under 75% of pace · Yellow 75–99% · Green on pace · Blue '+money(WEEK_TARGET)+' (last week) · Gold '+money(WEEK_TARGET*1.5)+' · Purple '+money(WEEK_TARGET*2)+'"><div><div class="wk-c">'+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
    +'<div class="wk-m"><b>'+money(cur.cents)+'</b> this week · '+cur.count+' paid order'+(cur.count===1?'':'s')+rec
-   +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Target '+Math.round(cur.cents*100/WEEK_TARGET)+'% · Today '+money(ts.total)+'</small></div></section>'+weekStrip(w,t)+dayBanner(w)}
+   +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Beat last week: '+money(WEEK_TARGET)+' ('+Math.round(cur.cents*100/WEEK_TARGET)+'%) · Today '+money(ts.total)+'</small></div></section>'+weekStrip(w,t)+dayBanner(w)}
 // ---- Week colors strip (Jonah, 8 Nov 2026: "just like the days of the week have colors, the weeks should have colors too") ----
 // One chip per week since the new store's first paid week (up to the last 8). A finished week keeps its final color,
-// the same rules as a finished day: Red under 75% of the $4,500 target, Yellow 75–99%, Blue $4,500, Gold $6,750, Purple $9,000.
+// judged against the week before it: Red under 75% of it, Yellow 75–99%, Blue beat it, Gold 1.5×, Purple 2× (never under $4,500).
 // This week shows its live color from the banner above.
-function weekFinalTier(c){for(var i=0;i<TIERS.length;i++)if(c>=TIERS[i].at)return TIERS[i];if(c>=WEEK_TARGET*.75)return{k:'yellow',dot:'🟡',name:'YELLOW'};return{k:'red',dot:'🔴',name:'RED'}}
+function weekFinalTier(c,target){var T=tiersFor(target);for(var i=0;i<T.length;i++)if(c>=T[i].at)return T[i];if(c>=target*.75)return{k:'yellow',dot:'🟡',name:'YELLOW'};return{k:'red',dot:'🔴',name:'RED'}}
 function weekStrip(w,t){var first=null;all.forEach(function(o){if(paidOrder(o)){var d=etDay(o.created||0);if(!first||d<first)first=d}});if(!first)return '';
   var md=function(k){return new Date(k+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'})},chips=[],best=0,bestI=-1,i,wk,s;
-  for(i=8;i>=1;i--){wk=weekKeys(i).keys;if(wk[6]<first)continue;s=weekSum(wk);chips.push({k:wk,s:s,f:weekFinalTier(s.cents)});if(s.cents>best){best=s.cents;bestI=chips.length-1}}
-  var html=chips.map(function(c,j){return '<span title="'+c.f.name+' · '+md(c.k[0])+' – '+md(c.k[6])+' · '+c.s.count+' paid order'+(c.s.count===1?'':'s')+'">'+c.f.dot+' Wk of '+md(c.k[0])+' '+money(c.s.cents)+(j===bestI&&best>=WEEK_TARGET?' 🏆':'')+'</span>'}).join('');
+  for(i=8;i>=1;i--){wk=weekKeys(i).keys;if(wk[6]<first)continue;s=weekSum(wk);if(WEEK_HISTORY[wk[0]]!=null)s={cents:WEEK_HISTORY[wk[0]],count:s.count,old:true};var tg=targetFor(i);chips.push({k:wk,s:s,tg:tg,f:weekFinalTier(s.cents,tg)});if(s.cents>best){best=s.cents;bestI=chips.length-1}}
+  var html=chips.map(function(c,j){return '<span title="'+c.f.name+' · '+md(c.k[0])+' – '+md(c.k[6])+' · '+(c.s.old?'old store':c.s.count+' paid order'+(c.s.count===1?'':'s'))+' · week to beat '+money(c.tg)+' ('+(c.s.cents>=c.tg?'+':'')+Math.round((c.s.cents-c.tg)*100/c.tg)+'%)">'+c.f.dot+' Wk of '+md(c.k[0])+' '+money(c.s.cents)+(j===bestI&&best>=WEEK_FLOOR?' 🏆':'')+'</span>'}).join('');
   var cur=weekSum(w.keys);html+='<span class="now" title="This week so far">'+t.dot+' This week '+money(cur.cents)+'</span>';
   return '<div class="days weeks" aria-label="Recent weeks by color">'+html+'</div>'}
 // ---- Daily goal and colors (Jonah, 26 Oct 2026) ----
-// Day target = week target / 7 ($642.86). Same colors as the week: Blue = target, Gold = 150%, Purple = 200%.
+// Day target = this week's target / 7 (it rises with the week target). Same colors as the week: Blue = target, Gold = 150%, Purple = 200%.
 // A day in progress is judged against how much of a normal day's money has usually come in by this time of day,
 // measured from our own paid orders over the last 28 days (most of it lands after the evening live), so a quiet
 // morning is not called Red. Before a quarter of a normal day's money has usually arrived, the color is
 // yesterday's result (Green if yesterday hit the target, Yellow if not), like the week does on Monday morning.
 // Finished days keep their final color: Red under 75% of target, Yellow 75–99%, then Blue / Gold / Purple.
-var DAY_TARGET=Math.round(WEEK_TARGET/7);
-var DAY_TIERS=[{k:'purple',dot:'🟣',name:'PURPLE',say:'Record-day territory',at:DAY_TARGET*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Big day',at:DAY_TARGET*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Day target hit',at:DAY_TARGET}];
+function dayTiersFor(t){return [{k:'purple',dot:'🟣',name:'PURPLE',say:'Record-day territory',at:t*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Big day',at:t*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Day target hit',at:t}]}
+var DAY_TARGET=Math.round(WEEK_TARGET/7),DAY_TIERS=dayTiersFor(DAY_TARGET);
 function etHM(t){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t*1000)),h=0,m=0;p.forEach(function(x){if(x.type==='hour')h=Number(x.value)%24;if(x.type==='minute')m=Number(x.value)});return{h:h,m:m}}
 function daySum(key){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&etDay(o.created||0)===key){n+=o.total||0;c++}});return{cents:n,count:c}}
 function dayShare(){var now=nowS(),today=etDay(now),bins=[],tot=0,n=0,i;for(i=0;i<24;i++)bins.push(0);
