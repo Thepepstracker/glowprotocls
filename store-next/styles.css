@@ -633,3 +633,32 @@ a.sub-card-price{display:block}
 
 .sub-acts label{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--champagne-deep)}
 
+
+/* Growth tools (8 Nov 2026): reviews on the store, the review page, account reorder, Management → Growth */
+.reviews-strip{margin:56px 0 8px;padding-top:36px;border-top:1px solid var(--hair,#e7dfcf)}
+.rv-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:20px}.rv-head h2{margin:6px 0 0}
+.rv-score{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}.rv-score strong{font-family:var(--serif);font-size:44px;font-weight:600;line-height:1;font-variant-numeric:lining-nums}.rv-score small{width:100%;text-align:right;font-size:12.5px}
+.rv-stars{color:var(--champagne,#c9a24b);letter-spacing:2px;font-size:15px}
+.rv-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.rv-card{margin:0;background:var(--ivory,#fbf9f4);border:1px solid var(--hair,#e7dfcf);border-radius:6px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px}
+.rv-card blockquote{margin:0;font-family:var(--serif);font-size:19px;line-height:1.35;color:var(--ink,#1b1b1b)}.rv-card figcaption{font-size:12.5px;color:var(--muted);margin-top:auto}
+@media(max-width:900px){.rv-list{grid-template-columns:1fr 1fr}}@media(max-width:600px){.rv-list{grid-template-columns:1fr}.rv-score small{text-align:left}}
+.rv-page{max-width:560px;margin:6vh auto;padding:0 4px}.rv-page h1{font-size:clamp(34px,5vw,48px);margin:8px 0 10px}
+.rv-form{display:flex;flex-direction:column;gap:6px;margin-top:18px}.rv-form textarea{border-color:var(--hair-strong,#d8ccb2);border-radius:3px;font:inherit}
+.rv-pick{border:0;padding:0;margin:0 0 8px;display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:4px}.rv-pick legend{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--champagne-deep,#806020);margin-bottom:6px;width:100%}
+.rv-pick label{margin:0;cursor:pointer;font-size:40px;line-height:1;color:#d8ccb2;transition:color .12s}.rv-pick input{position:absolute;opacity:0;width:1px;height:1px}.rv-pick .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.rv-pick label:hover,.rv-pick label:hover~label,.rv-pick input:checked+span,.rv-pick label:has(input:checked)~label span,.rv-pick label:has(input:checked) span{color:var(--champagne,#c9a24b)}
+.rv-pick label:has(input:focus-visible){outline:2px solid var(--champagne,#c9a24b);outline-offset:2px;border-radius:4px}
+.rv-note{font-size:13px;margin:0}.rv-check{display:flex;align-items:center;gap:8px;font-size:14px}.rv-check input{width:auto;margin:0}.rv-form button{align-self:flex-start;border-radius:2px;min-width:200px}
+.acct-o-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.acct-o-btns button{margin:0;border-radius:2px}
+.growth .gr-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:22px 0 10px;border-bottom:1px solid var(--ink,#1b1b1b);padding-bottom:8px}.growth .gr-h h3{margin:0;font-size:20px}
+.gr-days{display:flex;gap:6px}.gr-days button{margin:0;min-height:34px;padding:6px 12px;border-radius:2px;font-size:13px}
+.gr-funnel{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.gr-step{background:var(--ivory,#fbf9f4);border:1px solid var(--hair,#e7dfcf);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.gr-step strong{font-family:var(--serif);font-size:28px;font-weight:600;line-height:1.1;font-variant-numeric:lining-nums tabular-nums}.gr-step small{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--champagne-deep,#806020)}.gr-step em{font-style:normal;font-size:12.5px;color:var(--muted)}
+.gr-step:last-child{background:var(--ink,#1b1b1b);border-color:var(--ink,#1b1b1b)}.gr-step:last-child strong{color:#f1dfae}.gr-step:last-child small{color:#bfa66a}.gr-step:last-child em{color:#a9a294}
+@media(max-width:900px){.gr-funnel{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:520px){.gr-funnel{grid-template-columns:1fr 1fr}}
+.gr-reviews{display:flex;flex-direction:column;gap:10px}.gr-review{border:1px solid var(--hair,#e7dfcf);border-radius:6px;padding:12px 14px}.gr-review.pending{border-left:2px solid var(--champagne,#c9a24b)}.gr-review.hidden{opacity:.6}.gr-review p{margin:6px 0}.gr-review .actions{margin-top:6px}
+.gr-previews{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.gr-preview{background:var(--ivory,#fbf9f4);border:1px solid var(--hair,#e7dfcf);border-radius:6px;padding:14px 16px;font-size:13.5px}
+.gr-preview>small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--champagne-deep,#806020);margin-bottom:6px}.gr-preview>strong{display:block;margin-bottom:8px}.gr-preview p{margin:0 0 6px}.gr-btn{display:inline-block;margin:4px 0 8px;background:var(--ink,#1b1b1b);color:#fff;border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600}
+@media(max-width:900px){.gr-previews{grid-template-columns:1fr}}
