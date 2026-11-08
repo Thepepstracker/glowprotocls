@@ -17,6 +17,8 @@ const pay=()=>require('./auto-invoice.cjs');
 // A "slot" covers up to $65.00 of list price: each unit takes ceil(price / $65) slots (a $49 vial 1, a $92 vial 2, a $408 kit 7).
 // The tier is picked automatically: the smallest one that holds the slots used.
 const SLOT_MAX_CENTS=6500,CHARGE_DAYS_BEFORE=2,REMIND_DAYS_BEFORE_CHARGE=3,FAIR_PCT=85;
+// A declined box waits this long for a new card, then it is skipped and its items go back into stock (Jonah, 8 Nov 2026).
+const AUTO_SKIP_DAYS=5;
 const TIERS=[
  {id:'T1',level:1,name:'Tier 1',slots:1,price:3399,free_shipping:false,points:2,early_access:false,packed_first:false,bonus_every:0},
  {id:'T2',level:2,name:'Tier 2',slots:2,price:6499,free_shipping:false,points:2,early_access:false,packed_first:false,bonus_every:0},
@@ -111,35 +113,103 @@ async function checkCard(id){const x=await transaction(s=>s.get('subscriptions',
  return transaction(async s=>{const y=await s.get('subscriptions',x.id);if(y.status!=='needs_card')return publicSub(y);y.payment_method=pmId;y.card={brand:detail?.card?.brand||'card',last4:detail?.card?.last4||''};y.status='active';y.card_saved_at=now();if(chargeDate(y)<todayET())setShip(y,nextFrom(todayET(),y.every,todayET()));y.problem='';delete y.card_session;await s.put('subscriptions',y.id,y);return publicSub(y)})}
 // Changes (staff, or the customer through customerUpdate): how often, pause / resume, cancel, skip the next one,
 // move the next ship date, new items, new card link, check card.
-async function update({id,action,every,next_date,items},{customer=false,owner=null}={}){
+async function update({id,action,every,next_date,items,address},{customer=false,owner=null}={}){
  if(action==='link')return cardLink(id);
  if(action==='check')return checkCard(String(id||'').slice(0,20));
- return transaction(async s=>{const x=await s.get('subscriptions',String(id||'').slice(0,20));if(!x||(owner&&!owns(x,owner)))bad('Subscription not found.',404);if(x.status==='canceled')bad('This subscription is canceled.',409);
+ let jobs=[];
+ const out=await transaction(async s=>{const x=await s.get('subscriptions',String(id||'').slice(0,20));if(!x||(owner&&!owns(x,owner)))bad('Subscription not found.',404);if(x.status==='canceled')bad('This subscription is canceled.',409);
  if(x.status==='pending_first_payment'&&action!=='cancel')bad(customer?'Your first payment is still being confirmed. Try again in a minute.':'Waiting for the first payment on Stripe.',409);
- const today=todayET();
+ const today=todayET(),was=x.status;
  if(action==='every'){if(!EVERY[every]||(customer&&!CUSTOMER_EVERY.includes(every)))bad('Choose how often.');x.every=every}
  else if(action==='pause'){if(x.status==='needs_card')bad('Waiting for the card. Cancel it instead.',409);x.status='paused'}
  else if(action==='resume'){if(x.status!=='paused')bad('Only a paused subscription can be resumed.',409);x.status='active';if(chargeDate(x)<today)setShip(x,nextFrom(today,x.every,today))}
- else if(action==='cancel'){x.status='canceled';x.canceled_at=now();x.canceled_by=customer?'customer':'staff'}
+ else if(action==='cancel'){x.status='canceled';x.canceled_at=now();x.canceled_by=customer?'customer':'staff';
+  // A declined box still waiting for a card is not shipped or charged after a cancel: its items go back into stock.
+  if(x.payment_issue){const o=await s.get('orders',x.payment_issue);if(o&&o.status==='order_received'&&o.autopay?.status==='failed'){o.autopay={...o.autopay,status:'skipped',skipped_at:now()};await require('./store-core.cjs').subscriptionRelease(s,o,'canceled')}delete x.payment_issue}
+  // Tell the customer it is done, and tell the shop (Jonah, 8 Nov 2026). Only for a subscription that had started.
+  if(['active','paused'].includes(was))jobs=[await queueCanceled(s,x),...await staffAlert(s,{id:'sub-canceled-'+x.id,brand:x.brand,subject:'Subscription canceled'+(customer?' by the customer':'')+' · '+(x.customer?.name||x.id)+' · '+x.id,lines:[(x.customer?.name||'A customer')+' canceled '+x.id+'.','Items: '+(x.items||[]).map(i=>(i.name||'Product')+' × '+i.quantity).join(', ')+'.','How often: '+(EVERY[x.every]?.label||x.every)+'.','Boxes so far: '+deliveriesDone(x)+'.']})]}
  else if(action==='skip'){let next=addInterval(shipDate(x),x.every);while(addDays(next,-CHARGE_DAYS_BEFORE)<today)next=addInterval(next,x.every);setShip(x,next)}
  else if(action==='date'){if(!validDate(next_date)||next_date<today)bad('Choose a date from today on.');if(customer&&addDays(next_date,-CHARGE_DAYS_BEFORE)<today)bad('Choose a ship date at least 2 days from today.');setShip(x,next_date)}
  else if(action==='items'){const m=await productsOf(s),lines=await validItems(s,items,x.brand||'glow',m);const r=priceFor(lines,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings:await s.get('settings','main')});if(!r.ok)bad(r.error,409);x.items=lines.map(l=>({id:l.id,quantity:l.quantity,name:m.get(l.id).name}));x.tier=r.tier.id}
+ else if(action==='address'){x.customer=shipTo(x,address);x.address_changed_at=now()}
  else bad('Choose what to change.');
- x.problem='';x.updated_at=now();await s.put('subscriptions',x.id,x);return publicSub(x)})}
+ x.problem=action!=='cancel'&&x.payment_issue?x.problem:'';
+ x.updated_at=now();await s.put('subscriptions',x.id,x);return publicSub(x)});
+ const emails=require('./store-email.cjs');for(const j of jobs.filter(Boolean))await emails.safeDispatch(j);return out}
+// New ship-to address for future boxes (customer or staff). Same checks as checkout; the email stays the account email.
+function shipTo(x,input){const a=input&&typeof input==='object'?input:{},str=v=>typeof v==='string'?v:'';
+ const c=require('./store-core.cjs').checkoutCustomer({name:str(a.name)||x.customer?.name||'',email:x.customer?.email||'',phone:str(a.phone)||x.customer?.phone||'',address:str(a.address),city:str(a.city),state:str(a.state),zip:str(a.zip)});
+ const address2=str(a.address2).trim();if(address2.length>100)bad('Apartment or suite is too long.');
+ return{...x.customer,name:c.name,phone:c.phone,address:c.address,address2,city:c.city,state:c.state,zip:c.zip}}
 async function validItems(s,items,brandId,m){const brands=require('./brands.cjs'),lines=cleanItems(items);if(!lines.length)bad('Add at least one product.');if(lines.length>40)bad('Too many products.');const seen=new Set();
  for(const l of lines){if(seen.has(l.id))bad('Duplicate product.');seen.add(l.id);if(l.quantity>20)bad('Up to 20 of one product.');const p=m.get(l.id);if(!p||!p.active||brands.productBrand(p)!==brandId)bad('A product is unavailable.')}return lines}
 // Charge one repeat order to the saved card. The idempotency key is the order id, so a retry can never charge twice.
 async function charge(orderId){const t=now();
  const o=await transaction(s=>s.get('orders',orderId));if(!o||o.payment_method!=='card_autopay'||!['charging','unknown'].includes(o.autopay?.status))return{status:'skipped'};
- if(t-(o.autopay.started||o.created)>23*3600){await transaction(async s=>{const c=await s.get('orders',orderId);c.autopay={...c.autopay,status:'needs_review',message:'The card charge result was never confirmed. Check Stripe before doing anything else.'};await s.put('orders',orderId,c)});return{status:'needs_review'}}
+ // Never charge an order that was canceled, marked paid or changed while its charge was waiting (Jonah, 8 Nov 2026).
+ if(o.status!=='order_received')return review(orderId,'This order was '+o.status+' before its card charge finished. Nothing more will be charged. Check Stripe before doing anything else.');
+ if(t-(o.autopay.started||o.created)>23*3600)return review(orderId,'The card charge result was never confirmed. Check Stripe before doing anything else.');
  const sub=await transaction(s=>s.get('subscriptions',o.subscription_id));if(!sub?.stripe_customer||!sub.payment_method)return markFail(orderId,sub,'No saved card on this subscription.');
- let pi;try{pi=await pay().stripe('/payment_intents',{method:'POST',idem:'glow-sub-charge-'+o.id,body:{amount:o.total,currency:'usd',customer:sub.stripe_customer,payment_method:sub.payment_method,off_session:true,confirm:true,description:'Glow Lab',metadata:{order_id:o.id,subscription_id:sub.id}}})}
+ let pi;try{pi=await pay().stripe('/payment_intents',{method:'POST',idem:chargeKey(o),body:{amount:o.total,currency:'usd',customer:sub.stripe_customer,payment_method:sub.payment_method,off_session:true,confirm:true,description:'Glow Lab',metadata:{order_id:o.id,subscription_id:sub.id}}})}
  catch(e){if(e.uncertain){await transaction(async s=>{const c=await s.get('orders',orderId);c.autopay={...c.autopay,status:'unknown',message:'Stripe did not answer. It will be checked again.'};await s.put('orders',orderId,c)});return{status:'unknown'}}return markFail(orderId,sub,String(e.message||'Card was declined.').replace(/^Stripe: /,''))}
  if(pi.status!=='succeeded'||pi.currency!=='usd'||pi.amount_received<o.total||pi.livemode!==pay().stripeLive())return markFail(orderId,sub,pi.status==='requires_action'?'The card needs the customer to confirm it (bank check). Send them a new card link.':'Charge not completed ('+pi.status+').');
  const core=require('./store-core.cjs'),emails=require('./store-email.cjs');
  const job=await transaction(async s=>{const c=await s.get('orders',orderId);if(c.status!=='order_received')return null;return core.subscriptionChargePaid(s,c,pi)});
  if(job)await emails.safeDispatch(job);return{status:'paid'}}
-async function markFail(orderId,sub,message){await transaction(async s=>{const c=await s.get('orders',orderId);if(c){c.autopay={...(c.autopay||{}),status:'failed',message:String(message).slice(0,200),failed_at:now()};await s.put('orders',orderId,c)}if(sub){const y=await s.get('subscriptions',sub.id);if(y){y.problem='Repeat order '+orderId+' was not paid: '+String(message).slice(0,160);await s.put('subscriptions',y.id,y)}}});return{status:'failed',message}}
+// One Stripe idempotency key per attempt. Attempt 1 keeps the original key; a new attempt is only made after a definite
+// decline and a new card (retryFailed), so a charge that may have gone through is never sent again.
+function chargeKey(o){const n=Number(o.autopay?.attempt)||1;return 'glow-sub-charge-'+o.id+(n>1?'-'+n:'')}
+// A declined box: the order waits (items held) for AUTO_SKIP_DAYS; the customer is emailed once per attempt to update
+// their card; the shop gets an alert.
+async function markFail(orderId,sub,message){const jobs=await transaction(async s=>{const out=[];const c=await s.get('orders',orderId);const y=sub&&await s.get('subscriptions',sub.id);
+  if(c){c.autopay={...(c.autopay||{}),status:'failed',message:String(message).slice(0,200),failed_at:now()};await s.put('orders',orderId,c)}
+  if(y){y.problem='Repeat order '+orderId+' was not paid: '+String(message).slice(0,160);y.payment_issue=orderId;await s.put('subscriptions',y.id,y)}
+  if(c&&y&&c.is_test===false){const n=Number(c.autopay.attempt)||1,skip=longDay(addDays(todayET(),AUTO_SKIP_DAYS));
+   out.push(await queueDeclined(s,y,c,skip,n));
+   out.push(...await staffAlert(s,{id:'sub-declined-'+orderId+'-'+n,brand:y.brand,subject:'Subscription card declined · '+(y.customer?.name||y.id)+' · '+orderId,lines:['The saved card for '+(y.customer?.name||'this customer')+' ('+y.id+') was not charged for '+orderId+'.','Reason: '+String(message).slice(0,160),'Amount: $'+((c.total||0)/100).toFixed(2)+'.','They were emailed a link to update their card. The box is charged as soon as they do.','If nothing changes by '+skip+', the box is skipped and its items go back into stock.']}))}
+  return out.filter(Boolean)});
+ const emails=require('./store-email.cjs');for(const j of jobs)await emails.safeDispatch(j);return{status:'failed',message}}
+// A charge whose result is unclear, or an order that changed under it: stop and ask the shop to check Stripe.
+async function review(orderId,message){const jobs=await transaction(async s=>{const c=await s.get('orders',orderId);if(!c)return[];c.autopay={...c.autopay,status:'needs_review',message};await s.put('orders',orderId,c);
+  const y=c.subscription_id&&await s.get('subscriptions',c.subscription_id);if(y){y.problem='Repeat order '+orderId+' needs review: '+message.slice(0,140);await s.put('subscriptions',y.id,y)}
+  return c.is_test===false?staffAlert(s,{id:'sub-review-'+orderId,brand:c.brand,subject:'Check Stripe · subscription charge needs review · '+orderId,lines:[message,'Order: '+orderId+' · $'+((c.total||0)/100).toFixed(2)+'.','Customer: '+(c.customer?.name||'')+' ('+(c.subscription_id||'')+').']}):[]});
+ const emails=require('./store-email.cjs');for(const j of jobs)await emails.safeDispatch(j);return{status:'needs_review'}}
+// After a new card: charge the declined box again (a new attempt, a new idempotency key). Only a box that was
+// definitely declined and is still waiting is charged; anything else is left alone.
+async function retryFailed(subId){const ids=await transaction(async s=>{const out=[];for(const o of await (s.listLite?s.listLite('orders'):s.list('orders'))){if(o.subscription_id!==subId||o.payment_method!=='card_autopay'||o.status!=='order_received'||o.autopay?.status!=='failed')continue;
+   const c=await s.get('orders',o.id);c.autopay={status:'charging',started:now(),attempt:(Number(c.autopay?.attempt)||1)+1,previous:c.autopay?.message||''};await s.put('orders',c.id,c);out.push(c.id)}return out});
+ const results=[];for(const id of ids)results.push(await charge(id));
+ if(results.length&&results.every(r=>r.status==='paid'))await transaction(async s=>{const y=await s.get('subscriptions',subId);if(y){y.problem='';delete y.payment_issue;await s.put('subscriptions',y.id,y)}});
+ return{charged:results.filter(r=>r.status==='paid').length,failed:results.filter(r=>r.status==='failed').length,tried:results.length}}
+// The customer replaces their saved card on Stripe's own page (setup mode: nothing is charged there, no product names).
+async function cardUpdateLink(id,owner){const x=await transaction(s=>s.get('subscriptions',String(id||'').slice(0,20)));if(!x||(owner&&!owns(x,owner)))bad(COPY.not_found,404);
+ if(!['active','paused'].includes(x.status))bad('Only an active or paused subscription can change its card.',409);if(!x.stripe_customer)bad('This subscription has no card on file yet.',409);
+ if(x.card_update?.url&&(x.card_update.expires||0)>now()+600)return{url:x.card_update.url};
+ const sess=await pay().stripe('/checkout/sessions',{method:'POST',idem:'glow-sub-cardupd-'+x.id+'-'+crypto.randomBytes(6).toString('hex'),body:{mode:'setup',customer:x.stripe_customer,currency:'usd',payment_method_types:['card'],success_url:origin()+'/store-next/account?card_saved='+x.id,cancel_url:origin()+'/store-next/account#subscriptions',metadata:{subscription_id:x.id},setup_intent_data:{metadata:{subscription_id:x.id},description:'Glow Lab'}}});
+ if(!sess?.id||!sess.url)bad(COPY.checkout_failed,502);
+ await transaction(async s=>{const y=await s.get('subscriptions',x.id);y.card_update={id:sess.id,url:sess.url,expires:sess.expires_at||now()+86400};await s.put('subscriptions',y.id,y)});return{url:sess.url}}
+// Did the customer save a new card? Then it becomes the card for every future box, and a declined box is charged again.
+async function checkCardUpdate(id){const x=await transaction(s=>s.get('subscriptions',String(id||'').slice(0,20)));if(!x?.card_update?.id)return{status:'none'};
+ const st=pay().stripe,sess=await st('/checkout/sessions/'+encodeURIComponent(x.card_update.id)+'?expand[]=setup_intent');
+ const clear=async()=>transaction(async s=>{const y=await s.get('subscriptions',x.id);if(y&&y.card_update?.id===x.card_update.id){delete y.card_update;await s.put('subscriptions',y.id,y)}});
+ if(sess.status==='expired'||(sess.status!=='complete'&&(x.card_update.expires||0)<now())){await clear();return{status:'expired'}}
+ const pm=sess.setup_intent?.payment_method,pmId=typeof pm==='string'?pm:pm?.id;
+ if(sess.status!=='complete'||sess.setup_intent?.status!=='succeeded'||!pmId)return{status:'pending'};
+ if((sess.metadata?.subscription_id&&sess.metadata.subscription_id!==x.id)||(sess.customer&&(typeof sess.customer==='string'?sess.customer:sess.customer.id)!==x.stripe_customer)){await clear();return{status:'mismatch'}}
+ const detail=typeof pm==='object'&&pm.card?pm:await st('/payment_methods/'+encodeURIComponent(pmId));
+ await st('/customers/'+encodeURIComponent(x.stripe_customer),{method:'POST',body:{invoice_settings:{default_payment_method:pmId}}});
+ const saved=await transaction(async s=>{const y=await s.get('subscriptions',x.id);if(!y||y.card_update?.id!==x.card_update.id)return false;y.payment_method=pmId;y.card={brand:detail?.card?.brand||'card',last4:detail?.card?.last4||''};y.card_saved_at=now();y.card_updates=(y.card_updates||0)+1;delete y.card_update;if(/No saved card|not paid|declined/i.test(y.problem||'')&&!y.payment_issue)y.problem='';await s.put('subscriptions',y.id,y);return true});
+ if(!saved)return{status:'none'};
+ const retry=await retryFailed(x.id);return{status:'saved',retry}}
+async function queueDeclined(s,x,o,skip,n){const emails=require('./store-email.cjs'),c=declinedEmail({name:x.customer?.name,card:x.card,items:o.items,amount_cents:o.total,skip_date:skip});
+ return emails.enqueue(s,{id:'sub-declined-'+o.id+'-'+n,kind:'subscription_declined',brand:x.brand||'glow',to:x.customer.email,related_id:x.id,expires:now()+3*86400,subject:c.subject,content:emails.template(c.title,c.lines,manageLink(),c.button)})}
+async function queueCanceled(s,x){const emails=require('./store-email.cjs'),c=canceledEmail({name:x.customer?.name});
+ return emails.enqueue(s,{id:'sub-canceled-'+x.id,kind:'subscription_canceled',brand:x.brand||'glow',to:x.customer.email,related_id:x.id,subject:c.subject,content:emails.template(c.title,c.lines,manageLink(),c.button)})}
+// Alerts to the shop's own inbox (the same addresses as new-order alerts). Each id is sent once. Like order alerts,
+// they never include the customer's email, phone or street.
+async function staffAlert(s,{id,brand,subject,lines}){const emails=require('./store-email.cjs'),out=[];
+ for(const to of emails.alertRecipients())out.push(await emails.enqueue(s,{id:id+'-'+crypto.createHash('sha256').update(to).digest('hex').slice(0,10),kind:'staff_subscription_alert',brand:brand||'glow',to,related_id:id,expires:now()+86400,subject,content:emails.template(subject,lines,origin()+'/store-next/admin','Open Management')}));
+ return out.filter(Boolean)}
 
 // ---- Customer self-serve (5 Nov 2026) ----
 function owns(x,a){return !!a&&!!x&&(x.customer_id===a.id||(a.verified===true&&String(x.customer?.email||'').trim().toLowerCase()===a.email))}
@@ -210,11 +280,22 @@ async function settleFirst(id,{close=false}={}){
   await s.put('subscriptions',y.id,y);out.push(await queueWelcome(s,y,c));return out.filter(Boolean)});
  for(const j of jobs)await emails.safeDispatch(j);
  const y=await transaction(s=>s.get('subscriptions',x.id));return{status:y.status==='active'?'active':y.status,sub:publicSub(y)}}
+async function skipStale(ts){const core=require('./store-core.cjs');
+ const ids=await transaction(async s=>(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(o=>o.payment_method==='card_autopay'&&o.status==='order_received'&&o.autopay?.status==='failed'&&todayET(ts*1000)>addDays(todayET((o.autopay.failed_at||ts)*1000),AUTO_SKIP_DAYS)).map(o=>o.id));let n=0;
+ for(const id of ids){const done=await transaction(async s=>{const o=await s.get('orders',id);if(!o||o.status!=='order_received'||o.autopay?.status!=='failed')return false;o.autopay={...o.autopay,status:'skipped',skipped_at:ts};await core.subscriptionRelease(s,o,'canceled');
+   const x=o.subscription_id&&await s.get('subscriptions',o.subscription_id);if(x){if(Number.isInteger(x.deliveries)&&x.deliveries>0)x.deliveries--;if(x.payment_issue===o.id)delete x.payment_issue;x.problem='Box '+o.id+' was skipped: no new card within '+AUTO_SKIP_DAYS+' days.';await s.put('subscriptions',x.id,x)}return true});if(done)n++}
+ return n}
 async function closeFirst(id,why){const core=require('./store-core.cjs');await transaction(async s=>{const x=await s.get('subscriptions',id);if(!x||x.status!=='pending_first_payment')return;const o=x.first_order&&await s.get('orders',x.first_order);if(o&&o.status==='order_received')await core.subscriptionRelease(s,o,'expired');x.status='canceled';x.canceled_at=now();x.canceled_by='checkout';x.problem='';x.closed_reason=why;await s.put('subscriptions',x.id,x)})}
 async function queueWelcome(s,x,o){const emails=require('./store-email.cjs');const c=welcomeEmail(x,o);return emails.enqueue(s,{id:'sub-welcome-'+x.id,kind:'subscription_started',brand:x.brand||'glow',to:x.customer.email,related_id:x.id,subject:c.subject,content:emails.template(c.title,c.lines,manageLink(),c.button)})}
 function manageLink(){return (require('./store-email.cjs').configuration().origin||origin())+'/store-next/account#subscriptions'}
 function welcomeEmail(x,o){const n=count(o.items);return{subject:'Your Glow Lab subscription is set',title:'Your subscription is set.',button:'Manage your subscription',
  lines:['Hi '+(String(x.customer?.name||'').trim().split(/\s+/)[0]||'there')+',','Thank you for subscribing. Your first box is paid and in our packing queue.','How often: '+(EVERY[x.every]?.label||x.every)+'.','Next box ships on: '+longDay(shipDate(x))+'.','Box: '+n+' item'+(n===1?'':'s')+'.','We charge your saved card 2 days before each ship date, and we email you 3 days before every charge.','You can skip a box, change your items or how often it arrives, pause or cancel any time from your account.']}}
+// Sent when the saved card is declined for a box. One function, so the owner can approve the wording.
+function declinedEmail({name,card,items,amount_cents,skip_date}){const n=count(items),cd=card&&card.last4?String(card.brand||'card').replace(/^./,c=>c.toUpperCase())+' ending in '+card.last4:'your saved card';return{subject:'Action needed: update your card for your Glow Lab box',title:'We couldn’t charge your card.',button:'Update your card',
+ lines:['Hi '+(String(name||'').trim().split(/\s+/)[0]||'there')+',','We tried to charge '+cd+' for your next subscription box, but it did not go through. Nothing was charged.','Box: '+n+' item'+(n===1?'':'s')+'.','Amount: $'+((amount_cents||0)/100).toFixed(2)+' (shipping included).','To keep this box on schedule, update your card on your Subscriptions page. We charge the new card right away and your box ships.','If your card isn’t updated by '+skip_date+', we’ll skip this box. Your subscription stays on.','Questions? Just reply to this email.']}}
+// Sent when a subscription is canceled. One function, so the owner can approve the wording.
+function canceledEmail({name}){return{subject:'Your Glow Lab subscription is canceled',title:'Your subscription is canceled.',button:'Your account',
+ lines:['Hi '+(String(name||'').trim().split(/\s+/)[0]||'there')+',','Your subscription is canceled. No more boxes will be charged or shipped.','Any box already paid for still ships.','Changed your mind? You can start a new subscription from your bag any time.','Questions? Just reply to this email.']}}
 // The reminder sent 3 days before each charge. One function, so the owner can approve the wording.
 function reminderEmail({name,items,amount_cents,charge_date,ship_date}){const n=count(items);return{subject:'Your next Glow Lab box · card charged '+longDay(charge_date),title:'Your next box is coming up.',button:'Skip, change or cancel',
  lines:['Hi '+(String(name||'').trim().split(/\s+/)[0]||'there')+',','Your next subscription box ships on the date you chose. Here are the details:','Box: '+n+' item'+(n===1?'':'s')+'.','Amount: $'+(amount_cents/100).toFixed(2)+' (shipping included).','Card charged on: '+longDay(charge_date)+'.','Ships on: '+longDay(ship_date)+'.','Want to skip this box, change your items or how often it arrives, or cancel? Do it any time before '+longDay(charge_date)+' on your Subscriptions page.','Nothing to do if everything looks right. It arrives on schedule.']}}
@@ -223,7 +304,7 @@ function reminderEmail({name,items,amount_cents,charge_date,ship_date}){const n=
 async function remind(limit=20,t=Date.now()){const emails=require('./store-email.cjs');
  const jobs=await transaction(async s=>{if(!await switchOn(s))return null;if(!emails.configuration().ready)return[];const today=todayET(t),m=await productsOf(s),settings=await s.get('settings','main'),out=[];
   for(const x of (await s.list('subscriptions')).filter(x=>x.status==='active'&&x.pay==='autopay').slice(0,500)){if(out.length>=limit)break;const cd=chargeDate(x),cycle=shipDate(x);
-   if(!cd||!(today>=addDays(cd,-REMIND_DAYS_BEFORE_CHARGE)&&today<cd)||x.reminded_for===cycle)continue;
+   if(!cd||!(today>=addDays(cd,-REMIND_DAYS_BEFORE_CHARGE)&&today<cd)||x.reminded_for===cycle||x.payment_issue)continue;
    const r=priceFor(x.items,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings});if(!r.ok)continue;
    const c=reminderEmail({name:x.customer?.name,items:r.lines,amount_cents:r.total_cents,charge_date:cd,ship_date:cycle});
    const job=await emails.enqueue(s,{id:'sub-remind-'+x.id+'-'+cycle,kind:'subscription_reminder',brand:x.brand||'glow',to:x.customer.email,related_id:x.id,subject:c.subject,content:emails.template(c.title,c.lines,manageLink(),c.button)});
@@ -235,9 +316,13 @@ async function remind(limit=20,t=Date.now()){const emails=require('./store-email
 // the 15% on every paid box plus the shipping they didn't pay (standard shipping for that box minus what was charged).
 function savedOf(x,orders,settings){let saved=0,boxes=0;for(const o of orders||[]){if(o.subscription_id!==x.id||o.is_test!==false||!['paid','shipped'].includes(o.status))continue;boxes++;
  const off=Number.isInteger(o.subscription_discount)?o.subscription_discount:0,std=shippingFor(null,Number(o.subtotal)||0,settings),ship=Number(o.shipping)||0;saved+=off+Math.max(0,std-ship)}return{saved_cents:saved,boxes}}
+// The declined box still waiting for a new card, if any (amount, and the day it is skipped).
+function issueOf(x,orders){if(!x.payment_issue)return null;const o=(orders||[]).find(o=>o.id===x.payment_issue);if(!o||o.status!=='order_received'||o.autopay?.status!=='failed')return null;
+ const f=o.autopay.failed_at||now();return{order_id:o.id,amount_cents:o.total||0,ship_date:o.ship_date||o.subscription_cycle||'',skip_date:addDays(todayET(f*1000),AUTO_SKIP_DAYS)}}
 function customerView(x,m,settings,orders){const p=pricingOf(x,m,settings),t=p.tier?tierById(p.tier.id):null,done=deliveriesDone(x),sv=savedOf(x,orders,settings);
  const bonusIn=t&&t.bonus_every?(t.bonus_every-(done%t.bonus_every))%t.bonus_every||t.bonus_every:0;
- return{saved_cents:sv.saved_cents,boxes_paid:sv.boxes,bonus_in:bonusIn,id:x.id,status:x.status,every:x.every,every_label:EVERY[x.every]?.label||x.every,next_ship_date:x.status==='active'||x.status==='paused'?shipDate(x):'',charge_date:x.status==='active'?chargeDate(x):'',
+ const c=x.customer||{};
+ return{payment_issue:issueOf(x,orders),ship_to:{name:c.name||'',address:c.address||'',address2:c.address2||'',city:c.city||'',state:c.state||'',zip:c.zip||'',phone:c.phone||''},saved_cents:sv.saved_cents,boxes_paid:sv.boxes,bonus_in:bonusIn,id:x.id,status:x.status,every:x.every,every_label:EVERY[x.every]?.label||x.every,next_ship_date:x.status==='active'||x.status==='paused'?shipDate(x):'',charge_date:x.status==='active'?chargeDate(x):'',
  items:(x.items||[]).map(i=>{const pr=m.get(i.id);return{id:i.id,quantity:i.quantity,name:pr?.name||i.name||'Product',price_cents:pr?.price||0,slots:pr?slotsOf(pr):1}}),pricing:p,card:x.card?{brand:x.card.brand,last4:x.card.last4}:null,
  checkout_url:x.status==='pending_first_payment'&&x.checkout?.url&&(x.checkout.expires||0)>now()+300?x.checkout.url:'',problem:x.status==='pending_first_payment'&&x.problem?COPY.pending:'',created:x.created}}
 async function customerRoute(path,body,h,method){
@@ -250,6 +335,7 @@ async function customerRoute(path,body,h,method){
  if(path==='/account/subscriptions'&&method==='GET'){const a=await me();
   // A checkout the customer left open: ask Stripe once more so the page shows the truth.
   const pending=await transaction(async s=>(await s.list('subscriptions')).filter(x=>owns(x,a)&&x.status==='pending_first_payment').map(x=>x.id));for(const id of pending){try{await settleFirst(id)}catch{}}
+  const cards=await transaction(async s=>(await s.list('subscriptions')).filter(x=>owns(x,a)&&x.card_update?.id).map(x=>x.id));for(const id of cards){try{await checkCardUpdate(id)}catch{}}
   return ok(await transaction(async s=>{const m=await productsOf(s),settings=await s.get('settings','main');const list=(await s.list('subscriptions')).filter(x=>owns(x,a)&&!(x.status==='canceled'&&x.canceled_by==='checkout')).sort((p,q)=>(p.status==='canceled'?1:0)-(q.status==='canceled'?1:0)||(q.created||0)-(p.created||0));
    const orders=await (s.listLite?s.listLite('orders'):s.list('orders'));
    return{discount_pct:FAIR_PCT?100-FAIR_PCT:15,subscriptions:list.map(x=>customerView(x,m,settings,orders)),every:CUSTOMER_EVERY.map(k=>({id:k,label:EVERY[k].label})),tiers:TIERS.map(publicTier),max_slots:MAX_SLOTS,slot_max_cents:SLOT_MAX_CENTS}}))}
@@ -257,32 +343,45 @@ async function customerRoute(path,body,h,method){
  if(path==='/account/subscriptions/abandon'&&method==='POST'){const a=await me(),x=await mine(a,body.id);if(x.status==='pending_first_payment')await settleFirst(x.id,{close:true});return ok({ok:true})}
  if(path==='/account/subscriptions/preview'&&method==='POST'){const a=await me(),x=await mine(a,body.id);
   return ok(await transaction(async s=>{const m=await productsOf(s),lines=await validItems(s,body.items,x.brand||'glow',m);return require('./store-core.cjs').subscriptionQuote(s,{items:lines,h:{},brand:brands.get(x.brand||'glow'),deliveryNumber:deliveriesDone(x)+1,bonus_id:x.bonus_id,stockCheck:false})}))}
- if(path==='/account/subscriptions/update'&&method==='POST'){const a=await me(),x=await mine(a,body.id),action=String(body.action||'').slice(0,10);if(!['every','skip','pause','resume','cancel','items'].includes(action))bad('Choose what to change.');
-  await update({id:x.id,action,every:String(body.every||'').slice(0,4),items:body.items},{customer:true,owner:a});
+ if(path==='/account/subscriptions/update'&&method==='POST'){const a=await me(),x=await mine(a,body.id),action=String(body.action||'').slice(0,10);if(!['every','skip','pause','resume','cancel','items','address'].includes(action))bad('Choose what to change.');
+  await update({id:x.id,action,every:String(body.every||'').slice(0,4),items:body.items,address:body.address},{customer:true,owner:a});
   return ok(await transaction(async s=>customerView(await s.get('subscriptions',x.id),await productsOf(s),await s.get('settings','main'),await (s.listLite?s.listLite('orders'):s.list('orders')))))}
+ if(path==='/account/subscriptions/card'&&method==='POST'){const a=await me(),x=await mine(a,body.id);return ok(await cardUpdateLink(x.id,a))}
+ if(path==='/account/subscriptions/card-check'&&method==='POST'){const a=await me(),x=await mine(a,body.id);const r=await checkCardUpdate(x.id);
+  return ok({status:r.status,charged:r.retry?.charged||0,failed:r.retry?.failed||0,subscription:await transaction(async s=>customerView(await s.get('subscriptions',x.id),await productsOf(s),await s.get('settings','main'),await (s.listLite?s.listLite('orders'):s.list('orders'))))})}
  return null}
 
 // Autopilot: settle first payments; check waiting cards; retry unknown charges; then (10 AM–6 PM Eastern) make each
 // repeat order 2 days before its ship date and charge it, and send the 3-days-before-charge reminders.
 // A problem (sold out, checkout off) is shown in Management and retried next run; the date only moves once the order exists.
 async function run(limit=10,t=Date.now()){
- const ts=Math.floor(t/1000),out={status:'ok',made:0,paid:0,failed:0,cards:0,started:0,reminded:0};
+ const ts=Math.floor(t/1000),out={status:'ok',made:0,paid:0,failed:0,cards:0,started:0,reminded:0,skipped:0};
  if(!pay().stripeReady())return{status:'stripe_not_connected',made:0};
  const firsts=await transaction(async s=>(await s.list('subscriptions')).filter(x=>x.status==='pending_first_payment').map(x=>({id:x.id,old:ts-(x.created||ts)>25*3600})));
  for(const f of firsts){try{if((await settleFirst(f.id,{close:f.old})).status==='active')out.started++}catch{}}
  const waiting=await transaction(async s=>(await s.list('subscriptions')).filter(x=>x.status==='needs_card'&&x.card_session?.id).map(x=>x.id));
  for(const id of waiting){try{if((await checkCard(id)).status==='active')out.cards++}catch{}}
+ // A new card saved on Stripe but the customer never came back to the store: pick it up here.
+ const updates=await transaction(async s=>(await s.list('subscriptions')).filter(x=>x.card_update?.id&&['active','paused'].includes(x.status)).map(x=>x.id));
+ for(const id of updates){try{const r=await checkCardUpdate(id);if(r.status==='saved'){out.cards++;out.paid+=r.retry?.charged||0;out.failed+=r.retry?.failed||0}}catch{}}
+ // A declined box with no new card after AUTO_SKIP_DAYS: skipped, items back into stock, never charged.
+ out.skipped=await skipStale(ts);
  // Retry charges whose result is not known yet (same idempotency key, so never a second charge).
  const pending=await transaction(async s=>(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(o=>o.payment_method==='card_autopay'&&['charging','unknown'].includes(o.autopay?.status)).map(o=>o.id));
  for(const id of pending){const r=await charge(id);if(r.status==='paid')out.paid++;if(r.status==='failed')out.failed++}
- const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'}).format(new Date(t)));if(hour<10||hour>=18){out.status=out.cards||out.paid||out.started?'ok':'quiet_hours';return out}
+ const hour=Number(new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',hourCycle:'h23'}).format(new Date(t)));if(hour<10||hour>=18){out.status=out.cards||out.paid||out.started||out.skipped?'ok':'quiet_hours';return out}
  const core=require('./store-core.cjs'),emails=require('./store-email.cjs'),autoInvoice=require('./auto-invoice.cjs'),today=todayET(t);
  const due=await transaction(async s=>(await s.list('subscriptions')).filter(x=>x.status==='active'&&shipDate(x)&&chargeDate(x)<=today).slice(0,limit).map(x=>x.id));
  for(const id of due){let made=null;
   try{made=await transaction(async s=>{const x=await s.get('subscriptions',id);if(!x||x.status!=='active'||chargeDate(x)>today)return null;const cycle=shipDate(x);
+    // Never two unpaid boxes: while a declined box waits for a new card, the next one is not made yet.
+    if(x.payment_issue){const w=await s.get('orders',x.payment_issue);if(w&&w.status==='order_received'&&w.autopay?.status==='failed')bad('Waiting for a new card for '+w.id+' before the next box is made.',409);delete x.payment_issue}
     const r=await core.subscriptionOrder(s,x,cycle);const orderId=r.existing||r.order.id;x.orders=[...(x.orders||[]).filter(o=>o!==orderId),orderId].slice(-50);if(!r.existing)x.deliveries=deliveriesDone(x)+1;
     setShip(x,nextFrom(cycle,x.every,today));x.problem='';x.last_run=ts;await s.put('subscriptions',x.id,x);return r})}
-  catch(e){await transaction(async s=>{const x=await s.get('subscriptions',id);if(x){x.problem=String(e&&e.message||e).slice(0,200);x.last_run=ts;await s.put('subscriptions',x.id,x)}});continue}
+  catch(e){const msg=String(e&&e.message||e).slice(0,200);const jobs=await transaction(async s=>{const x=await s.get('subscriptions',id);if(!x)return[];const first=x.problem!==msg;x.problem=msg;x.last_run=ts;await s.put('subscriptions',x.id,x);
+    // Tell the shop once per problem per box (sold out, product off, checkout off), not every hour.
+    if(!first||/^Waiting for a new card/.test(msg))return[];return staffAlert(s,{id:'sub-problem-'+x.id+'-'+shipDate(x)+'-'+crypto.createHash('sha256').update(msg).digest('hex').slice(0,8),brand:x.brand,subject:'Subscription box not made · '+(x.customer?.name||x.id)+' · '+x.id,lines:['The repeat box for '+(x.customer?.name||'this customer')+' ('+x.id+', ships '+longDay(shipDate(x))+') was not made yet.','Reason: '+msg,'It is tried again every hour. Nothing has been charged.']})});
+   for(const j of jobs)await emails.safeDispatch(j);continue}
   if(!made||made.existing)continue;out.made++;for(const j of made.jobs)await emails.safeDispatch(j);
   if(made.autopay){const r=await charge(made.order.id);if(r.status==='paid')out.paid++;if(r.status==='failed')out.failed++}
   else if(made.invoice){try{await autoInvoice.sendFor(made.invoice)}catch{}}}
@@ -291,4 +390,5 @@ async function run(limit=10,t=Date.now()){
 }
 module.exports={EVERY,CUSTOMER_EVERY,DISCOUNT_PCT,TIERS,SLOT_MAX_CENTS,MAX_SLOTS,CHARGE_DAYS_BEFORE,REMIND_DAYS_BEFORE_CHARGE,FAIR_PCT,COPY,
  slotsOf,slotsFor,tierFor,tierById,priceFor,bonusDelivery,shippingFor,publicTier,addInterval,addDays,todayET,shipDate,chargeDate,deliveriesDone,
- list,create,update,cardLink,checkCard,charge,run,remind,publicSub,owns,offerOpen,customerRoute,startCheckout,settleFirst,checkoutBody,reminderEmail,welcomeEmail};
+ list,create,update,cardLink,checkCard,charge,run,remind,publicSub,owns,offerOpen,customerRoute,startCheckout,settleFirst,checkoutBody,reminderEmail,welcomeEmail,
+ AUTO_SKIP_DAYS,cardUpdateLink,checkCardUpdate,retryFailed,skipStale,declinedEmail,canceledEmail,customerView};

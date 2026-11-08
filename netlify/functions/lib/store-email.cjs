@@ -137,6 +137,6 @@ async function dispatchPending(limit=4,budgetMs=0){const started=Date.now();if(!
 async function prepareRetry(s,j){const cfg=configuration();if(!cfg.ready)throw Object.assign(new Error('Connect email settings first.'),{status:503});const payload=open(j.payload);payload.from=`${brands.get(j.brand).name} <${brands.emailFrom(brands.get(j.brand),cfg.from)}>`;payload.reply_to=cfg.reply;j.payload=seal(payload);j.status='pending';j.retry_generation=(j.retry_generation||0)+1;j.send_key=j.id+'-retry-'+j.retry_generation;delete j.key_fingerprint;delete j.first_attempt;await s.put('email_outbox',j.id,j)}
 async function safeDispatch(id){if(!id)return;try{return await dispatch(id)}catch{return{status:'retry',message:'Order/account saved. Email sending needs another attempt.'}}}
 async function adminData(s){return{...status(),jobs:(await s.list('email_outbox')).sort((a,b)=>b.created-a.created).slice(0,100).map(publicJob)}}
-module.exports={manualTrackingContent,queueManualTracking,brandOrigin,viewLink,configuration,status,template,enqueue,queueSetup,queueOrder,queueSubmitted,queueStaffAlert,queueUpdate,queueReminder,reminderLines,dispatch,dispatchPending,safeDispatch,prepareRetry,adminData,publicJob};
+module.exports={alertRecipients,manualTrackingContent,queueManualTracking,brandOrigin,viewLink,configuration,status,template,enqueue,queueSetup,queueOrder,queueSubmitted,queueStaffAlert,queueUpdate,queueReminder,reminderLines,dispatch,dispatchPending,safeDispatch,prepareRetry,adminData,publicJob};
 
 
