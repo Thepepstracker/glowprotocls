@@ -87,7 +87,7 @@ test('customer checkout: signed in only, offered only when the switch is ON; Str
  await assert.rejects(call('/account/subscribe',body,A.cookie),e=>e.status===503);
  await switchSubs(true);
  q=(await call('/subscribe/quote',{items})).body;assert.equal(q.available,true);assert.equal(q.signed_in,false);assert.equal(q.price_cents,Math.floor(9499*0.85),'list $94.99 → 85% = $80.74 (below the $94.99 tier price)');assert.equal(q.shipping_cents,0);
- assert.deepEqual(q.every.map(e=>e.id),['1w','2w','3w','1m'],'4 weeks is not offered to customers');
+ assert.deepEqual(q.every.map(e=>e.id),['1w','2w','3w','1m','2m','3m'],'4 weeks is not offered to customers; every 2 and 3 months are (8 Nov 2026)');
  await assert.rejects(call('/account/subscribe',body),e=>e.status===401,'must be signed in');
  await assert.rejects(call('/account/subscribe',{...body,every:'4w'},A.cookie),e=>e.status===400);
  await assert.rejects(call('/account/subscribe',{...body,customer:shipTo('other@example.test'),idempotency_key:'key-alice-0002'},A.cookie),e=>e.status===400,'account email only');
@@ -210,4 +210,25 @@ test('Tier 5 bonus needs 4 packages in a row at Tier 5, so nobody can jump up fo
  assert.equal(subs.priceFor(box,P3,null,4,{settings:S,streak:1}).bonus,null,'4th package overall but first at Tier 5: no bonus');
  assert.equal(subs.priceFor(box,P3,null,9,{settings:S,streak:4}).bonus.id,600,'4th in a row at Tier 5: bonus');
  assert.equal(subs.priceFor(box,P3,null,4,{settings:S}).bonus.id,600,'without a streak (old callers) the delivery number still decides');
+});
+
+test('ship together: two packages, same person, same door, same day → one shipping charge; a customer can line them up (Jonah, 8 Nov 2026)',async()=>{
+ const base=await transaction(s=>s.get('subscriptions',firstSub)),ship=subs.addDays(subs.todayET(),40);
+ const mk=(id,extra={})=>({...structuredClone(base),id,status:'active',every:'1m',items:[{id:31,quantity:1,name:'BPC-157'}],orders:[],addons:[],payment_issue:undefined,problem:'',next_ship_date:ship,next_date:ship,customer:{...base.customer,address:'7 Together Lane'},...extra});
+ await transaction(async s=>{await s.put('subscriptions','SUB-TOG1',mk('SUB-TOG1'));await s.put('subscriptions','SUB-TOG2',mk('SUB-TOG2'))});
+ const before=piCount,r=await subs.run(10,noonET(subs.addDays(ship,-2)));assert.ok(r.made>=2);
+ const o1=await transaction(async s=>s.get('orders',(await s.get('subscriptions','SUB-TOG1')).orders.at(-1))),o2=await transaction(async s=>s.get('orders',(await s.get('subscriptions','SUB-TOG2')).orders.at(-1)));
+ const [first,second]=[o1,o2].sort((a,b)=>a.created-b.created||0);const paidShip=[o1,o2].filter(o=>o.shipping>0);
+ assert.equal(paidShip.length,1,'only one of the two pays shipping');const other=[o1,o2].find(o=>o.shipping===0);
+ assert.equal(other.shipping_combined,1500);assert.equal(other.ships_with,paidShip[0].id);assert.equal((await transaction(s=>s.get('orders',paidShip[0].id))).ships_with,other.id);
+ for(const o of [o1,o2]){const c=stripe.filter(c=>c.p==='/payment_intents'&&c.idem==='glow-sub-charge-'+o.id);assert.equal(c.length,1,'charged once');assert.equal(Number(c[0].body.get('amount')),o.total,'the card charge matches the order, the second without shipping')}assert.equal(other.total+1500,paidShip[0].total);void first;void second;void before;
+ // A different address does not combine.
+ const ship2=subs.addDays(ship,10);await transaction(async s=>{await s.put('subscriptions','SUB-TOG3',mk('SUB-TOG3',{next_ship_date:ship2,next_date:ship2}));await s.put('subscriptions','SUB-TOG4',mk('SUB-TOG4',{next_ship_date:ship2,next_date:ship2,customer:{...base.customer,address:'99 Other Rd'}}))});
+ await subs.run(10,noonET(subs.addDays(ship2,-2)));const o3=await transaction(async s=>s.get('orders',(await s.get('subscriptions','SUB-TOG3')).orders.at(-1))),o4=await transaction(async s=>s.get('orders',(await s.get('subscriptions','SUB-TOG4')).orders.at(-1)));
+ assert.equal(o3.shipping,1500);assert.equal(o4.shipping,1500);assert.ok(!o3.ships_with&&!o4.ships_with);
+ // The customer lines one up with the other from their account; someone else's subscription or another address is refused.
+ const later=subs.addDays(ship2,60),soon=subs.addDays(ship2,45);await transaction(async s=>{await s.put('subscriptions','SUB-TOG5',mk('SUB-TOG5',{next_ship_date:later,next_date:later}));await s.put('subscriptions','SUB-TOG6',mk('SUB-TOG6',{next_ship_date:soon,next_date:soon}))});
+ const res=await call('/account/subscriptions/update',{id:'SUB-TOG5',action:'together',together_with:'SUB-TOG6'},A.cookie);assert.equal(res.status,200);assert.equal(res.body.next_ship_date,soon);
+ await assert.rejects(call('/account/subscriptions/update',{id:'SUB-TOG5',action:'together',together_with:'SUB-TOG4'},A.cookie),e=>e.status===409,'another address');
+ await assert.rejects(call('/account/subscriptions/update',{id:'SUB-TOG5',action:'together',together_with:'SUB-TOG6'},B.cookie),e=>e.status===404,'not theirs');
 });
