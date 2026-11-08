@@ -480,3 +480,7 @@ button.sk-perk.on,button.sk-perk.on:hover,button.sk-perk.on:active,button.sk-per
 .inv-thanks-icon{font-size:40px;line-height:1;margin-bottom:10px}.inv-thanks-box h2{font-family:var(--serif);font-size:36px;margin:6px 0 4px}
 .inv-thanks-lead{font-size:19px;font-weight:700;color:#1b1b1b;margin-bottom:14px}.inv-thanks-box p{font-size:15px;line-height:1.5}.inv-thanks-box button{margin-top:6px}
 @keyframes inv-fade{from{opacity:0}to{opacity:1}}@media(prefers-reduced-motion:reduce){.inv-thanks{animation:none}}
+
+/* Checkout promo box (7 Nov 2026) */
+.co-promo{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}.co-promo summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--gold-dark);list-style-position:inside}
+.co-promo .inline{margin-top:6px}.co-promo label{margin:6px 0}.co-promo-codes{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}.co-promo-codes .badge button{margin-left:6px;padding:4px 10px;min-height:32px;font-size:13px}
