@@ -53,7 +53,7 @@ async function route(path_,body,h,method,{session}){
  if(!path_.startsWith('/admin/labels'))return null;
  const {transaction}=require('./store-db.cjs');await transaction(s=>session(s,h));
  const L=lib();
- if(path_==='/admin/labels'&&method==='GET')return{status:200,headers:{},body:{sheet:{name:L.sheet.name,cols:L.sheet.cols,rows:L.sheet.rows,adjust:L.sheet.adjust},labels:L.labels.map(({id,name,strength})=>({id,name,strength})),sheets:L.sheets,version:L.version}};
+ if(path_==='/admin/labels'&&method==='GET')return{status:200,headers:{},body:{sheet:{name:L.sheet.name,cols:L.sheet.cols,rows:L.sheet.rows,adjust:L.sheet.adjust},labels:L.labels.map(({id,name,strength})=>({id,name,strength})),sheets:L.sheets,version:L.version+'.'+fs.statSync(path.join(DIR,'thumbs.bin')).size}};
  const t=path_.match(/^\/admin\/labels\/thumb\/([a-z0-9-]{2,60})$/);
  if(t&&method==='GET'){if(!L.byId.has(t[1]))bad('Label not found.',404);return{status:200,headers:{'Cache-Control':'private, max-age=86400'},body:{_binary:slice('thumbs.bin',...L.byId.get(t[1]).thumb).toString('base64'),_type:'image/jpeg'}}}
  const f=path_.match(/^\/admin\/labels\/sheet\/([a-z0-9-]{2,60})$/);
