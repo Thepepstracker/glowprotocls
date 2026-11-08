@@ -13,6 +13,21 @@ function publicFile(p){
  if(!rel.includes('/')||/^(img|product-images|store-next)\//.test(rel))return rel;
  return null;
 }
+// Zader Health (zaderhealth.com) is a second brand on this same store (Jonah, 8 Nov 2026: everything Glow has, Zader gets).
+// Same rules the old Netlify site used (netlify.toml): www goes to the bare domain, Zader's own policy pages, Glow-only
+// pages bounce home, and every other page is the Zader storefront app. Scripts, styles and pictures are served as usual.
+const ZADER_HOSTS=new Set(['zaderhealth.com','www.zaderhealth.com']);
+const ZADER_PAGES={'/terms':'zader-terms','/privacy':'zader-privacy','/shipping':'zader-shipping','/contact':'zader-contact'};
+const GLOW_ONLY=/^\/(?:about|affiliate|bpc-157-research-guide|checkout|coa|faq|glow-loyalty|peptide-storage-and-handling|price-desk|tonight|peptides|privacy|terms)\.html$|^\/store-next\/(?:index\.html|merch(?:\.html)?\/?|live\.html|affiliate(?:\.html)?\/?|live\/?)$/;
+function requestHost(req){const h=String(req.headers['x-forwarded-host']||req.headers.host||'').split(',')[0].trim().toLowerCase();return h.replace(/:\d+$/,'')}
+function zaderRoute(p){
+ if(p==='/robots.txt')return{file:'store-next/zader-robots.txt'};if(p==='/sitemap.xml')return{file:'store-next/zader-sitemap.xml'};
+ const page=ZADER_PAGES[p.replace(/(?:\.html|\/)$/,'')];if(page)return{file:'store-next/'+page+'.html'};
+ if(GLOW_ONLY.test(p))return{redirect:'/'};
+ const ext=path.extname(p);if(ext&&ext!=='.html')return null; // scripts, styles, pictures: normal rules
+ if(p==='/store-next/packing.html')return{file:'store-next/packing.html'};
+ return{file:'store-next/zader.html'};
+}
 function createServer({apiHandler,webhook,ready=async()=>true,transform=async html=>html}={}){
  return http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,'http://localhost');
@@ -30,6 +45,14 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
    return send(result.statusCode,result.isBase64Encoded?Buffer.from(result.body,'base64'):result.body,'application/json',result.headers);
   }
   if(!['GET','HEAD'].includes(req.method))return send(405,'Method not allowed');
+  const host=requestHost(req);
+  if(ZADER_HOSTS.has(host)){
+   if(host==='www.zaderhealth.com')return send(301,'',undefined,{Location:'https://zaderhealth.com'+url.pathname+url.search});
+   let zp;try{zp=decodeURIComponent(url.pathname)}catch{return send(400,'Invalid path')}
+   const z=zaderRoute(zp);
+   if(z?.redirect)return send(301,'',undefined,{Location:z.redirect});
+   if(z?.file){const data=await fs.readFile(path.join(ROOT,z.file));const type=TYPES[path.extname(z.file)];return send(200,type.startsWith('text/html')?data.toString():data,type)}
+  }
   const redirects={'/index.html':'/store-next/','/checkout.html':'/store-next/','/checkout':'/store-next/','/cart':'/store-next/','/shop':'/store-next/','/my-account':'/store-next/account','/account':'/store-next/account'};
   if(redirects[url.pathname])return send(302,'',undefined,{Location:redirects[url.pathname]});
   let decoded;try{decoded=decodeURIComponent(url.pathname)}catch{return send(400,'Invalid path')}
@@ -69,4 +92,4 @@ async function start(){
  for(const sig of ['SIGTERM','SIGINT'])process.once(sig,()=>{server.close(()=>probe.end().finally(()=>process.exit(0)));setTimeout(()=>process.exit(1),15000).unref()});
 }
 if(require.main===module)start().catch(e=>{console.error(e.message);process.exitCode=1});
-module.exports={createServer,publicFile};
+module.exports={createServer,publicFile,zaderRoute};
