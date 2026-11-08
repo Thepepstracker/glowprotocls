@@ -813,7 +813,7 @@ const LB_PER=48,LB_COLS=4;
 function lbState(){if(!state.lb)state.lb={sel:[],start:1,newRow:true,q:'',page:0};return state.lb}
 function lbPlan(){const s=lbState();let i=Math.min(LB_PER,Math.max(1,Math.trunc(Number(s.start)||1)))-1;const slots=[];s.sel.forEach((it,n)=>{if(s.newRow&&n>0&&i%LB_COLS)i+=LB_COLS-i%LB_COLS;for(let k=0;k<it.count;k++)slots[i++]=it.id});const pages=Math.max(1,Math.ceil(i/LB_PER));return Array.from({length:pages},(_,p)=>Array.from({length:LB_PER},(_,c)=>slots[p*LB_PER+c]||null))}
 function lbLabel(id){return (state.labels?.labels||[]).find(l=>l.id===id)}
-function lbThumb(id){return '/api/admin/labels/thumb/'+encodeURIComponent(id)}
+function lbThumb(id){return '/api/admin/labels/thumb/'+encodeURIComponent(id)+'?v='+encodeURIComponent(state.labels?.version||'')}
 function labelsPanel(){const L=state.labels;if(!L&&!state.labelsLoading){state.labelsLoading=true;api('/api/admin/labels').then(x=>{state.labels=x}).catch(err=>{state.labels={error:err.message}}).finally(()=>{state.labelsLoading=false;if(state.tab==='labels')renderAdmin()})}
  if(!L)return '<section class="panel"><h2>Vial labels</h2><p class="muted">Loading labels…</p></section>';if(L.error)return `<section class="panel"><h2>Vial labels</h2><p class="notice">${esc(L.error)}</p></section>`;
  return `<section class="panel lb"><div class="lb-top"><div><h2>Vial labels</h2><p class="muted">Every approved label, already lined up for the HP. ${esc(L.sheet.name)} sheet, shiny side down.</p></div><span class="lb-count">${L.labels.length} labels</span></div>

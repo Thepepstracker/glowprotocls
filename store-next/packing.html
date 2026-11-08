@@ -168,6 +168,8 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 .tag.refer{background:#efe7fb;color:#4b2a86}.referline{font-size:13px;margin-top:4px;padding:6px 8px;border-radius:6px}.referline.ok{background:#e9f5ee;color:#23553a}.referline.warn{background:#fdf3e1;color:#7a5200}.referline .mini{margin-left:6px}.refer-why{margin-top:4px;color:#7a2e00}
 /* New shipment (Jonah, 6 Nov 2026; redesigned same day) */
 .sn{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;margin-bottom:18px}
+/* The Send a box form belongs only on the New shipment tab (Jonah, 8 Nov 2026). display:grid above was overriding the hidden attribute, so it showed above the orders on every tab. */
+.sn[hidden]{display:none}
 .sn-hero{grid-column:1/-1;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 2px 2px}
 .sn-hero h2{margin:0;font:700 26px/1.15 Georgia,'Times New Roman',serif;letter-spacing:.01em}.sn-hero p{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:560px}
 .sn-step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;margin-bottom:14px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
