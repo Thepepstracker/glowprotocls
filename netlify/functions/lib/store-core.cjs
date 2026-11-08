@@ -139,6 +139,8 @@ async function handle({path,method='GET',headers={},body={}}){
  const memberRoute=await members.customerRoute(path,body,h,method);if(memberRoute)return memberRoute;
  // Growth tools (Jonah, 8 Nov 2026): reorder links, saved bags, reviews, the sales funnel and unsubscribe. See growth.cjs.
  const growthRoute=await require('./growth.cjs').route(path,body,h,method,{session});if(growthRoute)return growthRoute;
+ // Label hub (Jonah, 8 Nov 2026): every approved vial label, one click to print. See labels.cjs.
+ if(path.startsWith('/admin/labels')){const r=await require('./labels.cjs').route(path,body,h,method,{session});if(r)return r}
  if(path==='/admin/members'||path.startsWith('/admin/members/')){const sid=await transaction(s=>session(s,h));return members.adminRoute(path,body,method,{transaction,sid,audit})}
  // Order Bell: a private key lets a small script on the shop's own computer hear about new orders without a login.
  // It returns order number, total, first name and state only (no email, phone or street). Rotating the key kills every old copy.
