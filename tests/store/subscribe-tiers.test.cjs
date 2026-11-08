@@ -81,7 +81,7 @@ let A,B,firstSub,firstOrder;
 test('customer checkout: signed in only, offered only when the switch is ON; Stripe gets one "Glow Lab" line, saves the card, no product names',async()=>{
  await transaction(async s=>{const st=await s.get('settings','main');Object.assign(st,{demo:false,checkout_enabled:true,tax_mode:'none'});await s.put('settings','main',st);for(const id of [1,31,37,26,10]){const p=await s.get('products',id);p.stock=50;await s.put('products',id,p)}});
  A=await signedIn('alice@example.test','Alice Able');B=await signedIn('bob@example.test','Bob Baker');
- const items=[{id:1,quantity:1},{id:31,quantity:1},{id:37,quantity:1}],body={items,every:'1m',customer:shipTo(A.email),idempotency_key:'key-alice-0001'};
+ const items=[{id:1,quantity:1},{id:31,quantity:1},{id:37,quantity:1}],body={items,every:'1m',customer:shipTo(A.email),idempotency_key:'key-alice-0001',agree:true};
  await switchSubs(false);
  let q=(await call('/subscribe/quote',{items},A.cookie)).body;assert.equal(q.available,false,'switch OFF: not offered');assert.equal(q.tier.id,'T3');
  await assert.rejects(call('/account/subscribe',body,A.cookie),e=>e.status===503);
@@ -92,7 +92,9 @@ test('customer checkout: signed in only, offered only when the switch is ON; Str
  await assert.rejects(call('/account/subscribe',{...body,every:'4w'},A.cookie),e=>e.status===400);
  await assert.rejects(call('/account/subscribe',{...body,customer:shipTo('other@example.test'),idempotency_key:'key-alice-0002'},A.cookie),e=>e.status===400,'account email only');
  const before=await transaction(s=>s.get('products',1));
+ await assert.rejects(call('/account/subscribe',{...body,agree:undefined,idempotency_key:'key-alice-0009'},A.cookie),e=>e.status===400&&/agree/.test(e.message),'must tick the terms box');
  const r=(await call('/account/subscribe',body,A.cookie)).body;assert.match(r.url,/^https:\/\/checkout\.stripe\.com\//);firstSub=r.id;
+ {const x=await transaction(s=>s.get('subscriptions',firstSub));assert.equal(x.consent.terms_version,subs.TERMS_VERSION);assert.equal(x.consent.every,'1m');assert(x.consent.amount_cents>0&&x.consent.agreed_at>0,'what they agreed to is kept')}
  const again=(await call('/account/subscribe',body,A.cookie)).body;assert.equal(again.url,r.url,'double-click: same checkout, nothing new');
  assert.equal(stripe.filter(c=>c.p==='/checkout/sessions'&&c.method==='POST').length,1);
  const cs=stripe.find(c=>c.p==='/checkout/sessions'&&c.method==='POST'),b=cs.body;
@@ -118,7 +120,7 @@ test('confirm paid: verified with Stripe, order paid once (source stripe_checkou
  assert.equal(o.status,'paid');assert.equal(o.payment_verification_source,'stripe_checkout');assert.equal(o.payment_reference,'pi_first_'+sid);assert.equal(o.points_earned,Math.floor(8074/100)*2,'Tier 3 = 2× (Alice is 1× normally)');
  assert.equal(x.status,'active');assert.equal(x.card.last4,'4242');assert.equal(x.payment_method,'pm_1');assert.equal(x.next_ship_date,subs.addInterval(subs.todayET(),'1m'));assert.equal(x.deliveries,1);
  const paidMails=sent.filter(m=>/payment received/.test(m.subject)).length,ledger=(await transaction(s=>s.list('rewards_ledger'))).filter(e=>e.order_id===firstOrder).length;
- assert(sent.some(m=>m.subject==='Your Glow Lab subscription is set'));
+ assert(sent.some(m=>m.subject==='You’re subscribed: 15% off every Glow Lab package'));
  for(let i=0;i<2;i++)assert.equal((await call('/account/subscriptions/confirm',{id:firstSub},A.cookie)).body.status,'active');
  await subs.run(10,noonET(subs.todayET()));
  const o2=await transaction(s=>s.get('orders',firstOrder));assert.equal(o2.paid,o.paid,'not marked paid again');
@@ -171,25 +173,41 @@ test('charge timing: the repeat order is made and charged 2 days before the ship
 
 test('reminder: 3 days before each charge, once, only while the Autopilot switch is ON; no product names or health wording',async()=>{
  const ship=subs.addDays(subs.todayET(),40),charge=subs.addDays(ship,-2);await transaction(async s=>{const x=await s.get('subscriptions',firstSub);x.next_ship_date=x.next_date=ship;delete x.reminded_for;await s.put('subscriptions',x.id,x)});
- const base=sent.filter(m=>m.subject.startsWith('Your next Glow Lab box')).length,n=()=>sent.filter(m=>m.subject.startsWith('Your next Glow Lab box')).length-base;
+ const base=sent.filter(m=>m.subject.startsWith('Your next Glow Lab package')).length,n=()=>sent.filter(m=>m.subject.startsWith('Your next Glow Lab package')).length-base;
  await switchSubs(false);assert.equal((await subs.remind(20,noonET(subs.addDays(charge,-3)))).status,'switch_off');assert.equal(n(),0);
  await switchSubs(true);
  assert.equal((await subs.remind(20,noonET(subs.addDays(charge,-4)))).sent,0,'4 days before: not yet');
  assert.equal((await subs.remind(20,noonET(subs.addDays(charge,-3)))).sent,1);assert.equal(n(),1);
  assert.equal((await subs.remind(20,noonET(subs.addDays(charge,-2)))).sent,0,'once per ship date');
- const m=sent.filter(x=>x.subject.startsWith('Your next Glow Lab box')).at(-1);assert.equal(m.to[0],A.email);
- assert.match(m.text,/Box: 3 items/);assert.match(m.text,/\$80\.74/);assert.match(m.text,/Card charged on: /);assert.match(m.text,/store-next\/account#subscriptions/);
+ const m=sent.filter(x=>x.subject.startsWith('Your next Glow Lab package')).at(-1);assert.equal(m.to[0],A.email);
+ assert.match(m.text,/Package: 3 items/);assert.match(m.text,/\$80\.74/);assert.match(m.text,/Card charged on: /);assert.match(m.text,/store-next\/account#subscriptions/);
  assert(!/lipo|bpc|rose|dose|dosing|inject|reconstitut|health/i.test(m.text+m.subject),'research-use-only safe');
 });
 
 test('an unfinished checkout gives its items back; starting again closes the old one on Stripe',async()=>{
  const before=(await transaction(s=>s.get('products',26))).stock;
- const r1=(await call('/account/subscribe',{items:[{id:26,quantity:2}],every:'2w',customer:shipTo(B.email),idempotency_key:'key-bob-000001'},B.cookie)).body;
+ const r1=(await call('/account/subscribe',{items:[{id:26,quantity:2}],every:'2w',customer:shipTo(B.email),idempotency_key:'key-bob-000001',agree:true},B.cookie)).body;
  assert.equal((await transaction(s=>s.get('products',26))).stock,before-2);
- const r2=(await call('/account/subscribe',{items:[{id:26,quantity:1}],every:'2w',customer:shipTo(B.email),idempotency_key:'key-bob-000002'},B.cookie)).body;
+ const r2=(await call('/account/subscribe',{items:[{id:26,quantity:1}],every:'2w',customer:shipTo(B.email),idempotency_key:'key-bob-000002',agree:true},B.cookie)).body;
  assert.notEqual(r1.id,r2.id);const old=await transaction(s=>s.get('subscriptions',r1.id));assert.equal(old.status,'canceled');assert.equal(sessions.get(old.checkout.id).status,'expired','expired on Stripe so it can no longer be paid');
  assert.equal((await transaction(s=>s.get('orders',old.first_order))).status,'expired');assert.equal((await transaction(s=>s.get('products',26))).stock,before-1);
  await call('/account/subscriptions/abandon',{id:r2.id},B.cookie);assert.equal((await transaction(s=>s.get('products',26))).stock,before);
  assert.equal((await call('/account/subscriptions',undefined,B.cookie)).body.subscriptions.length,0,'closed checkouts are not listed');
  const admin=await subs.list();assert(admin.some(x=>x.id===firstSub&&x.pricing.tier.id==='T3'&&x.pricing.slots===3&&x.next_ship_date));
+});
+
+test('items already on sale: the better of the sale price or 15% off regular, never both (Jonah, 8 Nov 2026)',()=>{
+ const P2=[{id:501,name:'Sale vial',price:2499,regular_price:3199},{id:502,name:'Deep sale',price:7900,regular_price:11000},{id:503,name:'Light sale',price:3000,regular_price:3100},{id:504,name:'Regular',price:4399}];
+ const S={shipping_cents:1500,free_shipping_cents:0};
+ assert.equal(subs.priceFor([{id:501,quantity:1}],P2,null,1,{settings:S}).price_cents,2499,'85% of $31.99 is $27.19, the sale price $24.99 is lower');
+ assert.equal(subs.priceFor([{id:502,quantity:1}],P2,null,1,{settings:S}).price_cents,7900);
+ assert.equal(subs.priceFor([{id:503,quantity:2}],P2,null,1,{settings:S}).price_cents,2*Math.floor(3100*0.85),'85% of regular is lower than this small sale');
+ assert.equal(subs.priceFor([{id:504,quantity:1}],P2,null,1,{settings:S}).price_cents,Math.floor(4399*0.85),'no sale: exactly 15% off as before');
+ const mix=subs.priceFor([{id:501,quantity:1},{id:504,quantity:1}],P2,null,1,{settings:S});assert.equal(mix.price_cents,2499+Math.floor(4399*0.85));assert.equal(mix.list_cents,2499+4399);
+});
+test('Tier 5 bonus needs 4 packages in a row at Tier 5, so nobody can jump up for one package to collect it',()=>{
+ const P3=Array.from({length:8},(_,i)=>({id:600+i,name:'V'+i,price:4000}));const box=P3.map(p=>({id:p.id,quantity:1}));const S={shipping_cents:1500};
+ assert.equal(subs.priceFor(box,P3,null,4,{settings:S,streak:1}).bonus,null,'4th package overall but first at Tier 5: no bonus');
+ assert.equal(subs.priceFor(box,P3,null,9,{settings:S,streak:4}).bonus.id,600,'4th in a row at Tier 5: bonus');
+ assert.equal(subs.priceFor(box,P3,null,4,{settings:S}).bonus.id,600,'without a streak (old callers) the delivery number still decides');
 });
