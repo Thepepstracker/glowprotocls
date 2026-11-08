@@ -53,7 +53,7 @@ async function sendFor(id,{force=false}={}){
    // No payment_settings (Jonah, 5 Nov 2026): Stripe uses the account's invoice defaults, the same ways to pay as the
    // invoices sent by hand (card, Cash App Pay, Link, Affirm, Klarna, Amazon Pay). The one line still says only "Glow Lab".
    metadata:{order_id:id,revision:String(rev),source:'glow-store'}}});
-  await stripe('/invoiceitems',{method:'POST',idem:'glp-ii-'+id+'-r'+rev,body:{customer:cust.id,invoice:inv.id,amount:String(o.total),currency:'usd',description:LABEL}});
+  await stripe('/invoiceitems',{method:'POST',idem:'glp-ii-'+id+'-r'+rev,body:{customer:cust.id,invoice:inv.id,amount:String(o.total),currency:'usd',description:require('./brands.cjs').paymentLabel(require('./brands.cjs').orderBrand(o))}});
   const fin=inv.status==='draft'?await stripe('/invoices/'+inv.id+'/finalize',{method:'POST',idem:'glp-fin-'+inv.id,body:{auto_advance:'false'}}):inv;
   if(fin.amount_due!==o.total)fail('Stripe invoice total $'+(fin.amount_due/100).toFixed(2)+' does not match the order $'+(o.total/100).toFixed(2)+'.',{definite:true});
   return await deliver(fin,false);
@@ -82,7 +82,13 @@ async function paidFromStripe(invoiceId,applyPaid){const inv=await stripe('/invo
  if(inv.status!=='paid'||inv.currency!=='usd')return{status:'ignored',reason:'invoice not paid'};
  const live=stripeKey().includes('_live_');if(inv.livemode!==live)return{status:'ignored',reason:'mode mismatch'};
  return transaction(async s=>{const o=await s.get('orders',id);if(!o)return{status:'ignored',reason:'order missing'};
-  if(o.status==='paid'||o.status==='shipped'){if(o.payment_reference!==inv.id){o.stripe_invoice={...(o.stripe_invoice||{}),status:'paid_again',paid_at:now()};await s.put('orders',id,o);return{status:'review',order_id:id,reason:'order was already paid another way; check for a double payment'}}return{status:'already'}}
+  if(o.status==='paid'||o.status==='shipped'){
+   // Staff marked it paid by hand after seeing this same invoice paid (8 Nov 2026: Stripe's webhook was blocked for a week, so
+   // every card order was marked by hand). If staff marked it paid AFTER Stripe says this invoice was paid, they were looking at
+   // this payment: record the reference. If Stripe's payment came later, it may be a second payment: staff review, as before.
+   const stripePaidAt=Number(inv.status_transitions?.paid_at||0);
+   if(o.payment_reference!==inv.id&&o.stripe_invoice?.id===inv.id&&!o.payment_reference&&stripePaidAt>0&&Number(o.paid||0)>=stripePaidAt){o.payment_reference=inv.id;o.stripe_invoice={...o.stripe_invoice,status:'paid',paid_at:o.stripe_invoice.paid_at||now(),amount_paid:inv.amount_paid};await s.put('orders',id,o);return{status:'already'}}
+   if(o.payment_reference!==inv.id){o.stripe_invoice={...(o.stripe_invoice||{}),status:'paid_again',paid_at:now()};await s.put('orders',id,o);return{status:'review',order_id:id,reason:'order was already paid another way; check for a double payment'}}return{status:'already'}}
   if(!['order_received','awaiting_payment','payment_submitted'].includes(o.status))return{status:'review',order_id:id,reason:'order is '+o.status};
   if(inv.amount_paid<o.total){o.stripe_invoice={...(o.stripe_invoice||{}),status:'short',amount_paid:inv.amount_paid};await s.put('orders',id,o);return{status:'review',order_id:id,reason:'paid less than the order total'}}
   o.payment_reference=inv.id;o.stripe_invoice={...(o.stripe_invoice||{}),id:inv.id,status:'paid',paid_at:now(),amount_paid:inv.amount_paid};

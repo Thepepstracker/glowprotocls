@@ -26,6 +26,10 @@ const PUBLIC_STOCK=99;
 const units=p=>Math.max(1,Number.isSafeInteger(p&&p.units)?p.units:1);
 // A kit's stock is how many whole kits its stock group can fill (e.g. 23 vials = 2 kits of 10).
 function publicProduct(p,hide=true){const n=Math.floor((p.stock||0)/units(p));return hide?{...p,stock:n>0?PUBLIC_STOCK:0,in_stock:n>0}:{...p,stock:n,in_stock:n>0}}
+// What a customer sees on Stripe for a payment (Jonah, 8 Nov 2026: Zader orders say "Zader Health"; money still lands in
+// Glow's Stripe account). Card statements can only take a suffix after the account's own prefix, so Zader charges add one.
+function paymentLabel(b){return b&&b.id!=='glow'?b.name:'Glow Lab'}
+function statementSuffix(b){return b&&b.id==='zader'?'ZADER HEALTH':null}
 function emailFrom(b,fallback){return (b.email_from_env&&process.env[b.email_from_env])||fallback}
 
 // Zader Health catalog. Each row shares one stock count with its Glow counterpart (same vial),
@@ -105,5 +109,5 @@ async function ensureZaderCatalog(s,validSlug){
  await ensureZaderPhotos(s);
  return true;
 }
-module.exports={BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,units,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ZADER_PHOTOS,ensureZaderCatalog,ensureZaderPhotos,hostOf};
+module.exports={paymentLabel,statementSuffix,BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,units,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ZADER_PHOTOS,ensureZaderCatalog,ensureZaderPhotos,hostOf};
 
