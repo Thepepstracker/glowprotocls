@@ -14,6 +14,9 @@ const TASKS={
  tracking:{name:'UPS delivery updates',every:300,help:'Checks UPS for each shipped package. Customers get the out-for-delivery and delivered emails.'},
  labels:{name:'Automatic labels',every:60,help:'Buys the UPS label for each paid order through Shippo. The $15 price check, the daily limit and Shippo’s own ON switch still apply.'},
  collect:{name:'Payment reminders',every:3600,help:'Emails invoiced, unpaid customers on day 1, day 3 and day 6. The store releases the order on day 7.'},
+ reorders:{name:'Reorder reminders',every:3600,help:'About 30 days after a customer’s last order (up to 90), one email puts the same items back in their bag in one tap and mentions Subscribe & save. Not sent to subscribers or anyone who unsubscribed. 10 AM–7 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
+ bags:{name:'Bag reminders',every:900,help:'Signed-in customers who leave items in their bag get one reminder 3–48 hours later (at most one every 7 days), unless they ordered. 9 AM–9 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
+ reviews:{name:'Review requests',every:3600,help:'2 days after delivery (or 7 days after shipping), one email asks the customer to rate their order. Reviews only show on the store after you approve them in Management → Growth. Needs STORE_POSTAL_ADDRESS set.'},
  subscriptions:{name:'Subscribe & save orders',every:3600,help:'Two days before each subscription’s ship date (10 AM–6 PM Eastern), makes the repeat order at the customer’s tier price and charges their saved card through Stripe. Emails the customer 3 days before each charge. Confirms first payments made on Stripe Checkout. While this is OFF, customers cannot start a subscription in the bag. A declined card is flagged; it is never charged twice.'}
 };
 const STEPS=[{key:'d1',days:1},{key:'d3',days:3},{key:'d6',days:6,last:true}];
@@ -57,6 +60,9 @@ async function runTask(key){
  if(key==='labels'){const shippo=require('./shippo.cjs');if(!await shippo.enabled())return{status:'shippo_off'};return shippo.pending(3)}
  if(key==='collect')return collect();
  if(key==='subscriptions')return require('./subscriptions.cjs').run();
+ if(key==='reorders')return require('./growth.cjs').reorders();
+ if(key==='bags')return require('./growth.cjs').bags();
+ if(key==='reviews')return require('./growth.cjs').reviews();
 }
 let running=false;
 // One pass: runs each switched-on task whose interval has passed. Holds a short lease so two copies of the app never overlap.
