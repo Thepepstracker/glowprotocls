@@ -47,6 +47,7 @@ button:disabled{opacity:.45;cursor:default}
 @media (max-width:600px){.week{flex-wrap:wrap}.week .wk-c{font-size:24px}}
 .week.day{padding:10px 16px;margin:-6px 0 8px}.week.day .wk-c{font-size:22px}.week.day .wk-m b{font-size:20px}.week.day .wk-m small{font-size:14px}
 .days{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.days span{font-size:12.5px;font-weight:700;background:#f3f1ec;border:1px solid #e4dfd3;border-radius:10px;padding:4px 9px;white-space:nowrap}.days span.now{border-color:#1a1a1a}.days span.fut{opacity:.45}
+.days.weeks{margin:-6px 0 16px}.days.weeks span{font-size:13px;padding:5px 10px}
 @media (max-width:600px){.week.day .wk-c{font-size:19px}}
 .tag.cust{background:#efe7d4;color:#6a4b0e}.tag.first{background:#e3f1ff;color:#1d5fbf}.tag.vip{background:linear-gradient(135deg,#9a6b12,#d9b25b);color:#fff}
 .calls .call{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
@@ -636,7 +637,18 @@ function weekBanner(){var box=document.getElementById('week');if(!box)return;if(
   var ts=todayStats();
   box.innerHTML='<section class="week t-'+t.k+'" title="Week color: Red under 75% of pace · Yellow 75–99% · Green on pace · Blue $4,500 · Gold $6,750 · Purple $9,000"><div><div class="wk-c">'+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
    +'<div class="wk-m"><b>'+money(cur.cents)+'</b> this week · '+cur.count+' paid order'+(cur.count===1?'':'s')+rec
-   +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Target '+Math.round(cur.cents*100/WEEK_TARGET)+'% · Today '+money(ts.total)+'</small></div></section>'+dayBanner(w)}
+   +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Target '+Math.round(cur.cents*100/WEEK_TARGET)+'% · Today '+money(ts.total)+'</small></div></section>'+weekStrip(w,t)+dayBanner(w)}
+// ---- Week colors strip (Jonah, 8 Nov 2026: "just like the days of the week have colors, the weeks should have colors too") ----
+// One chip per week since the new store's first paid week (up to the last 8). A finished week keeps its final color,
+// the same rules as a finished day: Red under 75% of the $4,500 target, Yellow 75–99%, Blue $4,500, Gold $6,750, Purple $9,000.
+// This week shows its live color from the banner above.
+function weekFinalTier(c){for(var i=0;i<TIERS.length;i++)if(c>=TIERS[i].at)return TIERS[i];if(c>=WEEK_TARGET*.75)return{k:'yellow',dot:'🟡',name:'YELLOW'};return{k:'red',dot:'🔴',name:'RED'}}
+function weekStrip(w,t){var first=null;all.forEach(function(o){if(paidOrder(o)){var d=etDay(o.created||0);if(!first||d<first)first=d}});if(!first)return '';
+  var md=function(k){return new Date(k+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'})},chips=[],best=0,bestI=-1,i,wk,s;
+  for(i=8;i>=1;i--){wk=weekKeys(i).keys;if(wk[6]<first)continue;s=weekSum(wk);chips.push({k:wk,s:s,f:weekFinalTier(s.cents)});if(s.cents>best){best=s.cents;bestI=chips.length-1}}
+  var html=chips.map(function(c,j){return '<span title="'+c.f.name+' · '+md(c.k[0])+' – '+md(c.k[6])+' · '+c.s.count+' paid order'+(c.s.count===1?'':'s')+'">'+c.f.dot+' Wk of '+md(c.k[0])+' '+money(c.s.cents)+(j===bestI&&best>=WEEK_TARGET?' 🏆':'')+'</span>'}).join('');
+  var cur=weekSum(w.keys);html+='<span class="now" title="This week so far">'+t.dot+' This week '+money(cur.cents)+'</span>';
+  return '<div class="days weeks" aria-label="Recent weeks by color">'+html+'</div>'}
 // ---- Daily goal and colors (Jonah, 26 Oct 2026) ----
 // Day target = week target / 7 ($642.86). Same colors as the week: Blue = target, Gold = 150%, Purple = 200%.
 // A day in progress is judged against how much of a normal day's money has usually come in by this time of day,
