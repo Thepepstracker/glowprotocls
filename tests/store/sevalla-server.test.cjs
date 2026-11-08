@@ -29,3 +29,17 @@ test('Sevalla lets browsers keep photos and re-check scripts, but never stores p
  const img=await fetch(base+'/img/glp-mark-8ae0a0b7.png');assert.equal(img.status,200);assert.match(img.headers.get('cache-control'),/^public, max-age=3600/);
  assert.equal((await fetch(base+'/api/catalog')).headers.get('cache-control'),'no-store');
 });
+test('zaderhealth.com: storefront app, its own policy pages, www to the bare domain, Glow-only pages bounce home (8 Nov 2026)',async t=>{
+ const server=createServer({apiHandler:async e=>({statusCode:200,headers:{},body:JSON.stringify({host:e.headers.host})})});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));const base='http://127.0.0.1:'+server.address().port;
+ const z=(p,h='zaderhealth.com')=>fetch(base+p,{headers:{'x-forwarded-host':h},redirect:'manual'});
+ for(const p of ['/','/store-next/','/store-next/admin','/store-next/account','/store-next/anything','/random-page']){const r=await z(p);assert.equal(r.status,200,p);const html=await r.text();assert.match(html,/brand-zader\.css/,p);assert.doesNotMatch(html,/referral\.js/,p)}
+ for(const [p,f] of [['/terms','Terms'],['/terms.html','Terms'],['/privacy/','Privacy'],['/shipping','Shipping'],['/contact','Contact']]){const r=await z(p);assert.equal(r.status,200,p);assert.match(await r.text(),new RegExp(f,'i'),p)}
+ for(const p of ['/coa.html','/about.html','/glow-loyalty.html','/store-next/merch','/store-next/live.html','/store-next/index.html']){const r=await z(p);assert.equal(r.status,301,p);assert.equal(r.headers.get('location'),'/',p)}
+ const w=await z('/terms?x=1','www.zaderhealth.com');assert.equal(w.status,301);assert.equal(w.headers.get('location'),'https://zaderhealth.com/terms?x=1');
+ assert.equal((await z('/store-next/app.js')).status,200);assert.equal((await z('/store-next/brand-zader.css')).status,200);assert.equal((await z('/package.json')).status,404,'source files stay private on Zader too');
+ assert.match(await (await z('/robots.txt')).text(),/zaderhealth/i);
+ assert.match(await (await z('/store-next/packing.html')).text(),/Packing Check/);
+ assert.equal((await z('/api/catalog')).status,200);
+ // Glow is unchanged.
+ const g=await fetch(base+'/');assert.match(await g.text(),/referral\.js/);assert.equal((await fetch(base+'/coa.html')).status,200);
+});
