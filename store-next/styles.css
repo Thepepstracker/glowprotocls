@@ -496,3 +496,140 @@ button.sk-perk.on,button.sk-perk.on:hover,button.sk-perk.on:active,button.sk-per
 .sub-addr input{font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;min-width:0}
 .sub-addr-row{display:grid;grid-template-columns:2fr 1fr 1.2fr;gap:10px}.sub-addr .actions{display:flex;flex-wrap:wrap;gap:8px;margin:0}.sub-addr .muted{margin:0;font-size:13px}
 @media (max-width:560px){.sub-shipto{flex-direction:column;align-items:flex-start}.sub-addr-row{grid-template-columns:1fr 1fr}.sub-addr-row label:first-child{grid-column:1/-1}}
+
+/* Subscriptions: the case for subscribing (8 Nov 2026) */
+.sub-card-price{display:block;width:auto;min-height:0;margin:2px 0 8px;padding:0;background:none;border:0;box-shadow:none;font:inherit;font-size:13.5px;font-weight:400;color:#2f6b3a;text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:#a9cdb0;text-underline-offset:3px}.sub-card-price:hover{color:#1f4f28;text-decoration-color:currentColor}.sub-card-price strong{font-variant-numeric:tabular-nums;font-weight:700}
+.sub-switch{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;background:#eef6ef;border:1px solid #cfe5d2;border-radius:8px;padding:12px 14px;margin:10px 0}
+.sub-switch p{margin:0;flex:1 1 240px;font-size:14px}.sub-switch button{margin:0;flex:0 0 auto}
+.sub-why{background:#fbf6ea;border:1px solid #ecdcb4;border-radius:8px;padding:12px 14px;margin:0 0 12px}
+.sub-why>strong{display:block;font-size:15px;margin-bottom:6px}.sub-why ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:14px}.sub-why b{font-weight:700}
+
+/* Subscribe & save: terms agreement at checkout (8 Nov 2026) */
+.sub-agree{display:flex;gap:10px;align-items:flex-start;background:#fbf6ea;border:1px solid #ecdcb4;border-radius:8px;padding:12px 14px;margin:10px 0;font-size:14px;line-height:1.45;font-weight:400}
+.sub-agree input{width:20px;height:20px;flex:0 0 20px;margin:1px 0 0;accent-color:#1d1b18}.sub-agree a{text-decoration:underline}
+
+/* Subscriptions: cancel screen (8 Nov 2026) */
+.sub-stay{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:8px;padding:14px;margin:12px 0 0;background:#fff}
+.sub-stay h3{margin:0;font-size:16px}.sub-stay p{margin:0;font-size:14px}.sub-stay .sub-stay-alt{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.sub-stay .sub-stay-alt button{margin:0}
+.sub-stay label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}.sub-stay select,.sub-stay input{font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;min-width:0}
+.sub-stay .actions{display:flex;flex-wrap:wrap;gap:8px;margin:0}.sub-stay .actions button{margin:0}.sub-stay .muted{font-size:13px}
+
+/* Subscriptions: add to next package (8 Nov 2026) */
+a.sub-card-price{display:block}
+.sub-addons{display:flex;flex-direction:column;gap:6px;margin:4px 0 8px}
+.sub-addons-h{display:flex;flex-direction:column;gap:1px}.sub-addons-h strong{font-size:14px}.sub-addons-h small{font-size:12.5px;color:var(--muted,#6b645a)}
+.sub-addon-list li span small{display:block;font-size:12.5px;color:#2f6b3a}.sub-addon-list li span small del{color:var(--muted,#8a8378);margin-left:4px}
+.sub-next-total{margin:0;font-size:14px}.sub-addon-open{margin:2px 0 0}
+.sub-addon-pick{display:grid;grid-template-columns:1fr 120px;gap:10px;border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:#fff}
+.sub-addon-pick label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;min-width:0}.sub-addon-pick select{font:inherit;font-weight:400;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;min-width:0;max-width:100%}
+.sub-addon-pick .sub-addon-price,.sub-addon-pick .actions{grid-column:1/-1;margin:0}.sub-addon-pick .sub-addon-price{font-size:14px}.sub-addon-pick .actions{display:flex;flex-wrap:wrap;gap:8px}.sub-addon-pick .actions button{margin:0}
+@media (max-width:560px){.sub-addon-pick{grid-template-columns:1fr}}
+
+/* Subscriptions: Management dashboard (8 Nov 2026) */
+.sub-dash .metric small{display:block}.sub-dash .metric small.muted{font-size:12px;margin-top:2px}
+.sub-dash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0}
+.sub-dash-grid .panel{margin:0;min-width:0}.sub-dash-grid h3{margin:0 0 8px;font-size:15px}
+.sub-dash-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}.sub-dash-list li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}.sub-dash-list li:last-child{border-bottom:0}
+.sub-dash-list li>span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}.sub-dash-grid p.muted{margin:6px 0 0;font-size:13px}
+@media (max-width:760px){.sub-dash-grid{grid-template-columns:1fr}}
+
+/* ============================================================
+   Subscribe & save: the finishing pass (Jonah, 8 Nov 2026)
+   One palette (ink, ivory, champagne), hairlines, serif numbers, quiet motion.
+   Every subscription surface draws from these tokens. No greens, no gradients.
+   ============================================================ */
+:root{--ink:#1b1b1b;--ivory:#fbf9f4;--champagne:#c9a24b;--champagne-deep:#806020;--hair:#e7dfcf;--hair-strong:#d8ccb2;--oxblood:#7d2a2a;--sub-r:6px}
+/* Product card: the subscriber line */
+.sub-card-price,a.sub-card-price{display:flex;align-items:baseline;flex-wrap:nowrap;gap:10px;width:100%;min-height:0;margin:2px 0 10px;padding:9px 0 0;background:none;border:0;border-top:1px solid var(--hair);border-radius:0;box-shadow:none;font:inherit;font-size:13px;font-weight:400;color:var(--ink);text-align:left;text-decoration:none;cursor:pointer}
+.sub-card-price .sc-label{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--champagne-deep)}
+.sub-card-price strong{font-family:var(--serif);font-size:21px;font-weight:600;line-height:1;font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.sub-card-price .sc-go{font-size:15px;line-height:1;transform:translateY(-1px);color:var(--muted);border-bottom:1px solid transparent;transition:color .18s var(--ease),border-color .18s var(--ease)}
+.sub-card-price:hover{background:none;color:var(--ink)}.sub-card-price:hover .sc-go{color:var(--champagne-deep);transform:translate(3px,-1px)}.sub-card-price .sc-go{transition:color .18s var(--ease),transform .18s var(--ease)}
+/* Bag: the two choices */
+.buy-choice{gap:8px}
+.buy-opt{border-radius:var(--sub-r);border-color:var(--hair);padding:16px 18px;transition:border-color .18s var(--ease),background .18s var(--ease),box-shadow .18s var(--ease)}
+.buy-opt:hover{border-color:var(--hair-strong)}
+.buy-opt.on{background:var(--ivory);border-color:var(--ink);box-shadow:none}
+.buy-opt-main strong{font-family:var(--serif);font-size:20px;font-weight:600;letter-spacing:.005em}
+.save-pill{background:transparent;color:var(--champagne-deep);border:1px solid var(--champagne);border-radius:2px;font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;padding:5px 9px}
+.buy-opt.on .save-pill{background:var(--ink);color:#f3e2b4;border-color:var(--ink)}
+/* Bag: subscriber price note while One-time is picked */
+.sub-switch{background:var(--ivory);border:1px solid var(--hair);border-left:2px solid var(--champagne);border-radius:0 var(--sub-r) var(--sub-r) 0;padding:14px 16px;gap:12px 16px}
+.sub-switch p{display:flex;flex-direction:column;gap:3px;font-size:14px;color:var(--ink)}
+.sub-switch .eyebrow{font-size:10.5px;letter-spacing:.22em}.sub-switch-line strong{font-weight:600}
+.sub-switch button{background:transparent;border:1px solid var(--ink);color:var(--ink);border-radius:2px;font-size:13px;letter-spacing:.04em;padding:10px 16px;transition:background .18s var(--ease),color .18s var(--ease)}
+.sub-switch button:hover{background:var(--ink);color:#fff}
+/* Bag: the subscribe panel */
+.sub-panel{background:#fff;border-color:var(--ink);border-radius:0 0 var(--sub-r) var(--sub-r);padding:22px 20px 8px}
+.sub-why{background:none;border:0;border-bottom:1px solid var(--hair);border-radius:0;padding:0 0 16px;margin:0 0 16px}
+.sub-why .eyebrow{font-size:10.5px;letter-spacing:.24em;margin-bottom:6px}
+.sub-why>strong{font-family:var(--serif);font-size:24px;font-weight:600;line-height:1.15;margin-bottom:12px;color:var(--ink)}
+.sub-why ul{list-style:none;padding:0;gap:9px;font-size:14px;color:#3d3a35}
+.sub-why li{position:relative;padding-left:20px}.sub-why li:before{content:'';position:absolute;left:2px;top:.55em;width:6px;height:6px;background:var(--champagne);transform:rotate(45deg)}
+.sub-why b{color:var(--ink);font-weight:600}
+.sub-every{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--champagne-deep)}
+.sub-every select,.sub-acts select,.sub-edit select,.sub-addon-pick select,.sub-stay select,.sub-stay input,.sub-addr input{border-color:var(--hair-strong);border-radius:3px;font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink);transition:border-color .18s var(--ease)}
+.sub-every select:hover,.sub-acts select:hover,.sub-addon-pick select:hover{border-color:var(--ink)}
+.sub-tier{background:var(--ivory);border:1px solid var(--hair);border-radius:var(--sub-r);padding:14px 16px}
+.sub-tier .eyebrow{font-size:10.5px;letter-spacing:.22em}.sub-tier strong{font-size:26px;font-weight:600}
+.slot-meter i{width:10px;height:10px;border-width:1px;border-color:var(--champagne-deep);transform:rotate(45deg);border-radius:1px}.slot-meter i.on{background:var(--champagne)}
+.sub-panel .row{font-size:14.5px}.sub-panel .row.total{font-family:var(--serif);font-size:26px;font-weight:600;border-top-color:var(--ink)}
+.sub-panel .discount-row span:last-child{color:var(--champagne-deep);font-weight:600}
+.sub-year{background:var(--ink);border-radius:var(--sub-r);padding:16px 18px;margin:8px 0 14px;display:grid;grid-template-columns:auto 1fr;align-items:baseline;column-gap:12px;row-gap:2px}
+.sub-year small{grid-column:1/-1;font-size:10.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#bfa66a}
+.sub-year strong{font-family:var(--serif);font-size:38px;font-weight:600;line-height:1;color:#f1dfae;font-variant-numeric:lining-nums}
+.sub-year span{font-size:14px;color:#d9d2c3}
+.sub-perks{gap:8px}.sub-perks li{padding-left:20px;color:#3d3a35}.sub-perks li:before{content:'';left:2px;top:.55em;width:6px;height:6px;background:var(--champagne);transform:rotate(45deg)}
+.sub-nudge{border:1px solid var(--hair);border-left:2px solid var(--champagne);border-radius:0 var(--sub-r) var(--sub-r) 0;background:var(--ivory)}
+.sub-fine{color:var(--muted);font-size:12.5px;line-height:1.6}
+.sub-panel>button.full,#sub-pay{border-radius:2px;letter-spacing:.06em;min-height:52px;font-size:15px;transition:background .2s var(--ease)}
+/* Checkout: the terms agreement */
+.sub-agree{background:var(--ivory);border:1px solid var(--hair);border-radius:var(--sub-r);padding:14px 16px;font-size:13.5px;color:#3d3a35}
+.sub-agree input{accent-color:var(--ink)}.sub-agree a{color:var(--champagne-deep)}
+/* Account: subscription cards */
+.sub-card{border-color:var(--hair);border-radius:var(--sub-r);padding:22px 22px 18px;box-shadow:0 1px 0 rgba(27,27,27,.02)}
+.sub-card-h strong{font-size:26px;font-weight:600}
+.sub-st-ok{background:transparent;color:var(--ink);border:1px solid var(--ink);border-radius:2px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;padding:4px 9px}
+.sub-st-wait{background:transparent;color:var(--champagne-deep);border:1px solid var(--champagne);border-radius:2px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;padding:4px 9px}
+.sub-st-off{background:transparent;color:var(--muted);border:1px solid var(--hair-strong);border-radius:2px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;padding:4px 9px}
+.sub-items{border-top-color:var(--hair)}.sub-items li{border-bottom-color:var(--hair)}
+.sub-facts{gap:10px}.sub-facts>div{background:var(--ivory);border:1px solid var(--hair);border-radius:var(--sub-r);padding:12px 14px}
+.sub-facts small:first-child{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--champagne-deep)}
+.sub-facts strong{font-family:var(--serif);font-size:22px;font-weight:600;line-height:1.2}
+.sub-shipto{background:var(--ivory);border:1px solid var(--hair);border-radius:var(--sub-r)}
+.sub-shipto small{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--champagne-deep)}
+.linkish{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--hair-strong);font-size:13px;transition:border-color .18s var(--ease),color .18s var(--ease)}
+.linkish:hover{background:none;color:var(--champagne-deep);border-color:var(--champagne)}
+.sub-addon-list li span small{color:var(--champagne-deep)}
+.sub-addons-h strong{font-family:var(--serif);font-size:18px;font-weight:600}
+.sub-addon-pick,.sub-stay,.sub-addr{border-color:var(--hair);border-radius:var(--sub-r);background:var(--ivory)}
+.sub-stay h3,.sub-addr h3{font-size:22px}
+.sub-acts{border-top-color:var(--hair);padding-top:16px}
+.sub-acts .actions button,.sub-stay .actions button,.sub-stay-alt button,.sub-addon-pick .actions button,.sub-addr .actions button{border-radius:2px;font-size:13.5px;letter-spacing:.02em}
+.sub-card button.sub-cancel,.sub-stay button.sub-cancel{background:transparent;color:var(--oxblood);border:1px solid #d9c0bb}
+.sub-card button.sub-cancel:hover,.sub-stay button.sub-cancel:hover{background:var(--oxblood);color:#fff;border-color:var(--oxblood)}
+/* Account: a declined card, said calmly */
+.sub-issue{background:var(--ivory);border:1px solid #e6d3cf;border-left:2px solid var(--oxblood);border-radius:0 var(--sub-r) var(--sub-r) 0;padding:16px 18px;color:var(--ink)}
+.sub-issue strong{color:var(--oxblood);font-weight:600}
+/* Account: savings + perks */
+.sub-saved{background:var(--ink);border-radius:var(--sub-r)}
+.sub-saved small:first-child{font-size:10.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:#bfa66a}
+.sub-saved strong{color:#f1dfae}
+.sub-perkcard{background:#fff;border:1px solid var(--hair);border-radius:var(--sub-r)}
+.sub-perkcard .eyebrow{font-size:10.5px;letter-spacing:.22em}
+.sub-badge{background:var(--ink)!important;color:#f1dfae!important;border-radius:2px!important;font-size:10.5px!important;letter-spacing:.22em!important;box-shadow:none!important}
+/* Management: the dashboard */
+.sub-dash .metrics{gap:12px}
+.sub-dash .metric{border-color:var(--hair);border-radius:var(--sub-r);box-shadow:none;padding:18px 18px 16px}
+.sub-dash .metric strong{font-size:34px;font-weight:600;line-height:1.05;font-variant-numeric:lining-nums tabular-nums}
+.sub-dash .metric small:not(.muted){margin-top:6px;font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--champagne-deep)}
+.sub-dash .metric:first-child{background:var(--ink);border-color:var(--ink)}
+.sub-dash .metric:first-child strong{color:#f1dfae}.sub-dash .metric:first-child small{color:#bfa66a}.sub-dash .metric:first-child small.muted{color:#a9a294}
+.sub-dash-grid .panel{border-color:var(--hair);border-radius:var(--sub-r);box-shadow:none}
+.sub-dash-grid h3{font-size:20px;font-weight:600;padding-bottom:8px;border-bottom:1px solid var(--ink);margin-bottom:4px}
+.sub-dash-list li{border-bottom-color:var(--hair)}
+@media (prefers-reduced-motion:reduce){.sub-card-price .sc-go,.buy-opt,.sub-switch button,.linkish{transition:none}}
+@media (max-width:560px){.buy-opt{flex-wrap:wrap;row-gap:8px}.buy-opt-main{flex:1 1 calc(100% - 44px)}.buy-opt .save-pill{order:3;margin-left:30px}.buy-opt-main strong{font-size:19px}.sub-year{grid-template-columns:1fr}.sub-year strong{font-size:34px}.sub-why>strong{font-size:21px}.sub-card{padding:18px 16px}.sub-facts strong{font-size:20px}}
+
+.sub-acts label{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--champagne-deep)}
+
