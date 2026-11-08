@@ -7,8 +7,9 @@
 // result is unknown for more than 23 hours stops for staff review instead of being retried. Declines are not retried.
 const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs');
 const now=()=>Math.floor(Date.now()/1000);
-const EVERY={'1w':{days:7,label:'Every week'},'2w':{days:14,label:'Every 2 weeks'},'3w':{days:21,label:'Every 3 weeks'},'4w':{days:28,label:'Every 4 weeks'},'1m':{months:1,label:'Every month'}};
-const CUSTOMER_EVERY=['1w','2w','3w','1m']; // '4w' stays valid for older subscriptions but is not offered to customers
+const EVERY={'1w':{days:7,label:'Every week'},'2w':{days:14,label:'Every 2 weeks'},'3w':{days:21,label:'Every 3 weeks'},'4w':{days:28,label:'Every 4 weeks'},'1m':{months:1,label:'Every month'},'2m':{months:2,label:'Every 2 months'},'3m':{months:3,label:'Every 3 months'}};
+const CUSTOMER_EVERY=['1w','2w','3w','1m','2m','3m']; // '4w' stays valid for older subscriptions but is not offered to customers
+// Every 2 / 3 months (Jonah, 8 Nov 2026): a kit of 10 lasts most people 2–3 months, so kits get a schedule that fits.
 const DISCOUNT_PCT=15; // legacy: only used for an older staff-started subscription too big for any tier (over 8 slots)
 const bad=(m,status=400)=>{throw Object.assign(new Error(m),{status})};
 const pay=()=>require('./auto-invoice.cjs');
@@ -85,6 +86,8 @@ function validDate(v){return /^\d{4}-\d{2}-\d{2}$/.test(String(v||''))&&!isNaN(D
 function shipDate(x){return x.next_ship_date||x.next_date||''}
 function chargeDate(x){const d=shipDate(x);return d?addDays(d,-CHARGE_DAYS_BEFORE):''}
 function setShip(x,d){x.next_ship_date=d;x.next_date=d}
+// Same person, same door: one box. Email, street, apartment and ZIP must all match (case and spacing ignored).
+function sameDoor(a,b){const n=v=>String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');return !!a&&!!b&&!!n(a.email)&&n(a.email)===n(b.email)&&!!n(a.address)&&n(a.address)===n(b.address)&&n(a.address2)===n(b.address2)&&n(a.zip).slice(0,5)===n(b.zip).slice(0,5)}
 // First ship date for a cycle that starts today: never so soon that the charge date is already behind us.
 function nextFrom(date,every,today){let next=addInterval(date,every);while(addDays(next,-CHARGE_DAYS_BEFORE)<today)next=addInterval(next,every);return next}
 function longDay(d){return d?new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{timeZone:'UTC',weekday:'long',month:'long',day:'numeric'}):''}
@@ -100,7 +103,7 @@ function pricingOf(x,m,settings){try{const r=priceFor(x.items,m,null,deliveriesD
 async function list(){return transaction(async s=>{const m=await productsOf(s),settings=await s.get('settings','main');return(await s.list('subscriptions')).map(x=>({...publicSub(x),pricing:pricingOf(x,m,settings)})).sort((a,b)=>(a.status==='canceled'?1:0)-(b.status==='canceled'?1:0)||String(a.next_date).localeCompare(String(b.next_date)))})}
 // Management dashboard numbers (Jonah, 8 Nov 2026). Everything is read from the store's own records.
 // Monthly recurring revenue is an estimate: each active subscription's next package total × packages per month.
-const PER_MONTH={'1w':52/12,'2w':26/12,'3w':52/36,'4w':13/12,'1m':1};
+const PER_MONTH={'1w':52/12,'2w':26/12,'3w':52/36,'4w':13/12,'1m':1,'2m':1/2,'3m':1/3};
 async function stats(t=Date.now()){return transaction(async s=>{const all=await s.list('subscriptions'),orders=await (s.listLite?s.listLite('orders'):s.list('orders')),m=await productsOf(s),settings=await s.get('settings','main');
  const ts=Math.floor(t/1000),today=todayET(t),week=addDays(today,7),month=today.slice(0,7),first=n=>String(n||'').trim();
  const active=all.filter(x=>x.status==='active');let mrr=0;const upcoming=[],items=new Map();
@@ -151,7 +154,7 @@ async function checkCard(id){const x=await transaction(s=>s.get('subscriptions',
 // move the next ship date, new items, new card link, check card.
 // Why customers cancel (optional, asked once on the cancel screen). Keys are stored; labels are shown.
 const CANCEL_REASONS={too_much:'I have too much right now',price:'It costs too much',not_needed:'I don’t need it anymore',switching:'I’m trying something else',delivery:'Shipping or delivery problem',other:'Something else'};
-async function update({id,action,every,next_date,items,address,reason,note},{customer=false,owner=null}={}){
+async function update({id,action,every,next_date,items,address,reason,note,together_with},{customer=false,owner=null}={}){
  if(action==='link')return cardLink(id);
  if(action==='check')return checkCard(String(id||'').slice(0,20));
  let jobs=[];
@@ -171,6 +174,9 @@ async function update({id,action,every,next_date,items,address,reason,note},{cus
  else if(action==='date'){if(!validDate(next_date)||next_date<today)bad('Choose a date from today on.');if(customer&&addDays(next_date,-CHARGE_DAYS_BEFORE)<today)bad('Choose a ship date at least 2 days from today.');setShip(x,next_date)}
  else if(action==='items'){const m=await productsOf(s),lines=await validItems(s,items,x.brand||'glow',m);const r=priceFor(lines,m,null,deliveriesDone(x)+1,{bonus_id:x.bonus_id,settings:await s.get('settings','main'),streak:streakOf(x)});if(!r.ok)bad(r.error,409);x.items=lines.map(l=>({id:l.id,quantity:l.quantity,name:m.get(l.id).name}));x.tier=r.tier.id}
  else if(action==='address'){x.customer=shipTo(x,address);x.address_changed_at=now()}
+ // Ship with my other package: move this one's next ship date onto another active subscription's, same person, same door.
+ else if(action==='together'){const y=await s.get('subscriptions',String(together_with||'').slice(0,20));if(!y||y.id===x.id||y.status!=='active'||(owner&&!owns(y,owner))||!sameDoor(x.customer,y.customer))bad('That package can’t ship with this one.',409);
+  const d=shipDate(y);if(!d||addDays(d,-CHARGE_DAYS_BEFORE)<today)bad('Your other package is charged too soon to join it. Try again after it ships.',409);if(x.status!=='active')bad('Resume this subscription first.',409);setShip(x,d);x.ships_with_sub=y.id}
  else bad('Choose what to change.');
  x.problem=action!=='cancel'&&x.payment_issue?x.problem:'';
  x.updated_at=now();await s.put('subscriptions',x.id,x);return publicSub(x)});
@@ -386,8 +392,8 @@ async function customerRoute(path,body,h,method){
  if(path==='/account/subscriptions/abandon'&&method==='POST'){const a=await me(),x=await mine(a,body.id);if(x.status==='pending_first_payment')await settleFirst(x.id,{close:true});return ok({ok:true})}
  if(path==='/account/subscriptions/preview'&&method==='POST'){const a=await me(),x=await mine(a,body.id);
   return ok(await transaction(async s=>{const m=await productsOf(s),lines=await validItems(s,body.items,x.brand||'glow',m);return require('./store-core.cjs').subscriptionQuote(s,{items:lines,h:{},brand:brands.get(x.brand||'glow'),deliveryNumber:deliveriesDone(x)+1,bonus_id:x.bonus_id,streak:streakOf(x),stockCheck:false})}))}
- if(path==='/account/subscriptions/update'&&method==='POST'){const a=await me(),x=await mine(a,body.id),action=String(body.action||'').slice(0,10);if(!['every','skip','pause','resume','cancel','items','address'].includes(action))bad('Choose what to change.');
-  await update({id:x.id,action,every:String(body.every||'').slice(0,4),items:body.items,address:body.address,reason:String(body.reason||'').slice(0,20),note:typeof body.note==='string'?body.note.slice(0,400):''},{customer:true,owner:a});
+ if(path==='/account/subscriptions/update'&&method==='POST'){const a=await me(),x=await mine(a,body.id),action=String(body.action||'').slice(0,10);if(!['every','skip','pause','resume','cancel','items','address','together'].includes(action))bad('Choose what to change.');
+  await update({id:x.id,action,every:String(body.every||'').slice(0,4),items:body.items,address:body.address,reason:String(body.reason||'').slice(0,20),note:typeof body.note==='string'?body.note.slice(0,400):'',together_with:String(body.together_with||'').slice(0,20)},{customer:true,owner:a});
   return ok(await transaction(async s=>customerView(await s.get('subscriptions',x.id),await productsOf(s),await s.get('settings','main'),await (s.listLite?s.listLite('orders'):s.list('orders')))))}
  if(path==='/account/subscriptions/addons'&&method==='POST'){const a=await me(),x=await mine(a,body.id);
   return ok(await transaction(async s=>{const y=await s.get('subscriptions',x.id);if(y.status!=='active')bad('Add-ons can be added to an active subscription.',409);
@@ -437,7 +443,7 @@ async function run(limit=10,t=Date.now()){
  try{out.reminded=(await remind(20,t)).sent||0}catch{}
  return out;
 }
-module.exports={CANCEL_REASONS,TERMS_VERSION,EVERY,CUSTOMER_EVERY,DISCOUNT_PCT,TIERS,SLOT_MAX_CENTS,MAX_SLOTS,CHARGE_DAYS_BEFORE,REMIND_DAYS_BEFORE_CHARGE,FAIR_PCT,COPY,
+module.exports={sameDoor,CANCEL_REASONS,TERMS_VERSION,EVERY,CUSTOMER_EVERY,DISCOUNT_PCT,TIERS,SLOT_MAX_CENTS,MAX_SLOTS,CHARGE_DAYS_BEFORE,REMIND_DAYS_BEFORE_CHARGE,FAIR_PCT,COPY,
  slotsOf,slotsFor,tierFor,tierById,priceFor,bonusDelivery,shippingFor,publicTier,addInterval,addDays,todayET,shipDate,chargeDate,deliveriesDone,
  list,create,update,cardLink,checkCard,charge,run,remind,publicSub,owns,offerOpen,customerRoute,startCheckout,settleFirst,checkoutBody,reminderEmail,welcomeEmail,
  stats,AUTO_SKIP_DAYS,ADDON_MAX_LINES,ADDON_MAX_QTY,addonsPrice,subLinePrice,cardUpdateLink,checkCardUpdate,retryFailed,skipStale,declinedEmail,canceledEmail,customerView};
