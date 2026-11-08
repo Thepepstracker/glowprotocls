@@ -83,3 +83,11 @@ test('sales funnel: anonymous counts by source, bots and junk ignored, orders an
  const t=f.sources.find(x=>x.source==='tiktok');assert.deepEqual([t.visit,t.bag,t.checkout,t.orders,t.paid,t.revenue_cents],[2,1,1,1,1,10000]);assert.equal(f.sources.find(x=>x.source==='direct').visit,1,'a bad source becomes direct');
  assert(f.total.visit>=3);
 });
+
+test('Management → Today: month goal (owner only) and the numbers behind the home screen',async()=>{
+ const owner=(await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD})).headers['Set-Cookie'].split(';')[0];
+ await assert.rejects(call('/admin/today'),e=>e.status===401||e.status===403,'signed in only');
+ let t=(await call('/admin/today',undefined,owner)).body;assert.equal(t.goal_cents,0);assert(t.funnel.visit>=1);assert.equal(typeof t.subs.mrr_cents,'number');assert.equal(typeof t.reviews_pending,'number');
+ await assert.rejects(call('/admin/goal',{cents:-5},owner),e=>e.status===400);
+ assert.equal((await call('/admin/goal',{cents:10108300},owner)).body.goal_cents,10108300);t=(await call('/admin/today',undefined,owner)).body;assert.equal(t.goal_cents,10108300);assert.equal(t.month,t.day.slice(0,7));
+});
