@@ -763,3 +763,6 @@ a.sub-card-price{display:block}
 .mgmt .lb-fine{font-size:12.5px;margin:10px 0 0}.mgmt .lb-h3{margin:30px 0 10px}
 .mgmt .lb-other{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}.mgmt .lb-other li{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);border-radius:8px;padding:12px 14px}.mgmt .lb-other li div{display:flex;flex-direction:column}.mgmt .lb-other li span{display:flex;gap:6px}.mgmt .lb-other button{min-height:38px;padding:6px 12px;font-size:14px}
 @media(max-width:1000px){.mgmt .lb-grid{grid-template-columns:1fr}.mgmt .lb-build{position:static}.mgmt .lb-list{max-height:none}}
+
+/* Ship together (8 Nov 2026) */
+.sub-together{margin:10px 0;font-size:14px;line-height:1.5;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:10px 12px}.sub-together.on{border-color:#bfe0cb;background:#eef8f1;color:#23553a}.sub-together .linkish{font-weight:700}
