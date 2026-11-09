@@ -56,7 +56,7 @@ const ZADER_CATALOG=[
  ['FOX-04 DRI · 10 mg','fox-04-10-mg',13499,'10 mg'],
  ['ARA-290 · 10 mg','ara-290-10-mg',7699,'10 mg'],
  ['Thymosin Alpha-1 · 5 mg','thymosin-alpha-1-5-mg',7199,'5 mg'],
- ['Pinealon · 10 mg','',9399,'10 mg','zdr-pinealon-10-mg'],
+ ['Pinealon · 10 mg','pinealon-10-mg',9399,'10 mg','zdr-pinealon-10-mg'],
  ['Epithalon · 50 mg','epithalon-50-50-mg',16899,'50 mg'],
  ['PT-141 · 10 mg','pt-141-10-mg',5699,'10 mg'],
  ['DSIP · 5 mg','dsip-5-mg',5499,'5 mg'],
@@ -73,7 +73,7 @@ const ZADER_CATALOG=[
  ['Adamax · 10 mg','adamax-10-mg',10099,'10 mg'],
  ['Glutathione · 750 mg','glutathione-750-mg',6499,'750 mg'],
  ['Glutathione · 1500 mg','glutathione-1500-mg',10099,'1500 mg'],
- ['BPC-157 · 5 mg','',4999,'5 mg','zdr-bpc-157-5-mg'],
+ ['BPC-157 · 5 mg','bpc-157-5-mg',4999,'5 mg','zdr-bpc-157-5-mg'],
  ['BPC-157 · 10 mg','bpc-157-10-mg',5499,'10 mg'],
  ['Tesamorelin · 5 mg','tesamorelin-5-mg',8399,'5 mg'],
  ['Tesamorelin · 10 mg','tesamorelin-10-mg',11799,'10 mg']
@@ -90,7 +90,7 @@ async function ensureZaderPhotos(s){
  await s.put('migrations',ZADER_PHOTO_MIGRATION,{applied:Math.floor(Date.now()/1000),changed});return true;
 }
 async function ensureZaderCatalog(s,validSlug){
- if(await s.get('migrations',ZADER_MIGRATION))return ensureZaderPhotos(s);
+ if(await s.get('migrations',ZADER_MIGRATION)){const a=await ensureZaderPhotos(s),b=await ensureZaderTwins(s,validSlug);return a||b}
  const all=await s.list('products');if(!all.length)return false;
  const bySku=new Map(all.map(p=>[String(p.sku).toLowerCase(),p]));let nextId=Math.max(0,...all.map(p=>p.id));let created=0,linked=0;
  for(const [name,glowSku,price,size,ownSku] of ZADER_CATALOG){
@@ -102,12 +102,43 @@ async function ensureZaderCatalog(s,validSlug){
    if(!glow.stock_pool){glow.stock_pool=pool;await s.put('products',glow.id,glow);linked++}
    stock=glow.stock;
   }
-  const p={id:++nextId,brand:'zader',name,sku,slug:sku,size,price,stock,stock_pool:pool,active:1,image:zaderPhoto(sku),source:glow?'zader catalog; shares stock with Glow '+glow.sku:'zader catalog; own stock'};
+  const p={id:++nextId,brand:'zader',name,sku,slug:sku,size,price,stock,stock_pool:pool,active:1,image:zaderPhoto(sku),source:glow?'zader catalog; shares stock with Glow '+glow.sku:'zader catalog; own stock',...(glow?{twin_of:glow.sku}:{})};
   await s.put('products',p.id,p);bySku.set(sku,p);created++;
  }
  await s.put('migrations',ZADER_MIGRATION,{applied:Math.floor(Date.now()/1000),created,linked});
  await ensureZaderPhotos(s);
+ await ensureZaderTwins(s,validSlug);
  return true;
 }
-module.exports={paymentLabel,statementSuffix,BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,units,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ZADER_PHOTOS,ensureZaderCatalog,ensureZaderPhotos,hostOf};
+// Everything Glow sells, Zader sells too (Jonah, 8 Nov 2026: "everything weve done for glowgls.com we need to do to zader
+// health"). Runs once after the catalog above: every Glow product and kit without a Zader version gets one, at Zader's own
+// price level (Zader's prices are 1.71x Glow's, the median of the 38 products both stores carried; rounded to $x.99),
+// sharing Glow's stock group, so one sale on either store takes from the same shelf. Glow-branded goods stay Glow-only:
+// the clothing, magnets, Glow's own serums and skincare, and Glow Fuel. A Glow product that is switched off is copied
+// switched off. Prices and anything else can be changed per product in Management afterwards.
+const ZADER_TWINS='zader-catalog-v2',ZADER_RATIO=1.71;
+const ZADER_SKIP=/^(merch-|magnet-|protocol-0|glow-eyes|rose-recovery|cu-hair|glow-fuel)/i;
+const zaderPrice=c=>Math.max(99,Math.round(Number(c||0)*ZADER_RATIO/100)*100-1);
+function twinImage(glow){const base=String(glow.stock_pool||'').replace(/^shared-/,'')||String(glow.sku).toLowerCase();const own='zdr-'+String(glow.sku).toLowerCase(),vial='zdr-'+base;return ZADER_PHOTOS.has(own)?zaderPhoto(own):ZADER_PHOTOS.has(vial)?zaderPhoto(vial):ZADER_IMAGE}
+async function ensureZaderTwins(s,validSlug){
+ if(await s.get('migrations',ZADER_TWINS))return false;
+ const all=await s.list('products');if(!all.length)return false;
+ const bySku=new Map(all.map(p=>[String(p.sku).toLowerCase(),p]));
+ const covered=new Set(all.filter(p=>p.brand==='zader'&&p.twin_of).map(p=>String(p.twin_of).toLowerCase()));
+ for(const [, glowSku] of ZADER_CATALOG)if(glowSku)covered.add(glowSku);
+ let nextId=Math.max(0,...all.map(p=>p.id)),created=0,linked=0;const skipped=[];
+ for(const glow of all.filter(p=>productBrand(p)==='glow').sort((a,b)=>a.id-b.id)){
+  const gs=String(glow.sku||'').toLowerCase();if(!gs||covered.has(gs))continue;
+  if(ZADER_SKIP.test(gs)||Array.isArray(glow.components)&&glow.components.length){skipped.push(gs);continue}
+  const sku=('zdr-'+gs).slice(0,60);if(bySku.has(sku))continue;
+  let pool=glow.stock_pool||('shared-'+gs).slice(0,60);if(!validSlug(pool))pool=('shared-'+String(glow.id)).slice(0,60);
+  if(!glow.stock_pool){glow.stock_pool=pool;await s.put('products',glow.id,glow);linked++}
+  const p={id:++nextId,brand:'zader',name:glow.name,sku,slug:sku,size:glow.size||'',price:zaderPrice(glow.regular_price||glow.price),stock:glow.stock||0,stock_pool:pool,active:glow.active?1:0,image:twinImage(glow),
+   ...(units(glow)>1?{units:units(glow)}:{}),...(glow.promo_excluded?{promo_excluded:true}:{}),twin_of:gs,source:'zader twin of Glow '+gs};
+  await s.put('products',p.id,p);bySku.set(sku,p);covered.add(gs);created++;
+ }
+ await s.put('migrations',ZADER_TWINS,{applied:Math.floor(Date.now()/1000),created,linked,skipped:skipped.length});
+ return true;
+}
+module.exports={zaderPrice,ZADER_SKIP,paymentLabel,statementSuffix,BRANDS,ids,get,validId,fromHeaders,allHosts,productBrand,couponBrand,orderBrand,publicBrand,publicProduct,units,emailFrom,PUBLIC_STOCK,ZADER_CATALOG,ZADER_PHOTOS,ensureZaderCatalog,ensureZaderPhotos,hostOf};
 
