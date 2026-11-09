@@ -78,14 +78,40 @@ test('products saved in Management keep or set their brand',async()=>{
 });
 
 test('each Zader product gets its own label photo once; a photo changed in Management is kept',async()=>{
- const d=(await admin('/admin/data')).body;const z=d.products.filter(p=>p.brand==='zader');
+ const V1=new Set(brands.ZADER_CATALOG.map(r=>r[4]||'zdr-'+r[1]));const d=(await admin('/admin/data')).body;const z=d.products.filter(p=>p.brand==='zader'&&V1.has(p.sku));
  assert.ok(z.length>=40);assert.ok(z.every(p=>p.image==='/img/zader/products/'+p.sku+'.jpg'),'fresh catalog uses per-product photos');
  for(const p of z)assert.ok(fs.existsSync(path.join(__dirname,'../..',p.image)),'photo file exists: '+p.image);
  // simulate a store that got the catalog before photos existed
  await transaction(async s=>{for(const p of z){p.image='/img/zader/zader-vial.jpg';await s.put('products',p.id,p)}const kpv=z.find(p=>p.sku==='zdr-kpv-10-mg');kpv.image='/img/custom.jpg';await s.put('products',kpv.id,kpv);await s.remove('migrations','zader-photos-v1')});
  await call('/catalog',undefined,ZADER);
- const after=(await admin('/admin/data')).body.products.filter(p=>p.brand==='zader');
+ const after=(await admin('/admin/data')).body.products.filter(p=>p.brand==='zader'&&V1.has(p.sku));
  assert.equal(after.find(p=>p.sku==='zdr-kpv-10-mg').image,'/img/custom.jpg');
  assert.equal(after.find(p=>p.sku==='zdr-nad-500-mg').image,'/img/zader/products/zdr-nad-500-mg.jpg');
  assert.equal(after.filter(p=>p.image.startsWith('/img/zader/products/')).length,after.length-1);
+});
+
+test('everything Glow sells, Zader sells too: one Zader version of each Glow product and kit, Zader prices, same shelf (8 Nov 2026)',async()=>{
+ // a Glow kit added after Zader's catalog was made (the live store has 100 kits); the copy step must pick it up once
+ await transaction(async s=>{const all=await s.list('products');const v=all.find(p=>(p.brand||'glow')==='glow'&&p.sku==='bpc-157-10-mg');if(!v.stock_pool){v.stock_pool='shared-bpc-157-10-mg';await s.put('products',v.id,v)}
+  await s.put('products',Math.max(...all.map(p=>p.id))+1,{id:Math.max(...all.map(p=>p.id))+1,brand:'glow',name:'BPC-157 · 10 mg · Kit of 10',sku:'bpc-157-10-mg-kit',price:29999,regular_price:29999,stock:v.stock,stock_pool:v.stock_pool,units:10,active:1});
+  await s.remove('migrations','zader-catalog-v2')});
+ await call('/catalog',undefined,ZADER);
+ const all=(await admin('/admin/data')).body.products,glow=all.filter(p=>(p.brand||'glow')==='glow'),zader=all.filter(p=>p.brand==='zader');
+ const twinOf=new Map(zader.filter(p=>p.twin_of).map(p=>[p.twin_of,p]));
+ const expected=glow.filter(p=>!brands.ZADER_SKIP.test(String(p.sku).toLowerCase())&&!(Array.isArray(p.components)&&p.components.length));
+ assert.ok(expected.length>0);
+ for(const g of expected){const z=twinOf.get(String(g.sku).toLowerCase());assert.ok(z,'Zader version of '+g.sku);
+  assert.equal(z.stock_pool,g.stock_pool,'same stock group for '+g.sku);assert.ok(z.stock_pool);assert.equal(z.stock,g.stock);
+  assert.equal(brands.units(z),brands.units(g),'same kit size for '+g.sku);assert.equal(!!z.active,!!g.active)}
+ const v1=new Set(brands.ZADER_CATALOG.map(r=>r[1]).filter(Boolean));
+ for(const z of zader.filter(p=>p.twin_of&&!v1.has(p.twin_of))){const g=glow.find(p=>String(p.sku).toLowerCase()===z.twin_of);assert.equal(z.price,brands.zaderPrice(g.regular_price||g.price));assert.match(String(z.price),/99$/)}
+ assert.ok(!zader.some(p=>/^zdr-(merch-|magnet-|protocol-0|glow-eyes|rose-recovery|cu-hair|glow-fuel)/i.test(p.sku)),'Glow-branded goods stay Glow-only');
+ assert.equal(new Set(zader.map(p=>p.sku)).size,zader.length,'no duplicate SKUs');
+ // runs once: a second visit adds nothing
+ await call('/catalog',undefined,ZADER);assert.equal((await admin('/admin/data')).body.products.filter(p=>p.brand==='zader').length,zader.length);
+ // selling a Zader kit takes from the shared shelf
+ const kit=zader.find(p=>p.sku==='zdr-bpc-157-10-mg-kit');assert.ok(kit,'kit copied');assert.equal(kit.price,brands.zaderPrice(29999));assert.equal(kit.image,'/img/zader/products/zdr-bpc-157-10-mg.jpg','kit shows the Zader vial photo');
+ await transaction(async s=>{const all=await s.list('products');for(const p of all.filter(p=>p.stock_pool===kit.stock_pool)){p.stock=50;await s.put('products',p.id,p)}});kit.stock=50;
+ {const before=kit.stock;const r=(await call('/orders',orderBody([{id:kit.id,quantity:1}]),ZADER)).body;assert.ok(r.order);
+  const g=(await admin('/admin/data')).body.products.find(p=>(p.brand||'glow')==='glow'&&p.stock_pool===kit.stock_pool);assert.equal(g.stock,before-brands.units(kit))}
 });
