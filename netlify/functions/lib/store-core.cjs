@@ -147,6 +147,8 @@ async function handle({path,method='GET',headers={},body={}}){
  if(path.startsWith('/admin/labels')){const r=await require('./labels.cjs').route(path,body,h,method,{session});if(r)return r}
  // Live log + deep live analytics (Jonah, 9 Nov 2026). See live.cjs.
  if(path==='/live/ping'||path==='/admin/live'||path.startsWith('/admin/live/')){const r=await require('./live.cjs').route(path,body,h,method,{session});if(r)return r}
+ // Print log (Jonah, 9 Nov 2026): which labels and packing slips have been printed. See print-log.cjs.
+ if(path==='/admin/printed'){const r=await require('./print-log.cjs').route(path,body,h,method,{session});if(r)return r}
  if(path==='/admin/members'||path.startsWith('/admin/members/')){const sid=await transaction(s=>session(s,h));return members.adminRoute(path,body,method,{transaction,sid,audit})}
  // Order Bell: a private key lets a small script on the shop's own computer hear about new orders without a login.
  // It returns order number, total, first name and state only (no email, phone or street). Rotating the key kills every old copy.
