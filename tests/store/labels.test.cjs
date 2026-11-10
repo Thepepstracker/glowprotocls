@@ -8,7 +8,7 @@ test('library: every label has its image and thumbnail, 48 sticker positions, no
  assert.ok(lib.labels.length>=100);assert.equal(new Set(ids).size,ids.length);assert.equal(lib.sheet.pos.length,48);
  const zlib=require('node:zlib');for(const l of lib.labels){const [f,off,len]=l.img,b=Buffer.alloc(len),fd=fs.openSync(path.join(dir,f),'r');fs.readSync(fd,b,0,len,off);fs.closeSync(fd);assert.equal(zlib.inflateSync(b).length,l.w*l.h*3,l.id);assert.ok(l.thumb[1]>1000,l.id);assert.ok(['icc','rgb'].includes(l.cs))}
  for(const s of lib.sheets)assert.ok(fs.existsSync(path.join(dir,'sheet-'+s.id+'.pdf')));
- assert.equal(lib.sheet.pos[0].join(' '),'22.27210 722.49450 122.22 52.38');assert.equal(lib.sheet.pos_8030[0].join(' '),'19.323075 717.12496 122.22 52.38');
+ assert.equal(lib.sheet.pos[0].join(' '),'24.71650 723.54210 117.33120 50.28480');assert.equal(lib.sheet.scale,0.96);assert.equal(lib.sheet.pos_9120_full[0].join(' '),'22.27210 722.49450 122.22 52.38');assert.equal(lib.sheet.pos_8030[0].join(' '),'19.323075 717.12496 122.22 52.38');
 });
 test('plan: start sticker, new row per label, pages, and limits',()=>{
  const p=L.plan([{id:ids[0],count:12},{id:ids[1],count:5},{id:ids[2],count:12}],{start:6,newRow:true});
