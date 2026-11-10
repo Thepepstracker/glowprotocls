@@ -239,7 +239,7 @@ function loadReport(id,quiet){openReport=id;if(!quiet){$('report').hidden=false;
 function pct(a,b){if(b==null||!b)return '';var p=Math.round((a-b)*100/b);return '<em class="'+(p>=0?'up':'down')+'">'+(p>=0?'▲ ':'▼ ')+Math.abs(p)+'% vs avg</em>'}
 function kpi(v,label,extra){return '<div class="kpi"><b>'+v+'</b><small>'+label+'</small>'+(extra||'')+'</div>'}
 function rows(a){return a.length?'<ul class="rows">'+a.map(function(r){return '<li><span>'+r[0]+'</span><b>'+r[1]+'</b></li>'}).join('')+'</ul>':'<p class="muted" style="margin:0">Nothing yet.</p>'}
-var METHOD={venmo:'Venmo',zelle:'Zelle',cashapp:'Cash App',paypal:'PayPal',card_invoice:'Card (invoice)',card_checkout:'Card (subscription)',card_autopay:'Card (autopay)'};
+var METHOD={venmo:'Venmo',zelle:'Zelle',cashapp:'Cash App',bitcoin:'Bitcoin',paypal:'PayPal',card_invoice:'Card (invoice)',card_checkout:'Card (subscription)',card_autopay:'Card (autopay)'};
 function localInput(t){if(!t)return '';var p=etParts(t*1000);return p.year+'-'+p.month+'-'+p.day+'T'+p.hour+':'+p.minute}
 function fromInput(v){var m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);return m?etEpoch(+m[1],+m[2],+m[3],+m[4],+m[5]):null}
 function reportHTML(r){var M=r.money,C=r.customers,P=r.products,T=r.timing,S=r.site,K=r.tiktok||{},A=r.compare.avg||{},last=r.compare.last;

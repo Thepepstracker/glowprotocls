@@ -4,6 +4,10 @@
  'use strict';
  const phrases={
  "Store": "Tienda",
+ "Bitcoin address": "Dirección de Bitcoin",
+ "Copy address": "Copiar dirección",
+ "Address copied": "Dirección copiada",
+ "Press and hold the address to copy it": "Mantén presionada la dirección para copiarla",
  "Home": "Inicio",
  "Peptides": "Péptidos",
  "COAs": "Certificados",
@@ -96,7 +100,7 @@
  "At checkout, save your details, pay using your chosen payment service, then upload your screenshot and submit your order.": "Al finalizar la compra, guarda tus datos, paga con el servicio que prefieras, sube tu captura de pantalla y envía tu pedido.",
  "Checkout": "Finalizar compra",
  "Your details, then payment.": "Primero tus datos; después, el pago.",
- "Confirm your shipping address and choose how you’ll pay. Venmo, Cash App and Zelle require a payment screenshot to submit. For a credit card, submit your order now and we will email you an invoice.": "Confirma tu dirección de envío y elige cómo pagar. Con Venmo, Cash App y Zelle debes adjuntar una captura del pago para enviar el pedido. Para pagar con tarjeta de crédito, envía tu pedido ahora y te mandaremos una factura por correo electrónico.",
+ "Confirm your shipping address and choose how you’ll pay. Venmo, Cash App, Zelle and Bitcoin require a payment screenshot to submit. For a credit card, submit your order now and we will email you an invoice.": "Confirma tu dirección de envío y elige cómo pagar. Con Venmo, Cash App, Zelle y Bitcoin debes adjuntar una captura del pago para enviar el pedido. Para pagar con tarjeta de crédito, envía tu pedido ahora y te mandaremos una factura por correo electrónico.",
  "A private order link will be emailed when your checkout is saved. Keep this page open while you pay.": "Cuando guardes tu compra, recibirás por correo un enlace privado a tu pedido. Mantén esta página abierta mientras pagas.",
  "Keep this checkout page open; automatic return emails are not enabled.": "Mantén abierta esta página; los correos automáticos con el enlace de regreso no están habilitados.",
  "Shipping details · United States": "Datos de envío · Estados Unidos",
@@ -886,6 +890,8 @@
   [/^Add one (.+)$/,(_,n)=>`Agregar una unidad de ${n}`],
   [/^Remove coupon (.+)$/,(_,n)=>`Quitar código ${n}`],
   [/^Recipient: (.*)$/,(_,n)=>`Destinatario: ${n}`],
+  [/^Send (\$[\d,.]+) worth of Bitcoin to this address from Cash App, Coinbase or any Bitcoin wallet\.$/,(_,n)=>`Envía el equivalente a ${n} en Bitcoin a esta dirección desde Cash App, Coinbase o cualquier billetera de Bitcoin.`],
+  [/^Send Bitcoin \(BTC\) only, on the Bitcoin network\. Other coins sent here are lost\. Your wallet's network fee is added on top, so make sure (\$[\d,.]+) arrives\. Then come back, upload your screenshot and paste the transaction ID\.$/,(_,n)=>`Envía solo Bitcoin (BTC), por la red de Bitcoin. Otras monedas enviadas aquí se pierden. La comisión de red de tu billetera se suma aparte, así que asegúrate de que lleguen ${n}. Luego regresa, sube tu captura y pega el ID de la transacción.`],
   [/^Open Zelle in your bank app and enter (\$[\d,.]+)\.$/,(_,n)=>`Abre Zelle en la aplicación de tu banco e ingresa ${n}.`],
   [/^Enter (\$[\d,.]+) in the payment service\. Use Copy amount below\.$/,(_,n)=>`Ingresa ${n} en el servicio de pago. Usa Copiar importe abajo.`],
   [/^We will email a credit card invoice to (.+)\.$/,(_,n)=>`Te enviaremos por correo una factura para pagar con tarjeta a ${n}.`],
