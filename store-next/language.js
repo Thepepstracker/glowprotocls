@@ -6,6 +6,8 @@
  "Store": "Tienda",
  "Veterans Day · Today only · Subscriptions only": "Día de los Veteranos · Solo hoy · Solo suscripciones",
  "Build your box": "Arma tu caja",
+ "Free in your box": "Gratis en tu caja",
+ "1× Glow bag, your color": "1× bolsa Glow, en tu color",
  "Tier 1": "Nivel 1",
  "Tier 2": "Nivel 2",
  "Tier 3": "Nivel 3",
