@@ -48,7 +48,32 @@ function summary(orders,L){
   peak_online:L.peak_online||0,tiktok:L.tiktok||{}}}
 
 // ---- the deep report ----
-function report(orders,visitors,products,L,all){
+// Subscriptions, new accounts and Skool members during the live (Jonah, 10 Nov 2026).
+// subs: subscription records, each with value_cents = its package total (next delivery); accounts: customer records.
+const EVERY_LABEL={'1w':'Every week','2w':'Every 2 weeks','3w':'Every 3 weeks','4w':'Every 4 weeks','1m':'Every month','2m':'Every 2 months','3m':'Every 3 months'};
+const subName=x=>{const n=String(x.customer?.name||'').trim().split(/\s+/);return (n[0]||'Someone')+(n.length>1?' '+n[n.length-1][0].toUpperCase()+'.':'')};
+function extrasFor(L,end,list,orders,subs,accounts,sales){
+ const byId=new Map(orders.map(o=>[o.id,o]));
+ const S=(subs||[]).filter(x=>(x.brand||'glow')==='glow'&&(x.created||0)>=L.started_at&&(x.created||0)<end).filter(x=>{const o=byId.get(x.first_order||x.source_order);return !o||o.is_test===false}).sort((a,b)=>a.created-b.created);
+ const PER_MONTH=require('./subscriptions.cjs').PER_MONTH,live=S.filter(x=>x.status!=='canceled'),monthly=x=>Math.round((x.value_cents||0)*(PER_MONTH[x.every]||1));
+ const plans={},prods=new Map();for(const x of S){const k=EVERY_LABEL[x.every]||x.every||'Other';plans[k]=(plans[k]||0)+1;for(const i of x.items||[])prods.set(i.name||'Product',(prods.get(i.name||'Product')||0)+(Number(i.quantity)||0))}
+ const monthly_cents=live.reduce((n,x)=>n+monthly(x),0);
+ const subscriptions={started:S.length,active:S.filter(x=>x.status==='active').length,waiting:S.filter(x=>['needs_card','pending_first_payment'].includes(x.status)).length,
+  paused:S.filter(x=>x.status==='paused').length,canceled:S.filter(x=>x.status==='canceled').length,from_checkout:S.filter(x=>x.source==='customer').length,by_staff:S.filter(x=>x.source!=='customer').length,
+  monthly_cents,yearly_cents:monthly_cents*12,plans:Object.entries(plans).sort((a,b)=>b[1]-a[1]),products:[...prods.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8),
+  list:S.slice(0,25).map(x=>({name:subName(x),plan:EVERY_LABEL[x.every]||x.every,status:x.status,package_cents:x.value_cents??null,monthly_cents:x.status==='canceled'?0:monthly(x)}))};
+ const liveEmails=new Set(list.map(o=>String(o.customer?.email||'').trim().toLowerCase()));
+ const A=(accounts||[]).filter(a=>(a.created||0)>=L.started_at&&(a.created||0)<end);
+ const accountsOut={created:A.length,finished:A.filter(a=>a.verified).length,set_up_during:(accounts||[]).filter(a=>(a.verified_at||0)>=L.started_at&&(a.verified_at||0)<end).length,
+  ordered_tonight:A.filter(a=>liveEmails.has(String(a.email||'').toLowerCase())).length};
+ const LN=require('./skool-members.cjs').LEVEL_NAME||{},M=list.filter(o=>o.member),mc=M.reduce((n,o)=>n+(o.total||0),0),lv={};for(const o of M){const k=LN[o.member.level]||(o.member.level?'Level '+o.member.level:'Member');lv[k]=(lv[k]||0)+1}
+ const members={orders:M.length,buyers:new Set(M.map(o=>String(o.customer?.email||'').toLowerCase())).size,sales_cents:mc,share_pct:sales?Math.round(mc*100/sales):0,
+  discount_cents:M.reduce((n,o)=>n+(o.member_discount||o.member.discount||0),0),shipping_waived_cents:M.reduce((n,o)=>n+(o.member.shipping_waived||0),0),
+  avg_cents:M.length?Math.round(mc/M.length):0,levels:Object.entries(lv).sort((a,b)=>b[1]-a[1])};
+ return{subscriptions,accounts:accountsOut,members};
+}
+
+function report(orders,visitors,products,L,all,extra={}){
  const t=now(),end=L.ended_at||t+1,base=summary(orders,L),list=windowOrders(orders,L,end).sort((a,b)=>placed(a)-placed(b));
  const mins=Math.max(1,Math.ceil((end-L.started_at)/60)),prod=new Map(products.map(p=>[p.id,p]));
  // customers: new = no counted order before this one, ever
@@ -93,6 +118,7 @@ function report(orders,visitors,products,L,all){
    added_to_bag:V.filter(v=>v.bag).length,started_checkout:V.filter(v=>v.checkout).length,sources:Object.entries(src).sort((a,b)=>b[1]-a[1]),
    order_rate_pct:V.length?Math.round(list.length*1000/V.length)/10:null},
   tiktok:{...tk,buyers_per_100_viewers:viewers?Math.round(B.length*1000/viewers)/10:null,sales_per_viewer_cents:viewers?Math.round(base.sales_cents/viewers):null},
+  ...extrasFor(L,end,list,orders,extra.subs,extra.accounts,base.sales_cents),
   compare:{lives_before:earlier.length,last:earlier[0]||null,avg:{sales_cents:avg('sales_cents'),orders:avg('orders'),avg_cents:avg('avg_cents'),per_minute_cents:avg('per_minute_cents'),buyers:avg('buyers')},
    best:earlier.reduce((b,x)=>!b||x.sales_cents>b.sales_cents?x:b,null)}}}
 
@@ -126,7 +152,9 @@ async function route(path,body,h,method,{session}){
   await s.put('live_sessions',L.id,L);return{live:L}}));
  const r=path.match(/^\/admin\/live\/report\/(LIVE-\d{8}-\d{4}(?:-\d)?)$/);
  if(r&&method==='GET')return ok(await transaction(async s=>{const L=await s.get('live_sessions',r[1]);if(!L)bad('Live not found.',404);
-  const all=(await s.list('live_sessions')).filter(x=>x.id!==ACTIVE&&x.started_at);return{report:report(await list(s,'orders'),await s.list('live_visitors'),await s.list('products'),L,all)}}));
+  const all=(await s.list('live_sessions')).filter(x=>x.id!==ACTIVE&&x.started_at);const subsLib=require('./subscriptions.cjs'),pm=await subsLib.productsOf(s),settings=await s.get('settings','main');
+  const subs=(await s.list('subscriptions')).map(x=>{const p=subsLib.pricingOf(x,pm,settings);return{...x,value_cents:p.total_cents??null}});
+  return{report:report(await list(s,'orders'),await s.list('live_visitors'),await s.list('products'),L,all,{subs,accounts:await s.list('customers')})}}));
  bad('Not found.',404);
 }
 module.exports={route,ping,summary,report,newId,TIKTOK};

@@ -446,4 +446,4 @@ async function run(limit=10,t=Date.now()){
 module.exports={sameDoor,CANCEL_REASONS,TERMS_VERSION,EVERY,CUSTOMER_EVERY,DISCOUNT_PCT,TIERS,SLOT_MAX_CENTS,MAX_SLOTS,CHARGE_DAYS_BEFORE,REMIND_DAYS_BEFORE_CHARGE,FAIR_PCT,COPY,
  slotsOf,slotsFor,tierFor,tierById,priceFor,bonusDelivery,shippingFor,publicTier,addInterval,addDays,todayET,shipDate,chargeDate,deliveriesDone,
  list,create,update,cardLink,checkCard,charge,run,remind,publicSub,owns,offerOpen,customerRoute,startCheckout,settleFirst,checkoutBody,reminderEmail,welcomeEmail,
- stats,AUTO_SKIP_DAYS,ADDON_MAX_LINES,ADDON_MAX_QTY,addonsPrice,subLinePrice,cardUpdateLink,checkCardUpdate,retryFailed,skipStale,declinedEmail,canceledEmail,customerView};
+ stats,pricingOf,productsOf,PER_MONTH,AUTO_SKIP_DAYS,ADDON_MAX_LINES,ADDON_MAX_QTY,addonsPrice,subLinePrice,cardUpdateLink,checkCardUpdate,retryFailed,skipStale,declinedEmail,canceledEmail,customerView};
