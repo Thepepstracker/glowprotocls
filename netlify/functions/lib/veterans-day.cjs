@@ -6,7 +6,9 @@
 // New subscriptions only, Wednesday 11 Nov 2026, midnight to midnight Eastern. Gifts go on the first box only, at $0,
 // and take stock like any item; they never change the price, the 15%, points, or what the repeat boxes contain.
 const WINDOW={start:Date.parse('2026-11-11T00:00:00-05:00')/1000,end:Date.parse('2026-11-12T00:00:00-05:00')/1000};
-const KIT_CAP_CENTS=40000,BAG_COLORS=['Black','White','Purple'],TAG='FREE Veterans Day gift';
+const KIT_CAP_CENTS=40000,TAG='FREE Veterans Day gift';
+// The Tier 2 bag (Jonah, 11 Nov 2026): the customer picks one of the new Glow totes (merch_kind 'tote', in stock).
+const toteOk=p=>p&&p.active&&(p.brand||'glow')==='glow'&&p.category==='merch'&&p.merch_kind==='tote'&&(p.stock||0)>=1;
 const TIERS=[
  {id:'vd125',min:12500,items:[{id:11,quantity:1}]},
  {id:'vd250',min:25000,items:[{id:28,quantity:2}],bag:true},
@@ -26,22 +28,23 @@ async function view(s,brand,baseCents,t=now()){
   gifts:x.items.map(i=>{const p=byId.get(i.id);return{id:i.id,quantity:i.quantity,name:short(p?.name)||'Gift',value_cents:(p?.price||0)*i.quantity,in_stock:!!p&&p.active&&(p.stock||0)>=i.quantity}})}));
  const next=tiers.find(x=>!x.unlocked);
  const kits=products.filter(kitOk).sort((a,b)=>b.price-a.price||String(a.name).localeCompare(b.name)).map(p=>({id:p.id,name:short(p.name),price_cents:p.price}));
+ const totes=products.filter(toteOk).sort((a,b)=>String(a.name).localeCompare(b.name)).map(p=>({id:p.id,name:short(p.name),image:p.image||''}));
  return{open:true,ends_at:WINDOW.end,base_cents:baseCents,tiers,next:next?{id:next.id,min_cents:next.min_cents,need_cents:next.min_cents-baseCents}:null,
-  unlocked:tiers.filter(x=>x.unlocked).length,bag_colors:BAG_COLORS,kit_cap_cents:KIT_CAP_CENTS,kits};
+  unlocked:tiers.filter(x=>x.unlocked).length,totes,kit_cap_cents:KIT_CAP_CENTS,kits};
 }
 
 // The $0 gift lines for a new subscription's first box. lineFor(id,qty) builds a normal priced line (stock checked), or throws.
 async function gifts(s,brand,baseCents,choice,lineFor,t=now()){
  if(!isOpen(brand,t))return null;
  const won=TIERS.filter(x=>baseCents>=x.min);if(!won.length)return null;
- const bag=String(choice?.bag||'').trim(),kitId=Number(choice?.kit_id);
- if(won.some(x=>x.bag)&&!BAG_COLORS.includes(bag))throw Object.assign(new Error('Choose the color of your free Glow bag.'),{status:400});
+ const toteId=Number(choice?.bag),kitId=Number(choice?.kit_id);let tote=null;
+ if(won.some(x=>x.bag)){const any=(await s.list('products')).some(toteOk);if(any){tote=await s.get('products',toteId);if(!toteOk(tote))throw Object.assign(new Error('Choose your free Glow tote.'),{status:400})}}
  let kit=null;if(won.some(x=>x.kit)){kit=await s.get('products',kitId);if(!kitOk(kit))throw Object.assign(new Error('Choose your free Kit of 10 (up to $'+KIT_CAP_CENTS/100+').'),{status:400})}
  const lines=[],missing=[];
  const add=async(id,quantity)=>{try{const l=await lineFor(id,quantity);lines.push({...l,name:short(l.name)+' · '+TAG,list_price:l.price,price:0,amount:0,promo_excluded:true,gift:'veterans-day'})}catch{const p=await s.get('products',id);missing.push(short(p?.name)||'Gift #'+id)}};
- for(const x of won){for(const i of x.items)await add(i.id,i.quantity);if(x.kit)await add(kit.id,1)}
+ for(const x of won){for(const i of x.items)await add(i.id,i.quantity);if(x.bag){if(tote)await add(tote.id,1);else missing.push('Glow tote')}if(x.kit)await add(kit.id,1)}
  if(missing.length&&won.some(x=>x.kit)&&missing.includes(short(kit.name)))throw Object.assign(new Error('That kit just sold out. Choose another free Kit of 10.'),{status:409});
- const note='🎖️ Veterans Day gifts: '+[...lines.map(l=>l.quantity+'× '+l.name.replace(' · '+TAG,'')),...(won.some(x=>x.bag)?['1× Glow merch bag ('+bag+')']:[])].join(', ')+(missing.length?' · SOLD OUT, could not add: '+missing.join(', '):'');
- return{lines,record:{promo:'veterans-day-2026',tiers:won.map(x=>x.id),base_cents:baseCents,bag:won.some(x=>x.bag)?bag:null,kit_id:kit?kit.id:null,missing,gift_value_cents:lines.reduce((n,l)=>n+(l.list_price||0)*l.quantity,0)},note};
+ const note='🎖️ Veterans Day gifts: '+lines.map(l=>l.quantity+'× '+l.name.replace(' · '+TAG,'')).join(', ')+(missing.length?' · SOLD OUT, could not add: '+missing.join(', '):'');
+ return{lines,record:{promo:'veterans-day-2026',tiers:won.map(x=>x.id),base_cents:baseCents,bag:won.some(x=>x.bag)&&tote?short(tote.name):null,tote_id:tote?tote.id:null,kit_id:kit?kit.id:null,missing,gift_value_cents:lines.reduce((n,l)=>n+(l.list_price||0)*l.quantity,0)},note};
 }
-module.exports={WINDOW,TIERS,KIT_CAP_CENTS,BAG_COLORS,isOpen,view,gifts};
+module.exports={WINDOW,TIERS,KIT_CAP_CENTS,isOpen,view,gifts};
