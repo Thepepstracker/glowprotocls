@@ -32,10 +32,10 @@ const SET={shipping_cents:1500,free_shipping_cents:25000};
 test('slots: one per $65.00 of list price, rounded up (kits and bundles too); tier = smallest that fits',()=>{
  assert.equal(subs.slotsFor([{id:99,quantity:1}],P),1,'$65.00 exactly is 1 slot');assert.equal(subs.slotsFor([{id:98,quantity:1}],P),2,'$65.01 is 2 slots');
  assert.equal(subs.slotsFor([{id:1,quantity:2},{id:10,quantity:1}],P),4);assert.equal(subs.slotsFor([{id:56,quantity:1}],P),9,'a $530 bundle is 9 slots, so it cannot ride a $229.99 tier');assert.equal(subs.slotsFor([{id:56,quantity:2}],P),18);assert.equal(subs.slotsFor([{id:99,quantity:1},{id:98,quantity:1}],P),3);
- assert.deepEqual([1,2,3,4,5,6,7,8].map(n=>subs.tierFor(n).id),['T1','T2','T3','T4','T4','T5','T5','T5']);assert.equal(subs.tierFor(9),null);assert.equal(subs.tierFor(0),null);
- assert.deepEqual(subs.TIERS.map(t=>[t.slots,t.price,t.points]),[[1,3399,2],[2,6499,2],[3,9499,2],[5,14999,3],[8,22999,4]]);
+ assert.deepEqual([1,2,3,4,5,6,7,8].map(n=>subs.tierFor(n).id),['T1','T2','T3','T4','T4','T5','T5','T5']);assert.equal(subs.tierFor(9).id,'T5','12-slot box from 11 Nov 2026');assert.equal(subs.tierFor(12).id,'T5');assert.equal(subs.tierFor(13),null);assert.equal(subs.tierFor(0),null);
+ assert.deepEqual(subs.TIERS.map(t=>[t.slots,t.price,t.points]),[[1,3399,2],[2,6499,2],[3,9499,2],[5,14999,3],[12,22999,4]]);
  const r=subs.priceFor([{id:1,quantity:4}],P,null,1,{settings:SET});assert.equal(r.tier.id,'T4');assert.equal(r.nudge,null,'no "add one more at no extra cost" nudge: every item is 15% off, so adding one always costs more');assert.equal(r.price_cents,Math.floor(4*4399*0.85));
- const big=subs.priceFor([{id:10,quantity:5}],P,null,1,{settings:SET});assert.equal(big.ok,false);assert.equal(big.slots,10);assert.match(big.error,/up to 8 slots/);
+ assert.equal(subs.priceFor([{id:10,quantity:5}],P,null,1,{settings:SET}).tier.id,'T5','10 slots fits Tier 5 now');const big=subs.priceFor([{id:10,quantity:9}],P,null,1,{settings:SET});assert.equal(big.ok,false);assert.equal(big.slots,18);assert.match(big.error,/up to 12 slots/);
 });
 
 test('exactly 15% off: every box is charged 85% of list, never less, whatever the tier (Jonah, 6 Nov 2026)',()=>{
@@ -57,7 +57,7 @@ test('shipping: Tier 1 and 2 pay the store shipping; Tier 3 and up ship free',()
 
 test('Tier 5 bonus slot: deliveries 4, 8, 12 get one extra 1-slot item at no extra price; other tiers and deliveries do not',()=>{
  const box=[{id:1,quantity:6},{id:10,quantity:1}];const d3=subs.priceFor(box,P,null,3,{settings:SET}),d4=subs.priceFor(box,P,null,4,{settings:SET}),d8=subs.priceFor(box,P,null,8,{settings:SET}),d5=subs.priceFor(box,P,null,5,{settings:SET});
- assert.equal(d3.tier.id,'T5');assert.equal(d3.bonus,null);assert.equal(d5.bonus,null);assert.equal(d4.bonus.id,1);assert.equal(d8.bonus.id,1);assert.equal(d4.capacity,9);
+ assert.equal(d3.tier.id,'T5');assert.equal(d3.bonus,null);assert.equal(d5.bonus,null);assert.equal(d4.bonus.id,1);assert.equal(d8.bonus.id,1);assert.equal(d4.capacity,13);
  assert.equal(d4.price_cents,d3.price_cents,'no extra price');assert.equal(d4.total_cents,d3.total_cents);assert.equal(d4.lines.find(l=>l.id===1).quantity,7,'one more of a 1-slot item');
  assert.equal(subs.priceFor(box,P,null,4,{settings:SET,bonus_id:31}).bonus.id,31,'customer pick honored');assert.equal(subs.priceFor(box,P,null,4,{settings:SET,bonus_id:10}).bonus.id,1,'a 2-slot pick does not fit the bonus slot');
  assert.equal(subs.priceFor([{id:1,quantity:5}],P,null,4,{settings:SET}).bonus,null,'Tier 4 has no bonus slot');
@@ -150,7 +150,7 @@ test('customer actions: frequency, skip, pause/resume, swap items (re-tiered, pr
  assert.equal((await up({action:'pause'})).body.status,'paused');assert.equal((await up({action:'resume'})).body.status,'active');
  const pv=(await call('/account/subscriptions/preview',{id:firstSub,items:[{id:1,quantity:4},{id:10,quantity:1}]},A.cookie)).body;assert.equal(pv.tier.id,'T5','6 slots → Tier 5');assert.equal(pv.price_cents,Math.min(22999,Math.floor((4*4399+6800)*0.85)));
  const saved=(await up({action:'items',items:[{id:1,quantity:4},{id:10,quantity:1}]})).body;assert.equal(saved.pricing.tier.id,'T5');assert.equal(saved.items.length,2);
- await assert.rejects(up({action:'items',items:[{id:10,quantity:5}]}),e=>e.status===409,'more than 8 slots');
+ await assert.rejects(up({action:'items',items:[{id:10,quantity:9}]}),e=>e.status===409,'more than 12 slots');
  await assert.rejects(up({action:'items',items:[{id:999,quantity:1}]}),e=>e.status===400);
  await up({action:'items',items:[{id:1,quantity:1},{id:31,quantity:1},{id:37,quantity:1}]});
 });
