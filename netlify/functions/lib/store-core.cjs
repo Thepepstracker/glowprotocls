@@ -654,6 +654,10 @@ async function handle({path,method='GET',headers={},body={}}){
      return{ok:true,status:o.status};
     }
     if(target==='paid'&&['order_received','awaiting_payment','payment_submitted'].includes(o.status)){if(body.verified!==true)fail('Confirm that the payment was received.');await markPaid(s,o,{by:(await s.get('sessions',sessionId)).staff_id||'owner',source:o.receipt?'screenshot_and_staff':'staff_verified'})}
+    else if(target==='handed_over'&&o.status==='paid'){if(o.balance_due_cents||o.refund_due_cents)fail('Settle the additional payment or refund first.',409);if(body.confirm!==o.id)fail('Confirm the order was handed to the customer in person.');
+     // Handed over in person (Jonah, 11 Nov 2026: Taylor Wright got hers face to face). Closes the order without a label and without a "label created" email.
+     const t=clock();o.status='shipped';o.tracking='';o.shipment={carrier:'in_person',carrier_name:'Handed over in person',service:'In person',tracking:'',label_url:null,label_created_at:t};o.handed_over={at:t,by:(await s.get('sessions',sessionId)).staff_id||'owner',note:text(body.note||'',200,false)};o.delivery={...(o.delivery||{}),delivered:true,state:'delivered',first_scan_at:t};o.shippo_needs_review=false;o.shippo_message='';o.shipstation_needs_review=false;
+     await s.put('orders',o.id,o);await audit(s,'handed_over_in_person',o.id);return{ok:true,status:o.status,handed_over:o.handed_over}}
     else if(target==='shipped'&&o.status==='paid'){if(o.balance_due_cents||o.refund_due_cents)fail('Settle the additional payment or refund before shipping.',409);if(o.shipstation_needs_review&&body.shipping_review!==true)fail('Confirm the updated order was reviewed in ShipStation before shipping.',409);o.shipstation_needs_review=false;o.status='shipped';o.tracking=text(body.tracking||'',150,false);o.shipment=require('./order-tracking.cjs').fromManual(o.tracking);await audit(s,'shipped',o.id)}
     else fail('This status change is not allowed.',409);await s.put('orders',o.id,o);emailJob=await emails.queueUpdate(s,o);return{ok:true,...(o.commission_provider==='native'?{affiliate_program:'native'}:{})};
    }
