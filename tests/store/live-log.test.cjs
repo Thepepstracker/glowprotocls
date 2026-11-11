@@ -72,3 +72,25 @@ test('a second live is compared with the first; Zader orders never count',async(
  const r=(await admin('/admin/live/report/'+st.id)).body.report;assert.equal(r.running,true);assert.equal(r.orders,1,'only the Glow order');assert.equal(r.compare.lives_before,1);assert.equal(r.compare.last.orders,4);
  await admin('/admin/live/stop',{});
 });
+
+test('subscriptions started, new accounts and Skool member orders are counted for the live',async()=>{
+ later(3600);const st=(await admin('/admin/live/start',{})).body.live;later(30);const t=Math.floor(Date.now()/1000);
+ const o=(await order(7,2)).body.order;later(30);
+ await transaction(async s=>{
+  const m=await s.get('orders',o.id);m.member={level:'vip',perks:['price'],discount:500,shipping_waived:1500};m.member_discount=500;await s.put('orders',m.id,m);
+  const base={brand:'glow',pay:'autopay',customer:{name:'Sub Buyer One',email:'sub1@example.com'},items:[{id:1,quantity:2,name:'Live Peptide · 10 mg'}],deliveries:0,orders:[]};
+  await s.put('subscriptions','SUB-AAAA0001',{...base,id:'SUB-AAAA0001',status:'active',source:'customer',every:'1m',first_order:o.id,created:t});
+  await s.put('subscriptions','SUB-AAAA0002',{...base,id:'SUB-AAAA0002',status:'pending_first_payment',source:'staff',every:'2m',created:t+5});
+  await s.put('subscriptions','SUB-AAAA0003',{...base,id:'SUB-AAAA0003',status:'active',source:'customer',every:'1m',created:t-99999}); // before the live
+  await s.put('subscriptions','SUB-ZZZZ0004',{...base,id:'SUB-ZZZZ0004',brand:'zader',status:'active',source:'customer',every:'1m',created:t}); // Zader never counts
+  await s.put('customers','acct-live-1',{id:'acct-live-1',email:'buyer7@example.com',created:t,verified:true,verified_at:t+10});
+  await s.put('customers','acct-live-2',{id:'acct-live-2',email:'someone@example.com',created:t+20,verified:false});
+  await s.put('customers','acct-old',{id:'acct-old',email:'old@example.com',created:t-99999,verified:true})});
+ later(60);const r=(await admin('/admin/live/report/'+st.id)).body.report;
+ assert.equal(r.subscriptions.started,2);assert.equal(r.subscriptions.active,1);assert.equal(r.subscriptions.waiting,1);assert.equal(r.subscriptions.from_checkout,1);assert.equal(r.subscriptions.by_staff,1);
+ assert.deepEqual(r.subscriptions.plans.map(p=>p[0]).sort(),['Every 2 months','Every month']);assert.equal(r.subscriptions.list[0].name,'Sub O.');
+ assert.ok(r.subscriptions.monthly_cents>0,'worth per month is filled in');assert.equal(r.subscriptions.yearly_cents,r.subscriptions.monthly_cents*12);
+ assert.equal(r.accounts.created,2);assert.equal(r.accounts.finished,1);assert.equal(r.accounts.ordered_tonight,1);assert.equal(r.accounts.set_up_during,1);
+ assert.equal(r.members.orders,1);assert.equal(r.members.discount_cents,500);assert.equal(r.members.shipping_waived_cents,1500);assert.deepEqual(r.members.levels,[['VIP',1]]);assert.equal(r.members.share_pct,100);
+ await admin('/admin/live/stop',{});
+});
