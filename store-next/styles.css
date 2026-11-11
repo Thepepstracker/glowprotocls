@@ -814,3 +814,9 @@ a.sub-card-price{display:block}
 .vd-teaser{margin:10px 0;font-size:14px;color:#3d3a35}.vd-teaser strong{color:var(--ink)}
 .vd-summary{margin-top:14px;padding-top:12px;border-top:1px solid var(--hair)}.vd-summary strong{display:block;margin-bottom:6px;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--champagne-deep)}.vd-summary .row span:last-child{font-weight:700;color:var(--champagne-deep);letter-spacing:.08em;font-size:12px}
 .vd-at{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600}.vd-ladder .vd-at{margin-top:-2px}.vd-list .vd-at{font-size:10.5px;letter-spacing:.12em;margin-left:4px}
+/* Flags falling like snow on the Veterans Day banner (11 Nov 2026). The motion itself is made in app.js (vdDrop), random per flag. */
+.vd-sale{overflow:hidden;isolation:isolate}.vd-sale>*:not(.vd-snow){position:relative;z-index:1}
+.vd-snow{position:absolute;inset:0;pointer-events:none;z-index:0;perspective:600px}
+.vd-snow span{position:absolute;top:0;width:var(--s);height:calc(var(--s)*.684);will-change:transform}.vd-snow i{display:block;width:100%;height:100%;will-change:transform;transform-style:preserve-3d}
+.vd-snow svg{display:block;width:100%;height:100%;border-radius:1px;will-change:transform;backface-visibility:visible}
+@media (prefers-reduced-motion:reduce){.vd-snow{display:none}}
