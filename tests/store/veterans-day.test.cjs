@@ -1,6 +1,6 @@
 'use strict';
 // Veterans Day subscription gifts (Jonah, 10 Nov 2026): new subscriptions only, 11 Nov Eastern. First box after the 15%
-// (before shipping): $125+ GLP-2T 20 mg, $250+ 2 Mito-31 + a Glow bag (color), $400+ AICAR 50 mg, $600+ a Kit of 10 up to $400.
+// (before shipping): $125+ GLP-2T 20 mg, $250+ 2 Mito-31 + a Glow tote they pick (11 Nov: the new merch totes), $400+ AICAR 50 mg, $600+ a Kit of 10 up to $400.
 // They stack, they are $0 lines that take stock, and they never change the price, Stripe's one "Glow Lab" line, or repeat boxes.
 const {test,after}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
 const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'glow-vd-'));Object.assign(process.env,{STORE_LOCAL:'1',STORE_SQLITE_PATH:path.join(tmp,'db.sqlite'),STORE_ADMIN_PASSWORD:'vd-owner-test-password',STORE_SESSION_SECRET:'veterans-day-tests-session-secret-32+',STORE_ORIGIN:'http://127.0.0.1:8787',STRIPE_SECRET_KEY:'sk_test_NotARealKey123456'});
@@ -40,25 +40,27 @@ test('the bag shows the ladder: unlocked tiers, how far to the next, and only in
  close();q=(await call('/subscribe/quote',{items:[{id:501,quantity:12}]},cookie)).body;assert.equal(q.veterans,null,'gone after the day');
 });
 
-test('$600+ box: all four gifts stack at $0, take stock, need a bag color and a kit; price, Stripe and repeat boxes unchanged',async()=>{
+test('$600+ box: all four gifts stack at $0, take stock, need a tote and a kit; price, Stripe and repeat boxes unchanged',async()=>{
  open();const items=[{id:501,quantity:12}],base={items,every:'1m',customer:shipTo(email),agree:true};
- await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0001',gift_kit_id:601},cookie),/bag/);
- await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0002',gift_bag:'Purple'},cookie),/Kit of 10/);
- await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0003',gift_bag:'Purple',gift_kit_id:602},cookie),/Kit of 10/,'over the $400 cap');
- await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0004',gift_bag:'Gold',gift_kit_id:601},cookie),/bag/,'only the listed colors');
- const before={g:await stock(11),m:await stock(28),a:await stock(24),k:await stock(601),f:await stock(501)};
- const r=(await call('/account/subscribe',{...base,idempotency_key:'vd-key-0005',gift_bag:'Purple',gift_kit_id:601},cookie)).body;
+ await call('/catalog'); // the store adds the new merch collection on its first catalog load (as on the live site)
+ const v=(await call('/subscribe/quote',{items},cookie)).body.veterans;assert.equal(v.totes.length,7,'the 7 new Glow totes');const tote=v.totes.find(t=>/Peptide Pioneer/.test(t.name));assert.ok(tote&&/collection-2026-11/.test(tote.image));
+ await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0001',gift_kit_id:601},cookie),/tote/);
+ await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0002',gift_bag:tote.id},cookie),/Kit of 10/);
+ await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0003',gift_bag:tote.id,gift_kit_id:602},cookie),/Kit of 10/,'over the $400 cap');
+ await assert.rejects(call('/account/subscribe',{...base,idempotency_key:'vd-key-0004',gift_bag:'Purple',gift_kit_id:601},cookie),/tote/,'only a real in-stock tote');
+ const before={g:await stock(11),m:await stock(28),a:await stock(24),k:await stock(601),f:await stock(501),t:await stock(tote.id)};
+ const r=(await call('/account/subscribe',{...base,idempotency_key:'vd-key-0005',gift_bag:tote.id,gift_kit_id:601},cookie)).body;
  const x=await transaction(s=>s.get('subscriptions',r.id)),o=await transaction(s=>s.get('orders',x.first_order));
  assert.equal(o.total,66300,'$780 list at 15% off, free shipping: gifts add nothing');assert.equal(o.subtotal,78000);
  const gifts=o.items.filter(i=>i.gift==='veterans-day');
- assert.deepEqual(gifts.map(g=>[g.id,g.quantity,g.price,g.amount]),[[11,1,0,0],[28,2,0,0],[24,1,0,0],[601,1,0,0]]);
+ assert.deepEqual(gifts.map(g=>[g.id,g.quantity,g.price,g.amount]),[[11,1,0,0],[28,2,0,0],[tote.id,1,0,0],[24,1,0,0],[601,1,0,0]]);
  assert.ok(gifts.every(g=>/FREE Veterans Day gift$/.test(g.name)),'packing and slips say it is free');
- assert.deepEqual(o.veterans_day.tiers,['vd125','vd250','vd400','vd600']);assert.equal(o.veterans_day.bag,'Purple');assert.equal(o.veterans_day.kit_id,601);
- assert.match(o.staff_note,/Glow merch bag \(Purple\)/);
- assert.deepEqual(x.items.map(i=>i.id),[501],'repeat boxes are only what they subscribed to');assert.equal(x.veterans_day.bag,'Purple');
- assert.deepEqual([await stock(11),await stock(28),await stock(24),await stock(601),await stock(501)],[before.g-1,before.m-2,before.a-1,before.k-10,before.f-12]);
+ assert.deepEqual(o.veterans_day.tiers,['vd125','vd250','vd400','vd600']);assert.equal(o.veterans_day.bag,tote.name);assert.equal(o.veterans_day.tote_id,tote.id);assert.equal(o.veterans_day.kit_id,601);
+ assert.match(o.staff_note,/Peptide Pioneer Tote/);
+ assert.deepEqual(x.items.map(i=>i.id),[501],'repeat boxes are only what they subscribed to');assert.equal(x.veterans_day.bag,tote.name);
+ assert.deepEqual([await stock(11),await stock(28),await stock(24),await stock(601),await stock(501),await stock(tote.id)],[before.g-1,before.m-2,before.a-1,before.k-10,before.f-12,before.t-1]);
  const cs=stripe.filter(c=>c.p==='/checkout/sessions').at(-1);assert.equal(Number(cs.body.get('line_items[0][price_data][unit_amount]')),66300);assert.equal(cs.body.get('line_items[0][price_data][product_data][name]'),'Glow Lab');
- for(const c of stripe){const t=decodeURIComponent(c.raw.replace(/\+/g,' '));assert(!/glp-2t|mito|aicar|kit of|veteran|gift/i.test(t),'no product or gift names on Stripe: '+t.match(/.{0,40}(glp-2t|mito|aicar|kit of|veteran|gift).{0,40}/i)?.[0])}
+ for(const c of stripe){const t=decodeURIComponent(c.raw.replace(/\+/g,' '));assert(!/glp-2t|mito|aicar|kit of|veteran|gift|tote/i.test(t),'no product or gift names on Stripe: '+t.match(/.{0,40}(glp-2t|mito|aicar|kit of|veteran|gift).{0,40}/i)?.[0])}
 });
 
 test('$125 box gets only the first gift and no picks are needed; after the day, no gifts at all',async()=>{
@@ -67,4 +69,14 @@ test('$125 box gets only the first gift and no picks are needed; after the day, 
  assert.deepEqual(o.items.filter(i=>i.gift).map(i=>i.id),[11]);assert.equal(o.veterans_day.bag,null);
  close();const r2=(await call('/account/subscribe',{items:[{id:502,quantity:3}],every:'1m',customer:shipTo(email),agree:true,idempotency_key:'vd-key-0102'},cookie)).body;
  const o2=await transaction(async s=>s.get('orders',(await s.get('subscriptions',r2.id)).first_order));assert.equal(o2.items.some(i=>i.gift),false);assert.equal(o2.veterans_day,undefined);
+});
+
+test('new merch collection: 18 designs, 33 products (shirts S-XL), right prices, 10 each, photos in img/merch/collection-2026-11',async()=>{
+ const m=require('../../netlify/functions/lib/merch-catalog.cjs');const cat=(await call('/catalog')).body.products.filter(p=>p.merch_collection==='2026-11');
+ assert.equal(new Set(cat.map(p=>p.merch_design)).size,18);assert.equal(cat.length,33);
+ const price=k=>[...new Set(cat.filter(p=>p.merch_kind===k).map(p=>p.price))];
+ assert.deepEqual(price('tee'),[3200]);assert.deepEqual(price('long-sleeve'),[3800]);assert.deepEqual(price('tote'),[2500]);assert.deepEqual(price('pouch'),[1800]);
+ assert.deepEqual([...new Set(cat.filter(p=>p.size).map(p=>p.size))].sort(),['L','M','S','XL']);
+ for(const p of m.collectionProducts())assert.ok(fs.existsSync(path.join(__dirname,'../..',p.image)),'photo file exists: '+p.image);
+ const again=await transaction(s=>m.ensureCollection202611(s));assert.equal(again,false,'runs once');
 });
