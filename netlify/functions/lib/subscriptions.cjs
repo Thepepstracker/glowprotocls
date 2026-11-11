@@ -27,7 +27,7 @@ const TIERS=[
  {id:'T2',level:2,name:'Tier 2',slots:2,price:6499,free_shipping:false,points:2,early_access:false,packed_first:false,bonus_every:0},
  {id:'T3',level:3,name:'Tier 3',slots:3,price:9499,free_shipping:true,points:2,early_access:false,packed_first:false,bonus_every:0},
  {id:'T4',level:4,name:'Tier 4',slots:5,price:14999,free_shipping:true,points:3,early_access:true,packed_first:false,bonus_every:0},
- {id:'T5',level:5,name:'Tier 5',slots:8,price:22999,free_shipping:true,points:4,early_access:true,packed_first:true,bonus_every:4}
+ {id:'T5',level:5,name:'Tier 5',slots:12,price:22999,free_shipping:true,points:4,early_access:true,packed_first:true,bonus_every:4}
 ];
 const MAX_SLOTS=TIERS[TIERS.length-1].slots;
 function productMap(products){if(products instanceof Map)return products;const m=new Map();for(const p of products||[])if(p)m.set(Number(p.id),p);return m}
@@ -273,7 +273,8 @@ const COPY={
 };
 async function customerQuote(s,h,brand,body){const closed=await offerOpen(s,brand),core=require('./store-core.cjs');
  const r=await core.subscriptionQuote(s,{items:body.items,h,brand,deliveryNumber:1});
- return{available:!closed,reason:closed,signed_in:!!await require('./customer-accounts.cjs').session(s,h),every:CUSTOMER_EVERY.map(k=>({id:k,label:EVERY[k].label})),tiers:TIERS.map(publicTier),...r}}
+ const veterans=r.ok&&!closed?await require('./veterans-day.cjs').view(s,brand,r.order.subtotal-r.order.discount):null;
+ return{available:!closed,reason:closed,signed_in:!!await require('./customer-accounts.cjs').session(s,h),every:CUSTOMER_EVERY.map(k=>({id:k,label:EVERY[k].label})),tiers:TIERS.map(publicTier),...r,veterans}}
 // Bag → "Subscribe & save": makes the first order (tier price) and a subscription waiting for its first payment,
 // then opens Stripe Checkout for exactly the order total. The card is saved on Stripe for the repeat boxes.
 async function startCheckout(h,body,brand){
@@ -286,7 +287,8 @@ async function startCheckout(h,body,brand){
  if(prior.again)return prior.again;
  for(const id of prior.old){try{await settleFirst(id,{close:true})}catch{}} // an earlier unfinished checkout gives its items back first
  const made=await transaction(async s=>{const a=await accounts.session(s,h);if(!a)bad(COPY.sign_in,401);if(await s.get('idempotency','subscribe-'+key))bad('This subscription was already started. Check your account.',409);
-  const r=await core.subscriptionFirstOrder(s,{account:a,customer:body.customer,items:body.items,every,brand,h});
+  const r=await core.subscriptionFirstOrder(s,{account:a,customer:body.customer,items:body.items,every,brand,h,gift:{bag:body.gift_bag,kit_id:body.gift_kit_id}});
+  if(r.order.veterans_day)r.sub.veterans_day={tiers:r.order.veterans_day.tiers,bag:r.order.veterans_day.bag,kit_id:r.order.veterans_day.kit_id};
   // What they agreed to, kept with the subscription (proof for a dispute): the terms version, the price and how often.
   r.sub.consent={terms_version:TERMS_VERSION,agreed_at:now(),amount_cents:r.order.total,every,user_agent:String(h['user-agent']||'').slice(0,200)};r.sub.t5_run=0;await s.put('subscriptions',r.sub.id,r.sub);
   await s.put('idempotency','subscribe-'+key,{id:r.sub.id});return{sub:r.sub,order:r.order,account:a}});

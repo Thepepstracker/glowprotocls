@@ -734,13 +734,16 @@ async function subscriptionOrder(s,sub,cycle){
 }
 // The customer's first box (bag → Subscribe & save). Made with the subscription in one transaction; it waits for the
 // Stripe Checkout payment. Coupons, points and affiliate credit do not apply to subscription pricing.
-async function subscriptionFirstOrder(s,{account,customer:input,items,every,brand,h}){
+async function subscriptionFirstOrder(s,{account,customer:input,items,every,brand,h,gift}){
  const settings=await s.get('settings','main'),customer=checkoutCustomer(input);if(accounts.email(customer.email)!==account.email)fail('Use your account email for this order.');
  const sq=await subscriptionQuote(s,{items,h,brand,deliveryNumber:1});if(!sq.ok)fail(sq.error,409);
  const q=sq.order,subId='SUB-'+crypto.randomBytes(4).toString('hex').toUpperCase(),id=brand.order_prefix+'-'+crypto.randomBytes(5).toString('hex').toUpperCase(),token=crypto.randomBytes(32).toString('base64url'),key='subscribe-first-'+subId;
  const o={id,created:clock(),expires:null,status:'order_received',customer,...q,payment_method:'card_checkout',token_hash:hash(token),idempotency_key:key,request_hash:hash(key),checkout_stage:'submitted',proof_required:false,submitted_at:clock(),receipt:null,receipt_type:null,payment_reference:'',paid:null,tracking:'',shipstation_status:'not_ready',goaffpro_status:'not_applicable',subscription_id:subId,subscription_discount:q.subscription_discount,subscription_first:true,...subscriptionFields(sq,1)};
  delete o.points_multiplier;o.goaffpro_affiliate_id=null;o.affiliate=null;o.is_test=settings.demo!==false;o.customer_id=account.verified&&brand.rewards?account.id:null;o.points_earned=0;
  for(const item of q.items)await moveStock(s,item,-1);
+ // Veterans Day (11 Nov 2026): stacked $0 gifts on the first box, by the box total after the 15% (before shipping).
+ const vd=await require('./veterans-day.cjs').gifts(s,brand,q.subtotal-q.discount,gift,async(gid,qty)=>(await quote(s,{items:[{id:gid,quantity:qty}]},h,brand,{subscription:true})).items[0]);
+ if(vd){o.items=[...q.items,...vd.lines];o.veterans_day=vd.record;o.staff_note=[o.staff_note,vd.note].filter(Boolean).join(' · ');for(const l of vd.lines)await moveStock(s,l,-1)}
  await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created_subscription_first_order',id);
  const sub={id:subId,brand:brand.id,status:'pending_first_payment',pay:'autopay',source:'customer',every,tier:sq.tier.id,customer:{name:customer.name,email:customer.email,phone:customer.phone||'',address:customer.address,address2:'',city:customer.city,state:customer.state,zip:customer.zip},customer_id:account.id,
   items:q.items.map(i=>({id:i.id,quantity:i.quantity,name:i.name})),first_order:id,source_order:id,orders:[],deliveries:0,created:clock(),created_by:'customer'};
