@@ -834,3 +834,17 @@ a.sub-card-price{display:block}
 .vd-gifts li{position:relative;padding-left:15px;font-size:14px;line-height:1.4;color:var(--muted)}
 .vd-gifts li:before{content:'';position:absolute;left:1px;top:.5em;width:5px;height:5px;background:var(--hair-strong);transform:rotate(45deg)}
 .vd-gifts li.new{color:var(--ink);font-weight:500}.vd-gifts li.new:before{background:var(--champagne)}
+/* New merch collection (11 Nov 2026): one clean card per design, square studio photo, size picker for shirts. */
+.mi-section{margin:8px 0 34px}.mi-section .section-heading h2{font-size:30px}
+.mi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.mi-card{padding:14px 14px 18px;display:flex;flex-direction:column;gap:10px;background:#fff;min-width:0}
+.mi-photo{display:block;aspect-ratio:1/1;border-radius:10px;overflow:hidden;background:#fff}
+.mi-photo img{display:block;width:100%;height:100%;object-fit:contain;transition:transform .35s var(--ease)}.mi-photo:hover img{transform:scale(1.03)}
+.mi-card h3{margin:4px 0 0;font-size:19px;line-height:1.25}
+.mi-price{margin:0;font-family:var(--serif);font-size:22px;font-weight:600;font-variant-numeric:lining-nums}
+.mi-size{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.mi-size select{font:inherit;font-size:15px;font-weight:400;letter-spacing:0;text-transform:none;padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:#1b1b1b}
+.mi-card button{margin-top:auto}
+@media(max-width:1000px){.mi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:740px){.mi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.mi-card{padding:10px 10px 14px}.mi-card h3{font-size:16px}}
+.vd-tote-photo{display:block;width:120px;height:120px;object-fit:contain;margin:10px 0 0;border-radius:8px;background:#fff}
