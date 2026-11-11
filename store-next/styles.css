@@ -766,3 +766,13 @@ a.sub-card-price{display:block}
 
 /* Ship together (8 Nov 2026) */
 .sub-together{margin:10px 0;font-size:14px;line-height:1.5;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:10px 12px}.sub-together.on{border-color:#bfe0cb;background:#eef8f1;color:#23553a}.sub-together .linkish{font-weight:700}
+/* End of day card (Nov 2026) */
+.mg-eod{margin:0 0 16px}
+.mg-eod-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.mg-eod.clear{border-color:#bfe0c8;background:#f1faf3}
+.mg-eod.fix{border-color:#f0c7a0;background:#fff7ee}
+.mg-eod h3{font-size:15px;margin:14px 0 6px}
+.mg-eod-fix,.mg-eod-tm{list-style:none;margin:0;padding:0}
+.mg-eod-fix li{display:flex;flex-direction:column;padding:8px 0;border-top:1px solid var(--hair)}
+.mg-eod-fix li small{color:var(--muted)}
+.mg-eod-tm li{padding:4px 0}
