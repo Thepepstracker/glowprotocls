@@ -90,7 +90,7 @@ test('subscriptions started, new accounts and Skool member orders are counted fo
  assert.equal(r.subscriptions.started,2);assert.equal(r.subscriptions.active,1);assert.equal(r.subscriptions.waiting,1);assert.equal(r.subscriptions.from_checkout,1);assert.equal(r.subscriptions.by_staff,1);
  assert.deepEqual(r.subscriptions.plans.map(p=>p[0]).sort(),['Every 2 months','Every month']);assert.equal(r.subscriptions.list[0].name,'Sub O.');
  assert.ok(r.subscriptions.monthly_cents>0,'worth per month is filled in');assert.equal(r.subscriptions.yearly_cents,r.subscriptions.monthly_cents*12);
- assert.equal(r.accounts.created,2);assert.equal(r.accounts.finished,1);assert.equal(r.accounts.ordered_tonight,1);assert.equal(r.accounts.set_up_during,1);
+ assert.equal(r.accounts.created,3,"the guest order now makes an account at checkout");assert.equal(r.accounts.finished,1);assert.equal(r.accounts.ordered_tonight,2);assert.equal(r.accounts.set_up_during,1);
  assert.equal(r.members.orders,1);assert.equal(r.members.discount_cents,500);assert.equal(r.members.shipping_waived_cents,1500);assert.deepEqual(r.members.levels,[['VIP',1]]);assert.equal(r.members.share_pct,100);
  await admin('/admin/live/stop',{});
 });
