@@ -22,3 +22,16 @@ test('the PDF for a nasal sheet places each sticker with its own matrix, one ima
  assert.equal((pdf.match(/ cm\n\/L0 Do/g)||[]).length,10);assert.equal((pdf.match(/\/Subtype \/Image/g)||[]).length,1);
  const big=lab.pdf(lab.plan([{id:'big-bac-water-30-ml',count:30}],{kind:'big'}),'t','big').toString('latin1');assert.equal((big.match(/ cm\n\/L0 Do/g)||[]).length,30);
 });
+
+test('tap to place: an exact layout prints only the stickers chosen, in any spot, on any kind; bad layouts are refused',()=>{
+ const per=48,lay=[Array(per).fill(null),Array(per).fill(null)];lay[0][47]='bac-water-30-ml';lay[0][0]='bac-water-30-ml';lay[0][13]='kpv-10-mg';
+ const pages=lab.layoutPages(lay,'vial');assert.equal(pages.length,1,'an empty last sheet is dropped');assert.equal(pages[0][47],'bac-water-30-ml');assert.equal(pages[0].filter(Boolean).length,3);
+ const pdf=lab.pdf(pages,'t','vial').toString('latin1');assert.equal((pdf.match(/ cm\n\/L\d+ Do/g)||[]).length,3);
+ const L=lab.lib(),pos=L.sheet.pos[47];assert.ok(pdf.includes(`${pos[2]} 0 0 ${pos[3]} ${pos[0]} ${pos[1]} cm`),'sticker 48 is drawn at sticker 48');
+ const n=Array(10).fill(null);n[9]='nasal-kpv-10-mg';assert.equal(lab.layoutPages([n],'nasal')[0][9],'nasal-kpv-10-mg');
+ assert.throws(()=>lab.layoutPages([Array(per).fill(null)],'vial'),/at least one/);
+ assert.throws(()=>lab.layoutPages([Array(10).fill(null)],'vial'),/48 stickers/);
+ assert.throws(()=>lab.layoutPages([n],'vial'),/48 stickers/);
+ const mixed=Array(10).fill(null);mixed[0]='kpv-10-mg';assert.throws(()=>lab.layoutPages([mixed],'nasal'),/different sheets/);
+ assert.throws(()=>lab.layoutPages(Array(21).fill(lay[0]),'vial'),/20 sheets/);
+});
