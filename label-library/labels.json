@@ -2634,6 +2634,294 @@
     2279549,
     21463
    ]
+  },
+  {
+   "id": "nasal-aicar-50-mg",
+   "name": "AICAR nasal spray",
+   "strength": "50 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    0,
+    157904
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2324187,
+    14488
+   ]
+  },
+  {
+   "id": "nasal-nad-500-mg",
+   "name": "NAD+ nasal spray",
+   "strength": "500 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    157904,
+    157408
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2338675,
+    14551
+   ]
+  },
+  {
+   "id": "nasal-oxytocin-10-mg",
+   "name": "Oxytocin nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    315312,
+    163050
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2353226,
+    15694
+   ]
+  },
+  {
+   "id": "nasal-bpc-157-10-mg",
+   "name": "BPC-157 nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    478362,
+    159802
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2368920,
+    15017
+   ]
+  },
+  {
+   "id": "nasal-5-amino-1mq-10-mg",
+   "name": "5-Amino-1MQ nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    638164,
+    163841
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2383937,
+    15210
+   ]
+  },
+  {
+   "id": "nasal-mots-c-10-mg",
+   "name": "MOTS-C nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    802005,
+    162027
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2399147,
+    14857
+   ]
+  },
+  {
+   "id": "nasal-ara-290-10-mg",
+   "name": "ARA-290 nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    964032,
+    163189
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2414004,
+    15199
+   ]
+  },
+  {
+   "id": "nasal-pt-141-10-mg",
+   "name": "PT-141 nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    1127221,
+    151623
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2429203,
+    14136
+   ]
+  },
+  {
+   "id": "nasal-kpv-10-mg",
+   "name": "KPV nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    1278844,
+    154916
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2443339,
+    13891
+   ]
+  },
+  {
+   "id": "nasal-adamax-10-mg",
+   "name": "Adamax nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    1433760,
+    159676
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2457230,
+    15187
+   ]
+  },
+  {
+   "id": "nasal-dsip-10-mg",
+   "name": "DSIP nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    1593436,
+    154790
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2472417,
+    14024
+   ]
+  },
+  {
+   "id": "nasal-semax-10-mg",
+   "name": "Semax nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    1748226,
+    160041
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2486441,
+    14707
+   ]
+  },
+  {
+   "id": "nasal-selank-10-mg",
+   "name": "Selank nasal spray",
+   "strength": "10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    1908267,
+    158617
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2501148,
+    14732
+   ]
+  },
+  {
+   "id": "nasal-wolverine-10-mg-10-mg",
+   "name": "Wolverine (BPC-157 + TB-500) nasal spray",
+   "strength": "10 mg + 10 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    2066884,
+    180476
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2515880,
+    17462
+   ]
+  },
+  {
+   "id": "nasal-glow-fuel-120-mg",
+   "name": "Glow Fuel nasal spray",
+   "strength": "120 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-7.bin",
+    2247360,
+    189158
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2533342,
+    18327
+   ]
+  },
+  {
+   "id": "big-bac-water-30-ml",
+   "name": "BAC Water",
+   "strength": "30 mL",
+   "cs": "rgb",
+   "w": 1167,
+   "h": 450,
+   "img": [
+    "img-7.bin",
+    2436518,
+    419288
+   ],
+   "kind": "big",
+   "thumb": [
+    2551669,
+    18784
+   ]
   }
  ],
  "sheets": [
@@ -2646,86 +2934,359 @@
    "id": "glp-logo-circle-6up",
    "name": "GLP logo circles",
    "note": "6 per sheet \u00b7 3 in round (PLS-819 sheet)"
-  },
-  {
-   "id": "bac-water-30-ml-ol875",
-   "name": "BAC Water 30 mL \u00b7 big label",
-   "note": "30 per sheet \u00b7 2\u215d \u00d7 1 in (Online Labels OL875)"
-  },
-  {
-   "id": "spray-5-amino-1mq-10-mg",
-   "name": "5-Amino-1MQ 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-adamax-10-mg",
-   "name": "Adamax 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-aicar-50-mg",
-   "name": "AICAR 50 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-ara-290-10-mg",
-   "name": "ARA-290 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-bpc-157-10-mg",
-   "name": "BPC-157 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-dsip-10-mg",
-   "name": "DSIP 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-glow-fuel-120-mg",
-   "name": "Glow Fuel 120 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-kpv-10-mg",
-   "name": "KPV 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-mots-c-10-mg",
-   "name": "MOTS-C 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-nad-500-mg",
-   "name": "NAD+ 500 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-oxytocin-10-mg",
-   "name": "Oxytocin 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-pt-141-10-mg",
-   "name": "PT-141 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-selank-10-mg",
-   "name": "Selank 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-semax-10-mg",
-   "name": "Semax 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
-  },
-  {
-   "id": "spray-wolverine-10-mg-10-mg",
-   "name": "Wolverine (BPC-157 + TB-500) 10 mg + 10 mg \u00b7 nasal spray",
-   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
   }
- ]
+ ],
+ "kinds": {
+  "vial": {
+   "name": "Vial labels",
+   "cols": 4,
+   "rows": 12,
+   "sheet": "Online Labels 48-up \u00b7 1.75 \u00d7 0.75 in \u00b7 shiny side down",
+   "start_count": 12,
+   "aspect": "7/3",
+   "tip": "Each one starts at 12 (10 vials + 2 spare)."
+  },
+  "nasal": {
+   "name": "Nasal spray labels",
+   "cols": 2,
+   "rows": 5,
+   "sheet": "PLS-591CG clear \u00b7 2 \u00d7 4 in \u00b7 10 per sheet \u00b7 no QR",
+   "start_count": 10,
+   "aspect": "2/1",
+   "cm": [
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     13.52862,
+     617.81071
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     317.0593,
+     615.63767
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     12.11493,
+     473.74774
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     315.64562,
+     471.5747
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     10.70124,
+     329.68477
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     314.23193,
+     327.51173
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     9.28756,
+     185.6218
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     312.81824,
+     183.44876
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     7.87387,
+     41.55883
+    ],
+    [
+     289.93976,
+     -2.07575,
+     1.41369,
+     144.06297,
+     311.40456,
+     39.38578
+    ]
+   ],
+   "tip": "All words sit in the middle; the ends are left plain so the label can overlap itself on the bottle."
+  },
+  "big": {
+   "name": "Big bottle labels",
+   "cols": 3,
+   "rows": 10,
+   "sheet": "Online Labels OL875 \u00b7 2\u215d \u00d7 1 in \u00b7 30 per sheet",
+   "start_count": 30,
+   "aspect": "2.59/1",
+   "cm": [
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     18.35956,
+     686.12586
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     216.49709,
+     684.70743
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     414.63462,
+     683.28901
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     17.79912,
+     614.09331
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     215.93664,
+     612.67489
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     414.07417,
+     611.25647
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     17.23867,
+     542.06077
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     215.3762,
+     540.64235
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     413.51373,
+     539.22392
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     16.67822,
+     470.02823
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     214.81575,
+     468.6098
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     412.95328,
+     467.19138
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     16.11777,
+     397.99568
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     214.2553,
+     396.57726
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     412.39283,
+     395.15883
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     15.55732,
+     325.96314
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     213.69485,
+     324.54471
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     411.83238,
+     323.12629
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     14.99688,
+     253.93059
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     213.1344,
+     252.51217
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     411.27193,
+     251.09375
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     14.43643,
+     181.89805
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     212.57396,
+     180.47963
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     410.71149,
+     179.0612
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     13.87598,
+     109.86551
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     212.01351,
+     108.44708
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     410.15104,
+     107.02866
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     13.31553,
+     37.83296
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     211.45306,
+     36.41454
+    ],
+    [
+     187.98964,
+     -1.34578,
+     0.56045,
+     72.03254,
+     409.59059,
+     34.99611
+    ]
+   ],
+   "tip": "For the 30 mL bottles."
+  }
+ }
 }
