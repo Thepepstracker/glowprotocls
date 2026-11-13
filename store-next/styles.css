@@ -867,3 +867,8 @@ a.sub-card-price{display:block}
 .mgmt .lb-brushes{list-style:none;margin:6px 0 10px;padding:0;display:grid;gap:6px}.mgmt .lb-brush{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;width:100%;padding:6px 8px;border:1.5px solid var(--line);border-radius:10px;background:#fff}.mgmt .lb-brush img{width:70px;height:auto;border-radius:2px}.mgmt .lb-brush span{display:grid}.mgmt .lb-brush small{color:var(--muted)}.mgmt .lb-brush.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#fffaf0}
 .mgmt .lb-tap .lb-cell{cursor:pointer}.mgmt .lb-tap .lb-cell:hover{outline:2px solid var(--gold);outline-offset:1px}
 .mgmt .lb-tapacts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.mgmt .lb-tapacts button{padding:6px 12px}
+/* Staff price on "Order for a customer" (13 Nov 2026) */
+.staff-price{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:10px}
+.staff-price label{display:flex;align-items:center;gap:8px}
+.staff-price input[type=number]{width:5.5em}
+.staff-price p{flex-basis:100%;margin:0;font-size:.85em}
