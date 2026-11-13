@@ -33,6 +33,13 @@ function plan(items,{start=1,newRow=true,kind:kid='vial'}={}){
  return Array.from({length:pages},(_,p)=>Array.from({length:PER},(_,c)=>slots[p*PER+c]||null));
 }
 
+// Tap to place (Jonah, 13 Nov 2026: "click the spot and then have it be there"): the sheet comes as an exact layout,
+// one entry per sticker (a label id or empty), so any sticker can be used in any order on any sheet.
+function layoutPages(layout,kid='vial'){
+ const L=lib(),K=kind(kid);if(!Array.isArray(layout)||!layout.length)bad('Place at least one label.');if(layout.length>MAX_PAGES)bad('That is more than 20 sheets. Print it in two goes.');
+ const pages=layout.map(pg=>{if(!Array.isArray(pg)||pg.length!==K.per)bad('Each sheet needs '+K.per+' stickers.');return pg.map(v=>{if(v==null||v==='')return null;const id=String(v);if(!ID.test(id)||!L.byId.has(id))bad('Unknown label.');if(kindOf(L.byId.get(id))!==K.id)bad('Those labels go on different sheets. Print each kind on its own.');return id})});
+ while(pages.length&&pages[pages.length-1].every(v=>!v))pages.pop();if(!pages.length)bad('Place at least one label.');return pages}
+
 // A small, exact PDF writer: one image object per label used, drawn at the proven positions.
 function pdf(pages,title,kid='vial'){
  const L=lib(),K=kind(kid),objs=[],add=b=>{objs.push(b);return objs.length};
@@ -63,9 +70,9 @@ async function route(path_,body,h,method,{session}){
  if(t&&method==='GET'){if(!L.byId.has(t[1]))bad('Label not found.',404);return{status:200,headers:{'Cache-Control':'private, max-age=86400'},body:{_binary:slice('thumbs.bin',...L.byId.get(t[1]).thumb).toString('base64'),_type:'image/jpeg'}}}
  const f=path_.match(/^\/admin\/labels\/sheet\/([a-z0-9-]{2,60})$/);
  if(f&&method==='GET'){if(!L.sheets.some(s=>s.id===f[1]))bad('Sheet not found.',404);return{status:200,headers:{},body:{_binary:fs.readFileSync(path.join(DIR,'sheet-'+f[1]+'.pdf')).toString('base64'),_type:'application/pdf'}}}
- if(path_==='/admin/labels/build'&&method==='POST'){const kid=String(body.kind||'vial'),K=kind(kid),pages=plan(body.items,{start:body.start,newRow:body.new_row!==false,kind:kid});
+ if(path_==='/admin/labels/build'&&method==='POST'){const kid=String(body.kind||'vial'),K=kind(kid),pages=Array.isArray(body.layout)?layoutPages(body.layout,kid):plan(body.items,{start:body.start,newRow:body.new_row!==false,kind:kid});if(!Array.isArray(body.items)||!body.items.length)body.items=[...new Set(pages.flat().filter(Boolean))].map(id=>({id}));
   const title=(body.items.length===1?L.byId.get(body.items[0].id).name+' '+L.byId.get(body.items[0].id).strength:body.items.length+' labels')+' - '+K.name.toLowerCase();
   return{status:200,headers:{'X-Label-Pages':String(pages.length)},body:{_binary:pdf(pages,title,kid).toString('base64'),_type:'application/pdf'}}}
  bad('Not found.',404);
 }
-module.exports={route,plan,pdf,lib};
+module.exports={route,plan,pdf,lib,layoutPages};
