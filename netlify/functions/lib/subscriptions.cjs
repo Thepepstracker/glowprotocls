@@ -157,6 +157,7 @@ const CANCEL_REASONS={too_much:'I have too much right now',price:'It costs too m
 async function update({id,action,every,next_date,items,address,reason,note,together_with},{customer=false,owner=null}={}){
  if(action==='link')return cardLink(id);
  if(action==='check')return checkCard(String(id||'').slice(0,20));
+ if(action==='clear'){if(customer||owner)bad('Not available.',403);return clearFirst(String(id||'').slice(0,20))}
  let jobs=[];
  const out=await transaction(async s=>{const x=await s.get('subscriptions',String(id||'').slice(0,20));if(!x||(owner&&!owns(x,owner)))bad('Subscription not found.',404);if(x.status==='canceled')bad('This subscription is canceled.',409);
  if(x.status==='pending_first_payment'&&action!=='cancel')bad(customer?'Your first payment is still being confirmed. Try again in a minute.':'Waiting for the first payment on Stripe.',409);
@@ -331,6 +332,35 @@ async function settleFirst(id,{close=false}={}){
   await s.put('subscriptions',y.id,y);out.push(await queueWelcome(s,y,c));return out.filter(Boolean)});
  for(const j of jobs)await emails.safeDispatch(j);
  const y=await transaction(s=>s.get('subscriptions',x.id));return{status:y.status==='active'?'active':y.status,sub:publicSub(y)}}
+// Staff "Clear" (Jonah, 13 Nov 2026, Melissa Lopez SUB-C047FAFD): a first box that Stripe shows as paid but that was held
+// for review (its order lost the 15% in an item edit, or the team already marked it paid and shipped it). Re-checks Stripe
+// first. If Stripe received at least the box's subscription price, the order record is set to what Stripe charged and the
+// subscription starts (card saved for the next box). Never charges, refunds, cancels or emails anyone.
+async function clearFirst(id){
+ const x=await transaction(s=>s.get('subscriptions',id));if(!x)bad(COPY.not_found,404);if(x.status!=='pending_first_payment')bad('Only a subscription waiting for its first payment can be cleared.',409);
+ if(!x.checkout?.id)bad('This subscription has no Stripe checkout to check.',409);
+ const st=pay().stripe,sess=await st('/checkout/sessions/'+encodeURIComponent(x.checkout.id)+'?expand[]=payment_intent.payment_method');
+ if(!(sess.status==='complete'&&sess.payment_status==='paid'))bad('Stripe does not show the first payment as paid, so nothing was changed.',409);
+ const pi=sess.payment_intent&&typeof sess.payment_intent==='object'?sess.payment_intent:sess.payment_intent?await st('/payment_intents/'+encodeURIComponent(sess.payment_intent)+'?expand[]=payment_method'):null;
+ const o=await transaction(s=>s.get('orders',x.first_order));if(!o)bad('The first order is missing.',409);if(['canceled','expired'].includes(o.status))bad('The first order is '+o.status+'.',409);
+ const price=(o.subtotal||0)-(Number(o.subscription_discount)||0)+(o.shipping||0);
+ const why=sess.id!==x.checkout.id?'session mismatch':sess.metadata?.subscription_id!==x.id?'the Stripe payment is for another subscription':sess.currency!=='usd'?'currency '+sess.currency:sess.livemode!==pay().stripeLive()?'test/live mismatch':!pi||pi.status!=='succeeded'?'the payment did not succeed':(pi.amount_received||0)<price||(sess.amount_total||0)<price?'Stripe received less than the subscription price ('+(pi.amount_received||0)+' of '+price+')':'';
+ if(why)bad('Not cleared: '+why+'.',409);
+ const pm=pi.payment_method,pmId=typeof pm==='string'?pm:pm?.id,detail=pm&&typeof pm==='object'?pm:pmId?await st('/payment_methods/'+encodeURIComponent(pmId)):null;
+ if(pmId&&x.stripe_customer){try{await st('/customers/'+encodeURIComponent(x.stripe_customer),{method:'POST',body:{invoice_settings:{default_payment_method:pmId}}})}catch{}}
+ const core=require('./store-core.cjs');
+ const r=await transaction(async s=>{const y=await s.get('subscriptions',x.id),c=await s.get('orders',x.first_order);if(!y||y.status!=='pending_first_payment')bad('This subscription changed. Refresh and try again.',409);
+  const paid=pi.amount_received||sess.amount_total;
+  // The order record: the subscription price Stripe charged (the 15% back on it), and Stripe as the payment.
+  c.discount=(Number(c.subscription_discount)||0)+(c.coupon_discount||0)+(c.rewards_discount||0);c.total=price;c.points_to_earn=Math.floor(Math.floor((c.subtotal-c.discount)/100)*(c.subscription_points_multiplier||1));
+  if(!c.customer_id)c.points_earned=c.paid?c.points_to_earn:0;
+  c.stripe_checkout={session:sess.id,payment_intent:pi.id,amount:paid,paid_at:now(),cleared_by_staff:true};if(!c.payment_reference)c.payment_reference=pi.id;
+  let jobs=[];
+  if(c.status==='order_received'){jobs=await core.subscriptionCheckoutPaid(s,c,pi,sess)}
+  else{if(c.verified_payment_cents!=null)c.verified_payment_cents=paid;c.balance_due_cents=Math.max(0,price-paid);c.refund_due_cents=Math.max(0,paid-price);c.revision=(c.revision||0)+1;c.updated=now();await s.put('orders',c.id,c)}
+  const today=todayET();y.status='active';y.payment_method=pmId||'';y.card={brand:detail?.card?.brand||'card',last4:detail?.card?.last4||''};y.card_saved_at=now();y.first_paid_at=now();y.deliveries=1;y.t5_run=c.subscription_tier==='T5'?1:0;y.orders=[c.id];setShip(y,nextFrom(today,y.every,today));y.problem='';y.cleared_at=now();delete y.checkout_url;y.checkout={id:x.checkout.id,expires:0};
+  await s.put('subscriptions',y.id,y);return{y,jobs,order:{id:c.id,status:c.status,total:c.total}}});
+ return{status:'active',sub:publicSub(r.y),order:r.order,source_order:x.first_order}}
 async function skipStale(ts){const core=require('./store-core.cjs');
  const ids=await transaction(async s=>(await (s.listLite?s.listLite('orders'):s.list('orders'))).filter(o=>o.payment_method==='card_autopay'&&o.status==='order_received'&&o.autopay?.status==='failed'&&todayET(ts*1000)>addDays(todayET((o.autopay.failed_at||ts)*1000),AUTO_SKIP_DAYS)).map(o=>o.id));let n=0;
  for(const id of ids){const done=await transaction(async s=>{const o=await s.get('orders',id);if(!o||o.status!=='order_received'||o.autopay?.status!=='failed')return false;o.autopay={...o.autopay,status:'skipped',skipped_at:ts};await core.subscriptionRelease(s,o,'canceled');
