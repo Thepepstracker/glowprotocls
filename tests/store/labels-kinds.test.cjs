@@ -6,7 +6,7 @@ const lab=require('../../netlify/functions/lib/labels.cjs');
 test('every kind has its stickers placed exactly once per sticker, and every label belongs to a kind with an image and thumbnail',()=>{
  const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','box','nasal','vial']);
  assert.equal(L.kinds.nasal.cm.length,10);assert.equal(L.kinds.big.cm.length,30);for(const m of [...L.kinds.nasal.cm,...L.kinds.big.cm])assert.equal(m.length,6);
- const n=L.labels.filter(l=>l.kind==='nasal');assert.equal(n.length,15);assert.equal(L.labels.filter(l=>l.kind==='big').length,1);
+ const n=L.labels.filter(l=>l.kind==='nasal');assert.equal(n.length,15);assert.deepEqual(L.labels.filter(l=>l.kind==='big').map(l=>l.id),['big-bac-water-30-ml','big-glow-lab-brand'],'BAC Water 30 mL and the Glow Lab brand label (13 Nov)');
  for(const l of L.labels)assert.ok(Array.isArray(l.img)&&l.thumb&&l.thumb[1]>0,l.id);
 });
 test('nasal: 10 per sheet, 2 across, start sticker and new row; mixing kinds is refused',()=>{
