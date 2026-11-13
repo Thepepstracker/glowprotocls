@@ -938,7 +938,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-acti
 function lbState(){if(!state.lb)state.lb={sel:[],start:1,newRow:true,q:'',page:0,kind:'vial',mode:'fill',layout:null,brush:null};return state.lb}
 function lbKind(){const L=state.labels,k=lbState().kind;return (L&&L.kinds&&L.kinds[k])||{name:'Vial labels',cols:4,rows:12,start_count:12,aspect:'7/3'}}
 function lbPerSheet(){const k=lbKind();return k.cols*k.rows}
-const LB_KIND_MENU=[['vial','Vial labels'],['box','Box labels (Glow Lab brand)'],['nasal','Nasal spray labels'],['big','Big bottle labels (BAC Water 30 mL)'],['other','Logo stickers & other sheets'],['shipping','Shipping labels']];
+const LB_KIND_MENU=[['vial','Vial labels'],['box','Box labels (Glow Lab brand)'],['nasal','Nasal spray labels'],['big','Big bottle labels (BAC Water 30 mL · brand label)'],['serum','Serum labels (Protocol 01 · 02 · Glow Eyes Luxe)'],['other','Logo stickers & other sheets'],['shipping','Shipping labels']];
 function lbPlan(){const s=lbState(),PER=lbPerSheet(),COLS=lbKind().cols;let i=Math.min(PER,Math.max(1,Math.trunc(Number(s.start)||1)))-1;const slots=[];s.sel.forEach((it,n)=>{if(s.newRow&&n>0&&i%COLS)i+=COLS-i%COLS;for(let k=0;k<it.count;k++)slots[i++]=it.id});const pages=Math.max(1,Math.ceil(i/PER));return Array.from({length:pages},(_,p)=>Array.from({length:PER},(_,c)=>slots[p*PER+c]||null))}
 function lbLabel(id){return (state.labels?.labels||[]).find(l=>l.id===id)}
 function lbThumb(id){return '/api/admin/labels/thumb/'+encodeURIComponent(id)+'?v='+encodeURIComponent(state.labels?.version||'')}
