@@ -4,7 +4,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const lab=require('../../netlify/functions/lib/labels.cjs');
 test('every kind has its stickers placed exactly once per sticker, and every label belongs to a kind with an image and thumbnail',()=>{
- const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','box','nasal','vial']);
+ const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','box','nasal','serum','vial']);
  assert.equal(L.kinds.nasal.cm.length,10);assert.equal(L.kinds.big.cm.length,30);for(const m of [...L.kinds.nasal.cm,...L.kinds.big.cm])assert.equal(m.length,6);
  const n=L.labels.filter(l=>l.kind==='nasal');assert.equal(n.length,15);assert.deepEqual(L.labels.filter(l=>l.kind==='big').map(l=>l.id),['big-bac-water-30-ml','big-glow-lab-brand'],'BAC Water 30 mL and the Glow Lab brand label (13 Nov)');
  for(const l of L.labels)assert.ok(Array.isArray(l.img)&&l.thumb&&l.thumb[1]>0,l.id);
@@ -41,4 +41,12 @@ test('box labels: the Glow Lab brand label prints on the proven vial-sheet posit
  const pdf=lab.pdf(lab.plan([{id:'box-glow-lab-brand',count:48}],{kind:'box'}),'t','box').toString('latin1');const pos=L.sheet.pos[0];
  assert.ok(pdf.includes(`${pos[2]} 0 0 ${pos[3]} ${pos[0]} ${pos[1]} cm`));assert.equal((pdf.match(/ cm\n\/L0 Do/g)||[]).length,48);
  assert.throws(()=>lab.plan([{id:'box-glow-lab-brand',count:1}]),/different sheets/,'not mixed onto a vial sheet');
+});
+
+test('serum labels: Protocol 01 (15 and 50 mL), Protocol 02 and Glow Eyes Luxe on the OL875 sheet, same spots as BAC Water 30 mL',()=>{
+ const L=lab.lib();assert.deepEqual(L.labels.filter(l=>l.kind==='serum').map(l=>l.id),['serum-protocol-01-15-ml','serum-protocol-01-50-ml','serum-protocol-02-15-ml','serum-glow-eyes-luxe-kpv']);
+ assert.deepEqual(L.kinds.serum.cm,L.kinds.big.cm);assert.equal(L.kinds.serum.cols,3);assert.equal(L.kinds.serum.rows,10);
+ const pages=lab.plan([{id:'serum-protocol-01-15-ml',count:12},{id:'serum-glow-eyes-luxe-kpv',count:12}],{kind:'serum'});assert.equal(pages.length,1);
+ const pdf=lab.pdf(pages,'t','serum').toString('latin1');assert.equal((pdf.match(/ cm\n\/L\d+ Do/g)||[]).length,24);
+ assert.throws(()=>lab.plan([{id:'serum-protocol-02-15-ml',count:1},{id:'big-bac-water-30-ml',count:1}],{kind:'serum'}));
 });
