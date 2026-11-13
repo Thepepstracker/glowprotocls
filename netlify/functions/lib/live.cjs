@@ -16,7 +16,7 @@ const int=v=>{const n=Math.floor(Number(v));return Number.isFinite(n)&&n>=0&&n<1
 const epoch=v=>{const n=Math.floor(Number(v));return Number.isFinite(n)&&n>1.6e9&&n<4e9?n:null};
 const list=(s,k)=>s.listLite?s.listLite(k):s.list(k);
 const isDraft=o=>o.proof_required===true&&o.checkout_stage==='draft'&&!o.has_receipt&&['order_received','expired','canceled'].includes(o.status);
-const counts=o=>o.is_test===false&&(o.brand||'glow')==='glow'&&!isDraft(o)&&['order_received','awaiting_payment','payment_submitted','paid','shipped'].includes(o.status);
+const counts=o=>o.is_test===false&&!o.comped&&(o.brand||'glow')==='glow'&&!isDraft(o)&&['order_received','awaiting_payment','payment_submitted','paid','shipped'].includes(o.status);
 const isPaid=o=>o.status==='paid'||o.status==='shipped';
 const placed=o=>o.submitted_at||o.created||0;
 const email=o=>String(o.customer?.email||'').trim().toLowerCase()||o.id;

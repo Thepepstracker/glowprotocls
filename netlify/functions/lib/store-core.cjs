@@ -536,6 +536,13 @@ async function handle({path,method='GET',headers={},body={}}){
     if(body.affiliate_review===true&&o.goaffpro_needs_review){o.goaffpro_needs_review=false;o.goaffpro_status='synced';o.goaffpro_message='Updated affiliate sale reviewed by staff.';}
     o.revision=(o.revision||0)+1;o.updated=clock();await s.put('orders',o.id,o);await audit(s,'order_exports_reviewed',o.id);return{ok:true,order:publicOrder(o)};
    }
+   // Free order (Jonah, 13 Nov 2026: an employee's mom's order, given free): still packed and shipped, stock still moves,
+   // but it is left out of sales — week/day colors and goals, the live, and the business reports. Staff can undo it.
+   if(path==='/admin/order/free'&&method==='POST'){
+    const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);const actor=(await s.get('sessions',sessionId)).staff_id||'owner';
+    if(body.free===false){delete o.comped}else{const why=typeof body.note==='string'?body.note.trim().slice(0,200):'';o.comped={at:clock(),by:actor,note:why,total_cents:o.total||0}}
+    o.revision=(o.revision||0)+1;o.updated=clock();await s.put('orders',o.id,o);await audit(s,body.free===false?'order_free_undone':'order_marked_free',o.id);return{ok:true,comped:o.comped||null};
+   }
    if(path==='/admin/order/note'&&method==='POST'){
     const o=await s.get('orders',text(body.id||'',50));if(!o)fail('Order not found.',404);
     if(typeof body.note!=='string'||!body.note.trim()||body.note.length>2000)fail('Enter a staff note of up to 2,000 characters.');
