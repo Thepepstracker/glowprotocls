@@ -4,7 +4,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const lab=require('../../netlify/functions/lib/labels.cjs');
 test('every kind has its stickers placed exactly once per sticker, and every label belongs to a kind with an image and thumbnail',()=>{
- const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','nasal','vial']);
+ const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','box','nasal','vial']);
  assert.equal(L.kinds.nasal.cm.length,10);assert.equal(L.kinds.big.cm.length,30);for(const m of [...L.kinds.nasal.cm,...L.kinds.big.cm])assert.equal(m.length,6);
  const n=L.labels.filter(l=>l.kind==='nasal');assert.equal(n.length,15);assert.equal(L.labels.filter(l=>l.kind==='big').length,1);
  for(const l of L.labels)assert.ok(Array.isArray(l.img)&&l.thumb&&l.thumb[1]>0,l.id);
@@ -34,4 +34,11 @@ test('tap to place: an exact layout prints only the stickers chosen, in any spot
  assert.throws(()=>lab.layoutPages([n],'vial'),/48 stickers/);
  const mixed=Array(10).fill(null);mixed[0]='kpv-10-mg';assert.throws(()=>lab.layoutPages([mixed],'nasal'),/different sheets/);
  assert.throws(()=>lab.layoutPages(Array(21).fill(lay[0]),'vial'),/20 sheets/);
+});
+
+test('box labels: the Glow Lab brand label prints on the proven vial-sheet positions, 48 per sheet',()=>{
+ const L=lab.lib();assert.equal(L.kinds.box.cols*L.kinds.box.rows,48);assert.ok(!L.kinds.box.cm,'uses the proven vial positions');
+ const pdf=lab.pdf(lab.plan([{id:'box-glow-lab-brand',count:48}],{kind:'box'}),'t','box').toString('latin1');const pos=L.sheet.pos[0];
+ assert.ok(pdf.includes(`${pos[2]} 0 0 ${pos[3]} ${pos[0]} ${pos[1]} cm`));assert.equal((pdf.match(/ cm\n\/L0 Do/g)||[]).length,48);
+ assert.throws(()=>lab.plan([{id:'box-glow-lab-brand',count:1}]),/different sheets/,'not mixed onto a vial sheet');
 });
