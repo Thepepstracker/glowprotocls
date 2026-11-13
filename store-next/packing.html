@@ -648,7 +648,7 @@ function tiersFor(t){return [{k:'purple',dot:'🟣',name:'PURPLE',say:'Double la
 var WEEK_TARGET=WEEK_FLOOR,TIERS=tiersFor(WEEK_TARGET);
 function setTargets(){WEEK_TARGET=targetFor(0);TIERS=tiersFor(WEEK_TARGET);DAY_TARGET=Math.round(WEEK_TARGET/7);DAY_TIERS=dayTiersFor(DAY_TARGET)}
 // Orders brought over from the old site were already counted on the old site: they never count toward today or the week.
-function paidOrder(o){return o&&o.is_test===false&&!o.legacy_import&&(o.status==='paid'||o.status==='shipped')}
+function paidOrder(o){return o&&o.is_test===false&&!o.legacy_import&&!o.comped&&(o.status==='paid'||o.status==='shipped')} // comped = free order, not a sale (13 Nov 2026)
 function weekKeys(offset){var today=etDay(nowS()),d=new Date(today+'T12:00:00Z'),dow=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-dow-7*(offset||0));var k=[];for(var i=0;i<7;i++){k.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}return{keys:k,dow:dow}}
 function weekSum(keys){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&keys.indexOf(etDay(o.created||0))>=0){n+=o.total||0;c++}});return{cents:n,count:c}}
 function tierOf(cents,finished,lastWeekCents){

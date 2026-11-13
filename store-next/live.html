@@ -182,7 +182,7 @@ function startEpoch(){var L=shownLive();if(L)return L.started_at;var day=liveDay
 function endEpoch(){var L=shownLive();return L&&L.ended_at?L.ended_at:Infinity}
 function goalCents(){var g=Number(cfg.goal);return (g>0?g:3672)*100}
 function isDraft(o){return o.proof_required===true&&o.checkout_stage==='draft'&&!o.has_receipt&&['order_received','expired','canceled'].indexOf(o.status)>=0}
-function counts(o){return o.is_test===false&&!isDraft(o)&&['order_received','awaiting_payment','payment_submitted','paid','shipped'].indexOf(o.status)>=0}
+function counts(o){return o.is_test===false&&!o.comped&&!isDraft(o)&&['order_received','awaiting_payment','payment_submitted','paid','shipped'].indexOf(o.status)>=0}
 function isPaid(o){return o.status==='paid'||o.status==='shipped'}
 function first(o){var n=String((o.customer||{}).name||'').trim().split(/\s+/);return (n[0]||'Someone')+(n.length>1?' '+n[n.length-1][0]+'.':'')}
 var STATES={AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',CT:'Connecticut',DE:'Delaware',DC:'D.C.',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',PR:'Puerto Rico'};
