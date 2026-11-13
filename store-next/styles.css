@@ -855,3 +855,6 @@ a.sub-card-price{display:block}
 /* Free VIP peptide (13 Nov 2026) */
 .sk-gift h2{margin:0}.sk-gift p{margin:10px 0 0}.sk-gift-now{font-size:17px}.sk-gift-star{color:var(--gold)}.sk-gift-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:14px}.sk-gift-label{display:grid;gap:6px;flex:1 1 280px;font-weight:600}.sk-gift-label select{width:100%}.sk-gift-bag{margin:0 0 12px}
 @media(max-width:620px){.sk-gift-row button{width:100%}}
+
+/* Nasal spray label sheets (13 Nov 2026) */
+.lb-spray{list-style:none;margin:8px 0 18px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}.lb-spray li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff}.lb-spray li b{font-size:15px}.lb-spray li span{display:flex;gap:6px}.lb-spray button{padding:6px 12px}.lb-h3 small{font-weight:400;font-size:13px;margin-left:6px}
