@@ -37,6 +37,10 @@ async function ping(body,h={}){
   v.last=t;if(!v.src&&/^[a-z0-9_-]{1,24}$/.test(String(body.src||'')))v.src=String(body.src);if(body.bag===true)v.bag=true;if(body.checkout===true)v.checkout=true;
   await s.put('live_visitors',id,v);return{live:true}})}
 
+// Bounce (Jonah, 13 Nov 2026): a visitor who was on the site for one minute or less (one clock minute of pings) and never
+// added anything to the bag. Time on the site = the clock minutes the tab was open (a tab left open in the background counts).
+const bounced=v=>(v.minutes||[]).length<=1&&!v.bag&&!v.checkout;
+function medianMinutes(V){const m=V.map(v=>(v.minutes||[]).length).sort((a,b)=>a-b);if(!m.length)return null;const k=Math.floor(m.length/2);return m.length%2?m[k]:(m[k-1]+m[k])/2}
 // ---- summary numbers for one live (used by the log list and the report) ----
 function windowOrders(orders,L,end){return orders.filter(o=>counts(o)&&placed(o)>=L.started_at&&placed(o)<end)}
 function summary(orders,L){
@@ -115,7 +119,7 @@ function report(orders,visitors,products,L,all,extra={}){
    peak:peakBucket.cents>0?{at:peakBucket.at,orders:peakBucket.orders,cents:peakBucket.cents}:null,
    tail:{orders:tail.length,cents:tail.reduce((n,o)=>n+(o.total||0),0),hours:TAIL/3600}},
   site:{visitors:V.length,peak_online:peak,peak_at:peakAt,avg_online:activeMins.length?Math.round(activeMins.reduce((a,b)=>a+b,0)/activeMins.length):0,online_now,
-   added_to_bag:V.filter(v=>v.bag).length,started_checkout:V.filter(v=>v.checkout).length,sources:Object.entries(src).sort((a,b)=>b[1]-a[1]),
+   added_to_bag:V.filter(v=>v.bag).length,started_checkout:V.filter(v=>v.checkout).length,bounced:V.filter(bounced).length,bounce_rate_pct:V.length?Math.round(V.filter(bounced).length*1000/V.length)/10:null,median_minutes:medianMinutes(V),sources:Object.entries(src).sort((a,b)=>b[1]-a[1]),
    order_rate_pct:V.length?Math.round(list.length*1000/V.length)/10:null},
   tiktok:{...tk,buyers_per_100_viewers:viewers?Math.round(B.length*1000/viewers)/10:null,sales_per_viewer_cents:viewers?Math.round(base.sales_cents/viewers):null},
   ...extrasFor(L,end,list,orders,extra.subs,extra.accounts,base.sales_cents),
