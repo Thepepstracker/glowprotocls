@@ -147,6 +147,8 @@ async function handle({path,method='GET',headers={},body={}}){
  // Skool member perks (Jonah, 5 Nov 2026): the account's member section, choosing perks, and "Link" (own email only).
  // Management: staff can look; only the owner can switch it on, change settings or change the list. See skool-members.cjs.
  const memberRoute=await members.customerRoute(path,body,h,method);if(memberRoute)return memberRoute;
+ // Free VIP peptide in every subscription box (Jonah, 13 Nov 2026). See vip-gift.cjs.
+ const vipGiftRoute=await require('./vip-gift.cjs').route(path,method,h,body,{transaction,accounts,staffSession:session});if(vipGiftRoute)return vipGiftRoute;
  // Growth tools (Jonah, 8 Nov 2026): reorder links, saved bags, reviews, the sales funnel and unsubscribe. See growth.cjs.
  const growthRoute=await require('./growth.cjs').route(path,body,h,method,{session});if(growthRoute)return growthRoute;
  // Label hub (Jonah, 8 Nov 2026): every approved vial label, one click to print. See labels.cjs.
@@ -731,6 +733,8 @@ async function subscriptionOrder(s,sub,cycle){
   if(sib){o.ships_with=sib.id;if(o.shipping>0){o.shipping_combined=o.shipping;o.total-=o.shipping;o.shipping=0}if(!sib.ships_with){sib.ships_with=o.id;await s.put('orders',sib.id,sib)}}}
  delete o.points_multiplier;o.goaffpro_affiliate_id=null;o.is_test=false;if((sub.addons||[]).length){o.subscription_addons=dropped?[]:sub.addons.map(a=>({id:a.id,quantity:a.quantity,name:a.name||''}));if(dropped)o.addons_dropped=dropped}const beneficiary=await s.get('customers',accounts.hash(accounts.email(customer.email)));o.customer_id=beneficiary?.verified&&brand.rewards?beneficiary.id:null;o.points_earned=0;
  for(const item of q.items)await moveStock(s,item,-1);
+ // Free VIP peptide (Jonah, 13 Nov 2026): a $0 line in every box while she is a Skool VIP. Never changes the price.
+ {const vg=await require('./vip-gift.cjs').line(s,customer.email,async gid=>(await quote(s,{items:[{id:gid,quantity:1}]},{},brand,{subscription:true})).items[0]);if(vg){if(vg.line){o.items=[...o.items,vg.line];o.vip_gift=vg.record;await moveStock(s,vg.line,-1)}o.staff_note=[o.staff_note,vg.note].filter(Boolean).join(' · ')}}
  await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created_subscription_order',id);
  // Auto-pay: no order email yet; the customer gets the payment-received email once the card is charged.
  const jobs=[...(autopay?[]:[await emails.queueOrder(s,o,token)]),...await emails.queueStaffAlert(s,o)].filter(Boolean);
@@ -748,6 +752,8 @@ async function subscriptionFirstOrder(s,{account,customer:input,items,every,bran
  // Veterans Day (11 Nov 2026): stacked $0 gifts on the first box, by the box total after the 15% (before shipping).
  const vd=await require('./veterans-day.cjs').gifts(s,brand,q.subtotal-q.discount,gift,async(gid,qty)=>(await quote(s,{items:[{id:gid,quantity:qty}]},h,brand,{subscription:true})).items[0]);
  if(vd){o.items=[...q.items,...vd.lines];o.veterans_day=vd.record;o.staff_note=[o.staff_note,vd.note].filter(Boolean).join(' · ');for(const l of vd.lines)await moveStock(s,l,-1)}
+ // Free VIP peptide (Jonah, 13 Nov 2026): her saved pick goes in at $0. The Stripe amount is the order total, so it is unchanged.
+ {const vg=await require('./vip-gift.cjs').line(s,account.email,async gid=>(await quote(s,{items:[{id:gid,quantity:1}]},h,brand,{subscription:true})).items[0]);if(vg){if(vg.line){o.items=[...o.items,vg.line];o.vip_gift=vg.record;await moveStock(s,vg.line,-1)}o.staff_note=[o.staff_note,vg.note].filter(Boolean).join(' · ')}}
  await s.put('orders',id,o);await s.put('idempotency',key,{id});await audit(s,'created_subscription_first_order',id);
  const sub={id:subId,brand:brand.id,status:'pending_first_payment',pay:'autopay',source:'customer',every,tier:sq.tier.id,customer:{name:customer.name,email:customer.email,phone:customer.phone||'',address:customer.address,address2:'',city:customer.city,state:customer.state,zip:customer.zip},customer_id:account.id,
   items:q.items.map(i=>({id:i.id,quantity:i.quantity,name:i.name})),first_order:id,source_order:id,orders:[],deliveries:0,created:clock(),created_by:'customer'};
