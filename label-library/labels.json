@@ -2646,6 +2646,86 @@
    "id": "glp-logo-circle-6up",
    "name": "GLP logo circles",
    "note": "6 per sheet \u00b7 3 in round (PLS-819 sheet)"
+  },
+  {
+   "id": "bac-water-30-ml-ol875",
+   "name": "BAC Water 30 mL \u00b7 big label",
+   "note": "30 per sheet \u00b7 2\u215d \u00d7 1 in (Online Labels OL875)"
+  },
+  {
+   "id": "spray-5-amino-1mq-10-mg",
+   "name": "5-Amino-1MQ 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-adamax-10-mg",
+   "name": "Adamax 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-aicar-50-mg",
+   "name": "AICAR 50 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-ara-290-10-mg",
+   "name": "ARA-290 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-bpc-157-10-mg",
+   "name": "BPC-157 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-dsip-10-mg",
+   "name": "DSIP 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-glow-fuel-120-mg",
+   "name": "Glow Fuel 120 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-kpv-10-mg",
+   "name": "KPV 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-mots-c-10-mg",
+   "name": "MOTS-C 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-nad-500-mg",
+   "name": "NAD+ 500 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-oxytocin-10-mg",
+   "name": "Oxytocin 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-pt-141-10-mg",
+   "name": "PT-141 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-selank-10-mg",
+   "name": "Selank 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-semax-10-mg",
+   "name": "Semax 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
+  },
+  {
+   "id": "spray-wolverine-10-mg-10-mg",
+   "name": "Wolverine (BPC-157 + TB-500) 10 mg + 10 mg \u00b7 nasal spray",
+   "note": "10 per sheet \u00b7 2 \u00d7 4 in clear (PLS-591CG) \u00b7 no QR"
   }
  ]
 }
