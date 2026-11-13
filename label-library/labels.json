@@ -2924,6 +2924,24 @@
    ]
   },
   {
+   "id": "big-glow-lab-brand",
+   "name": "Glow Lab brand label",
+   "strength": "Upright on the box \u00b7 no product name",
+   "cs": "rgb",
+   "w": 1167,
+   "h": 450,
+   "img": [
+    "img-9.bin",
+    0,
+    131844
+   ],
+   "kind": "big",
+   "thumb": [
+    2583678,
+    11051
+   ]
+  },
+  {
    "id": "box-glow-lab-brand",
    "name": "Glow Lab box label",
    "strength": "Brand \u00b7 goes upright on the box",
