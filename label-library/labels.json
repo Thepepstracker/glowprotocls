@@ -2922,6 +2922,24 @@
     2551669,
     18784
    ]
+  },
+  {
+   "id": "box-glow-lab-brand",
+   "name": "Glow Lab box label",
+   "strength": "Brand \u00b7 goes upright on the box",
+   "cs": "rgb",
+   "w": 1050,
+   "h": 450,
+   "img": [
+    "img-8.bin",
+    0,
+    97593
+   ],
+   "kind": "box",
+   "thumb": [
+    2570453,
+    13225
+   ]
   }
  ],
  "sheets": [
@@ -3287,6 +3305,15 @@
     ]
    ],
    "tip": "For the 30 mL bottles."
+  },
+  "box": {
+   "name": "Box labels",
+   "cols": 4,
+   "rows": 12,
+   "sheet": "Same vial sheet \u00b7 1.75 \u00d7 0.75 in \u00b7 48 per sheet \u00b7 for the 0.8 \u00d7 0.8 \u00d7 3.4 in boxes, stuck upright",
+   "start_count": 48,
+   "aspect": "7/3",
+   "tip": "Stick it upright on the front of the box."
   }
  }
 }
