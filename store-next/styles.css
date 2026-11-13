@@ -334,7 +334,7 @@ input[type=file]::file-selector-button:hover{background:#eae1ce}
 .acct-pill.ok{background:#eaf2ff;color:#244a86}.acct-pill.go{background:#e4f2e9;color:#23553a}.acct-pill.off{background:#f8e9ea;color:#92323a}
 .acct-ledger li{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)}.acct-ledger li:last-child,.acct-order-list li:last-child{border-bottom:0}
 .acct-ledger b{font-size:15px;font-weight:600}.acct-pts{text-align:right;white-space:nowrap}.acct-pts b{font-variant-numeric:tabular-nums}.acct-pts.up b{color:#23553a}.acct-pts.down b{color:#92323a}
-@media(max-width:620px){.acct-order-list li{grid-template-columns:1fr auto;grid-template-areas:"main total" "pill btn";row-gap:8px}.acct-o-main{grid-area:main}.acct-o-total{grid-area:total}.acct-pill{grid-area:pill;justify-self:start}.acct-order-list button{grid-area:btn}.acct-sec-h h2{font-size:24px}.acct-head{align-items:flex-start}}
+@media(max-width:620px){.acct-order-list li{grid-template-columns:1fr auto;grid-template-areas:"main total" "pill pill" "btns btns";row-gap:10px}.acct-o-main b{white-space:nowrap}.acct-o-btns{grid-area:btns;display:flex;gap:10px}.acct-o-btns button{flex:1}.acct-o-main{grid-area:main}.acct-o-total{grid-area:total}.acct-pill{grid-area:pill;justify-self:start}.acct-sec-h h2{font-size:24px}.acct-head{align-items:flex-start}}
 .glow-levels .lv-tile.locked{opacity:.85;filter:grayscale(.3) brightness(.9)}.lv-spent{margin:6px 0 16px}
 /* Smoother admin (Jonah, 4 Nov 2026): Unpaid tracker, Find customer, tracking links */
 .age-chip{display:inline-block;padding:3px 9px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap}
@@ -437,6 +437,9 @@ a.track-link{font-variant-numeric:tabular-nums;white-space:nowrap;text-decoratio
 .sk-perk:hover:not([disabled]){border-color:#d9c48f}.sk-perk:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
 .sk-perk.on{border-color:var(--gold);background:#fffaf0;box-shadow:0 0 0 1px var(--gold) inset}
 .sk-perk[disabled]{cursor:default}.sk-perk[disabled]:not(.on){opacity:.55}
+/* Chosen perks stay crisp when locked (the site-wide button[disabled] fades every disabled button). */
+.sk-perk[disabled].on{opacity:1}
+.sk-more{margin-top:14px}.sk-more summary{cursor:pointer;font-weight:600;color:var(--gold-dark);padding:10px 0;list-style:none}.sk-more summary::-webkit-details-marker{display:none}.sk-more summary::after{content:' ▾'}.sk-more[open] summary::after{content:' ▴'}.sk-more .sk-grid{margin-top:4px}
 .sk-n{grid-row:span 2;width:30px;height:30px;border-radius:50%;background:var(--cream);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--gold-dark)}
 .sk-perk.on .sk-n{background:var(--gold);border-color:var(--gold);color:#fff}
 .sk-pt{font-weight:700;font-size:16px;line-height:1.3}.sk-pd{font-size:14.5px;color:var(--muted);line-height:1.45}
