@@ -916,3 +916,4 @@ a.sub-card-price{display:block}
 .hs-card .hs-form{gap:10px}.hs-card .hs-form label{gap:4px}.hs-card .hs-form input:not([type=checkbox]),.hs-card .hs-form select{margin-top:0}
 @media (min-width:821px){.hs-copy{align-self:center;padding-top:0}}
 .hs-card .hs-form label{margin:0}.hs-card .hs-form .error:empty{display:none}.hs-card .hs-form button[type=submit]{margin-top:4px}
+.account-join{margin:10px 0 0;font-size:14px}.account-join a{font-weight:700}
