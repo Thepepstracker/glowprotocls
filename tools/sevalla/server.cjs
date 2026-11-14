@@ -28,6 +28,10 @@ function zaderRoute(p){
  if(p==='/store-next/packing.html')return{file:'store-next/packing.html'};
  return{file:'store-next/zader.html'};
 }
+// Link preview for the My account page (Jonah, 14 Nov 2026): it is the link shared on TikTok, so a text or DM shows the
+// Glow Lab Protocols logo card (img/og-glow-logo.png, no vials) instead of the vial banner. Every other page is unchanged.
+function shareCard(html,p){if(!/^\/store-next\/account\/?$/.test(p)||!html.includes('/img/og-glow.jpg"'))return html;
+ return html.replace(/(<meta (?:property="og:image"|name="twitter:image") content="[^"]*?)\/img\/og-glow\.jpg"/g,'$1/img/og-glow-logo.png"').replace('<meta property="og:image:alt" content="Glow Lab Protocols vials with gold caps">','<meta property="og:image:alt" content="Glow Lab Protocols logo">').replace('<meta property="og:url" content="https://glowglps.com/">','<meta property="og:url" content="https://glowglps.com/store-next/account">')}
 function createServer({apiHandler,webhook,ready=async()=>true,transform=async html=>html}={}){
  return http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,'http://localhost');
@@ -64,7 +68,7 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   const target=path.resolve(ROOT,file);if(!target.startsWith(ROOT+path.sep))return send(404,'Not found');
   let data;try{data=await fs.readFile(target)}catch{return send(404,'Not found')}
   const type=TYPES[path.extname(file)];
-  if(type.startsWith('text/html')){data=await transform(data.toString(),req);return send(200,data,type)}
+  if(type.startsWith('text/html')){data=shareCard(await transform(data.toString(),req),decoded);return send(200,data,type)}
   // Pages stay no-store. Photos may be kept for an hour; scripts and styles are re-checked on every visit (a 304 when unchanged).
   const etag='"'+crypto.createHash('sha1').update(data).digest('base64url')+'"',cache=type.startsWith('image/')?'public, max-age=3600, stale-while-revalidate=86400':'no-cache',headers={ETag:etag,'Cache-Control':cache};
   if(String(req.headers['if-none-match']||'').split(/\s*,\s*/).map(t=>t.replace(/^W\//,'')).includes(etag)){res.writeHead(304,{...security,...headers});return res.end()}
@@ -92,4 +96,4 @@ async function start(){
  for(const sig of ['SIGTERM','SIGINT'])process.once(sig,()=>{server.close(()=>probe.end().finally(()=>process.exit(0)));setTimeout(()=>process.exit(1),15000).unref()});
 }
 if(require.main===module)start().catch(e=>{console.error(e.message);process.exitCode=1});
-module.exports={createServer,publicFile,zaderRoute};
+module.exports={createServer,publicFile,zaderRoute,shareCard};
