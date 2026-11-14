@@ -288,10 +288,10 @@ async function startCheckout(h,body,brand){
  if(prior.again)return prior.again;
  for(const id of prior.old){try{await settleFirst(id,{close:true})}catch{}} // an earlier unfinished checkout gives its items back first
  const made=await transaction(async s=>{const a=await accounts.session(s,h);if(!a)bad(COPY.sign_in,401);if(await s.get('idempotency','subscribe-'+key))bad('This subscription was already started. Check your account.',409);
-  const r=await core.subscriptionFirstOrder(s,{account:a,customer:body.customer,items:body.items,every,brand,h,gift:{bag:body.gift_bag,kit_id:body.gift_kit_id}});
+  const r=await core.subscriptionFirstOrder(s,{account:a,customer:body.customer,items:body.items,every,brand,h,gift:{bag:body.gift_bag,kit_id:body.gift_kit_id},points:body.points_redeemed});
   if(r.order.veterans_day)r.sub.veterans_day={tiers:r.order.veterans_day.tiers,bag:r.order.veterans_day.bag,kit_id:r.order.veterans_day.kit_id};
   // What they agreed to, kept with the subscription (proof for a dispute): the terms version, the price and how often.
-  r.sub.consent={terms_version:TERMS_VERSION,agreed_at:now(),amount_cents:r.order.total,every,user_agent:String(h['user-agent']||'').slice(0,200)};r.sub.t5_run=0;await s.put('subscriptions',r.sub.id,r.sub);
+  r.sub.consent={terms_version:TERMS_VERSION,agreed_at:now(),amount_cents:r.order.total+(r.order.rewards_discount||0),first_charge_cents:r.order.total,...(r.order.points_redeemed?{points_used:r.order.points_redeemed}:{}),every,user_agent:String(h['user-agent']||'').slice(0,200)};r.sub.t5_run=0;await s.put('subscriptions',r.sub.id,r.sub);
   await s.put('idempotency','subscribe-'+key,{id:r.sub.id});return{sub:r.sub,order:r.order,account:a}});
  const {sub,order,account}=made,st=pay().stripe;
  try{let customer=account.stripe_customer;
@@ -343,7 +343,7 @@ async function clearFirst(id){
  if(!(sess.status==='complete'&&sess.payment_status==='paid'))bad('Stripe does not show the first payment as paid, so nothing was changed.',409);
  const pi=sess.payment_intent&&typeof sess.payment_intent==='object'?sess.payment_intent:sess.payment_intent?await st('/payment_intents/'+encodeURIComponent(sess.payment_intent)+'?expand[]=payment_method'):null;
  const o=await transaction(s=>s.get('orders',x.first_order));if(!o)bad('The first order is missing.',409);if(['canceled','expired'].includes(o.status))bad('The first order is '+o.status+'.',409);
- const price=(o.subtotal||0)-(Number(o.subscription_discount)||0)+(o.shipping||0);
+ const price=(o.subtotal||0)-(Number(o.subscription_discount)||0)-(Number(o.rewards_discount)||0)+(o.shipping||0); // points used on the first box come off too
  const why=sess.id!==x.checkout.id?'session mismatch':sess.metadata?.subscription_id!==x.id?'the Stripe payment is for another subscription':sess.currency!=='usd'?'currency '+sess.currency:sess.livemode!==pay().stripeLive()?'test/live mismatch':!pi||pi.status!=='succeeded'?'the payment did not succeed':(pi.amount_received||0)<price||(sess.amount_total||0)<price?'Stripe received less than the subscription price ('+(pi.amount_received||0)+' of '+price+')':'';
  if(why)bad('Not cleared: '+why+'.',409);
  const pm=pi.payment_method,pmId=typeof pm==='string'?pm:pm?.id,detail=pm&&typeof pm==='object'?pm:pmId?await st('/payment_methods/'+encodeURIComponent(pmId)):null;
