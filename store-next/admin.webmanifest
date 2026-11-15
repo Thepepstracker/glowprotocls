@@ -1,0 +1,16 @@
+{
+  "name": "Glow Lab Management",
+  "short_name": "Glow Admin",
+  "description": "Glow Lab Protocols store management: today's sales, orders and new-order alerts.",
+  "id": "/store-next/admin",
+  "start_url": "/store-next/admin?app=1",
+  "scope": "/store-next/",
+  "display": "standalone",
+  "background_color": "#faf7f2",
+  "theme_color": "#141414",
+  "icons": [
+    {"src": "/img/admin-app-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/img/admin-app-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/img/admin-app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
