@@ -71,13 +71,13 @@ const word = (v, n = 30) => String(v || '').replace(/[^\p{L}\p{N} .'-]/gu, '').t
 const etDay = t => new Date(t * 1000).toLocaleDateString('en-CA', {timeZone: 'America/New_York'});
 // Same orders the Order Bell rings for: live, not canceled or expired, and not a Zelle/Venmo/Cash App checkout that was never submitted.
 const counts = o => o.is_test === false && !['canceled', 'expired'].includes(o.status) && !(o.proof_required && !o.submitted_at && o.status === 'order_received');
-function alertFor(o, dayTotal) {
+function alertFor(o, dayTotal, toPack = 0) {
   const total = o.total || 0, items = (o.items || []).reduce((n, i) => n + (i.quantity || 0), 0);
   const label = total >= 25000 ? 'BIG ORDER' : total >= 10000 ? 'NICE ORDER' : 'NEW ORDER';
   const first = word(String(o.customer?.name || '').split(/\s+/)[0]) || 'Someone';
   return {title: `${label} ${money(total)}${o.brand && o.brand !== 'glow' ? ' · ' + word(o.brand, 12) : ''}`,
     body: `${first}${o.customer?.state ? ' · ' + word(o.customer.state, 20) : ''} · ${items} item${items === 1 ? '' : 's'}\n${money(dayTotal)} so far today`,
-    url: '/store-next/admin?order=' + encodeURIComponent(o.id), tag: o.id};
+    url: '/store-next/admin?order=' + encodeURIComponent(o.id), tag: o.id, badge: toPack, order: o.id, total};
 }
 
 // One pass: finds orders not alerted yet. The first pass only remembers what is already there (no flood of old alerts).
@@ -86,13 +86,13 @@ async function tick(fetchImpl = fetch) {
     const subs = await s.list('push_subs'); if (!subs.length) return [];
     const st = await s.get('integrations', 'webpush-feed') || {id: 'webpush-feed', seen: []};
     const live = (await (s.listLite ? s.listLite('orders') : s.list('orders'))).filter(counts);
-    const today = etDay(now()), dayTotal = live.filter(o => etDay(o.created || 0) === today).reduce((n, o) => n + (o.total || 0), 0);
+    const today = etDay(now()), dayTotal = live.filter(o => etDay(o.created || 0) === today).reduce((n, o) => n + (o.total || 0), 0), toPack = live.filter(o => o.status === 'paid').length;
     const recent = live.filter(o => (o.created || 0) > now() - 2 * 86400).sort((a, b) => (a.created || 0) - (b.created || 0));
     const seen = new Set(st.seen || []);
     const fresh = st.init ? recent.filter(o => !seen.has(o.id)) : [];
     st.init = true; st.seen = [...seen, ...recent.map(o => o.id).filter(id => !seen.has(id))].slice(-400); st.checked = now();
     await s.put('integrations', 'webpush-feed', st);
-    return fresh.map(o => alertFor(o, dayTotal));
+    return fresh.map(o => alertFor(o, dayTotal, toPack));
   });
   for (const m of due) await sendAll(m, fetchImpl);
   return due.length;
