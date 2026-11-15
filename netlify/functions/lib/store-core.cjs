@@ -141,6 +141,8 @@ async function handle({path,method='GET',headers={},body={}}){
    return true;
   });
  }
+ // Continue with Google (Jonah, 15 Nov 2026).
+ if(path.startsWith('/account/google/')&&method==='POST'){const out=await require('./google-signin.cjs').route(path,body,h);if(out)return out}
  const accountAuth=await accounts.authRoute(path,body,h,method);if(accountAuth)return accountAuth;
  // Glow Lab customer app alerts (web-push.cjs): key, turn on/off, status. Subscribing needs a signed-in customer.
  if(path.startsWith('/account/push/')&&method==='POST'){const out=await require('./web-push.cjs').customerRoute(path,body,h);if(out)return{status:200,headers:{},body:out}}
@@ -418,7 +420,7 @@ async function handle({path,method='GET',headers={},body={}}){
   if(!await s.get('migrations','nad-promo-excluded-20261014')){const nad=await s.get('products',7);if(nad&&nad.sku==='nad-500-mg'&&brands.productBrand(nad)==='glow'){nad.promo_excluded=true;await s.put('products',nad.id,nad);await s.put('migrations','nad-promo-excluded-20261014',{applied:clock(),product_id:nad.id});await audit(s,'nad_promo_exclusion_enabled');}}
   if(reqBrand.id==='zader')await brands.ensureZaderCatalog(s,validSlug);
   await ensureMerchCatalog(s);
-  if(path==='/catalog'&&method==='GET'){const mctx=await members.context(s,(await accounts.session(s,h))?.email,reqBrand.id);return{products:await (async()=>{const all=await s.list('products'),byId=new Map(all.map(x=>[x.id,x])),out=[];for(const p of all.filter(p=>p.active&&brands.productBrand(p)===reqBrand.id&&members.visible(mctx,p)))out.push(productLimits.publicLimits(brands.publicProduct(withProductPhotos(await bundleStock(async id=>byId.get(id),p)),settings.demo===false)));return out})(),brand:brands.publicBrand(reqBrand),settings:{...settings,...autoInvoice.publicFlags(settings),email_enabled:emails.configuration().ready,subscribe_open:!(await require('./subscriptions.cjs').offerOpen(s,reqBrand)),...(reqBrand.waitlist?{checkout_enabled:false,waitlist:true}:{})},...(mctx?{members_on:true}:{})}}
+  if(path==='/catalog'&&method==='GET'){const mctx=await members.context(s,(await accounts.session(s,h))?.email,reqBrand.id);return{products:await (async()=>{const all=await s.list('products'),byId=new Map(all.map(x=>[x.id,x])),out=[];for(const p of all.filter(p=>p.active&&brands.productBrand(p)===reqBrand.id&&members.visible(mctx,p)))out.push(productLimits.publicLimits(brands.publicProduct(withProductPhotos(await bundleStock(async id=>byId.get(id),p)),settings.demo===false)));return out})(),brand:brands.publicBrand(reqBrand),settings:{...settings,...autoInvoice.publicFlags(settings),email_enabled:emails.configuration().ready,google_signin:require('./google-signin.cjs').configured(),subscribe_open:!(await require('./subscriptions.cjs').offerOpen(s,reqBrand)),...(reqBrand.waitlist?{checkout_enabled:false,waitlist:true}:{})},...(mctx?{members_on:true}:{})}}
   if(path.startsWith('/native-affiliates')){
    if(reqBrand.id!=='zader')fail('Affiliate program not found.',404);
    const customer=await accounts.session(s,h,true);
