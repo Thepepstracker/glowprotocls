@@ -32,6 +32,19 @@ function zaderRoute(p){
 // Glow Lab Protocols logo card (img/og-glow-logo.png, no vials) instead of the vial banner. Every other page is unchanged.
 function shareCard(html,p){if(!/^\/store-next\/account\/?$/.test(p)||!html.includes('/img/og-glow.jpg"'))return html;
  return html.replace(/(<meta (?:property="og:image"|name="twitter:image") content="[^"]*?)\/img\/og-glow\.jpg"/g,'$1/img/og-glow-logo.png"').replace('<meta property="og:image:alt" content="Glow Lab Protocols vials with gold caps">','<meta property="og:image:alt" content="Glow Lab Protocols logo">').replace('<meta property="og:url" content="https://glowglps.com/">','<meta property="og:url" content="https://glowglps.com/store-next/account">')}
+// Glow Lab customer app (Jonah, 14 Nov 2026: "now lets make one for everyone"). On the Glow store pages (not Management):
+// the app manifest, launch screens and full-screen mode. A customer who adds it from an affiliate's store keeps that store
+// (the manifest's start page is that store), so the affiliate keeps the credit.
+const STORE_APP_PAGE=/^\/(?:store-next\/?)?$|^\/store-next\/(?:account|merch|[a-z0-9-]{1,60})\/?$/;
+function storeApp(html,p){if(!STORE_APP_PAGE.test(p)||/^\/store-next\/admin\/?$/.test(p)||!html.includes('</head>')||html.includes('rel="manifest"'))return html;
+ const slug=(p.match(/^\/store-next\/([a-z0-9-]{1,60})\/?$/)||[])[1],s=slug&&!['account','merch'].includes(slug)?'?s='+slug:'';
+ return html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">')
+  .replace('</head>','<link rel="manifest" href="/store-next/app.webmanifest'+s+'"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Glow Lab"><meta name="apple-mobile-web-app-status-bar-style" content="default">'+SPLASH+'</head>')}
+const SPLASH='<link rel="apple-touch-startup-image" href="/img/app/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">';
+function storeManifest(q){const s=/^[a-z0-9-]{1,60}$/.test(q||'')&&!['admin','account','merch'].includes(q)?q:'';
+ return JSON.stringify({name:'Glow Lab',short_name:'Glow Lab',description:'Shop Glow Lab Protocols, track your orders and use your Glow Points.',id:'/store-next/',start_url:'/store-next/'+(s?s:'')+'?app=1',scope:'/store-next/',display:'standalone',background_color:'#faf7f2',theme_color:'#faf7f2',
+  icons:[{src:'/img/store-app-192.png',sizes:'192x192',type:'image/png'},{src:'/img/store-app-512.png',sizes:'512x512',type:'image/png'},{src:'/img/store-app-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}],
+  shortcuts:[{name:'My account',url:'/store-next/account?app=1'},{name:'Bag',url:'/store-next/'+(s?s:'')+'?app=1#bag'}]})}
 // Glow Admin phone app (Jonah, 14 Nov 2026: "an app for me and my mom that mimics the admin dashboard"). On the Management
 // page only: the app manifest, its own MANAGE icon and full-screen mode, so "Add to Home Screen" makes a separate app.
 function adminApp(html,p){if(!/^\/store-next\/admin\/?$/.test(p)||!html.includes('</head>'))return html;
@@ -65,6 +78,7 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   const redirects={'/index.html':'/store-next/','/checkout.html':'/store-next/','/checkout':'/store-next/','/cart':'/store-next/','/shop':'/store-next/','/my-account':'/store-next/account','/account':'/store-next/account'};
   if(redirects[url.pathname])return send(302,'',undefined,{Location:redirects[url.pathname]});
   let decoded;try{decoded=decodeURIComponent(url.pathname)}catch{return send(400,'Invalid path')}
+  if(decoded==='/store-next/app.webmanifest')return send(200,storeManifest(url.searchParams.get('s')),'application/manifest+json',{'Cache-Control':'no-cache'});
   let file=publicFile(decoded);
   if(!file&&/^\/[a-z0-9-]+\/?$/.test(decoded)){
    const info=decoded.replace(/\/$/,'')+'.html';try{await fs.access(path.join(ROOT,info));file=info.slice(1)}catch{return send(302,'',undefined,{Location:'/store-next'+decoded})}
@@ -73,7 +87,7 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   const target=path.resolve(ROOT,file);if(!target.startsWith(ROOT+path.sep))return send(404,'Not found');
   let data;try{data=await fs.readFile(target)}catch{return send(404,'Not found')}
   const type=TYPES[path.extname(file)];
-  if(type.startsWith('text/html')){data=adminApp(shareCard(await transform(data.toString(),req),decoded),decoded);return send(200,data,type)}
+  if(type.startsWith('text/html')){data=storeApp(adminApp(shareCard(await transform(data.toString(),req),decoded),decoded),decoded);return send(200,data,type)}
   // Pages stay no-store. Photos may be kept for an hour; scripts and styles are re-checked on every visit (a 304 when unchanged).
   const etag='"'+crypto.createHash('sha1').update(data).digest('base64url')+'"',cache=type.startsWith('image/')?'public, max-age=3600, stale-while-revalidate=86400':'no-cache',headers={ETag:etag,'Cache-Control':cache};
   if(String(req.headers['if-none-match']||'').split(/\s*,\s*/).map(t=>t.replace(/^W\//,'')).includes(etag)){res.writeHead(304,{...security,...headers});return res.end()}
@@ -103,4 +117,4 @@ async function start(){
  for(const sig of ['SIGTERM','SIGINT'])process.once(sig,()=>{server.close(()=>probe.end().finally(()=>process.exit(0)));setTimeout(()=>process.exit(1),15000).unref()});
 }
 if(require.main===module)start().catch(e=>{console.error(e.message);process.exitCode=1});
-module.exports={createServer,publicFile,zaderRoute,shareCard,adminApp};
+module.exports={createServer,publicFile,zaderRoute,shareCard,adminApp,storeApp,storeManifest};
