@@ -161,6 +161,8 @@ async function handle({path,method='GET',headers={},body={}}){
  if(path==='/admin/members'||path.startsWith('/admin/members/')){const sid=await transaction(s=>session(s,h));return members.adminRoute(path,body,method,{transaction,sid,audit})}
  // Order Bell: a private key lets a small script on the shop's own computer hear about new orders without a login.
  // It returns order number, total, first name and state only (no email, phone or street). Rotating the key kills every old copy.
+ // Phone app order alerts (web-push.cjs). Affiliate Managers are already refused above.
+ if(path.startsWith('/admin/push/')&&method==='POST'){const who=await transaction(async s=>{const sid=await session(s,h),rec=await s.get('sessions',sid);return rec?.staff_id||'owner'});const out=await require('./web-push.cjs').route(path,body,who);if(out)return{status:200,headers:{},body:out}}
  if(path==='/admin/order-bell-key'&&method==='POST'){const r=await transaction(async s=>{await session(s,h);const st=await s.get('settings','order_bell')||{id:'order_bell',v:1};if(body.rotate===true){st.v=(st.v||1)+1;await s.put('settings','order_bell',st);await audit(s,'order_bell_rotated')}return{key:'ob'+(st.v||1)+'_'+sign('order-bell:'+(st.v||1))}});return{status:200,headers:{},body:r}}
  if(path==='/order-bell'&&method==='POST'){const k=String(body.k||'').slice(0,120);const r=await transaction(async s=>{const st=await s.get('settings','order_bell')||{v:1};if(!equal(k,'ob'+(st.v||1)+'_'+sign('order-bell:'+(st.v||1))))fail('Not found.',404);
   const etDay=t=>new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'}),today=etDay(clock());
