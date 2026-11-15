@@ -7,10 +7,55 @@
   "scope": "/store-next/",
   "display": "standalone",
   "background_color": "#faf7f2",
-  "theme_color": "#141414",
+  "theme_color": "#faf7f2",
   "icons": [
-    {"src": "/img/admin-app-192.png", "sizes": "192x192", "type": "image/png"},
-    {"src": "/img/admin-app-512.png", "sizes": "512x512", "type": "image/png"},
-    {"src": "/img/admin-app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {
+      "src": "/img/admin-app-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/img/admin-app-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/img/admin-app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "url": "/store-next/admin?app=1",
+      "icons": [
+        {
+          "src": "/img/admin-app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Packing Check",
+      "url": "/store-next/packing.html",
+      "icons": [
+        {
+          "src": "/img/admin-app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Live Show",
+      "url": "/store-next/live.html",
+      "icons": [
+        {
+          "src": "/img/admin-app-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }
