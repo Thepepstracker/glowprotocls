@@ -50,6 +50,7 @@ test('one alert per new order, nothing for old ones, drafts or tests; dead phone
   assert.match(got[0].body, /^Felecia · AL · 2 items\n\$\d/);
   assert.doesNotMatch(JSON.stringify(got[0]), /Lowery|Secret|example\.com/, 'no last name, street or email on the lock screen');
   assert.equal(got[0].url, '/store-next/admin?order=GLP-NEW');
+  assert.equal(got[0].badge, 2, 'the app icon number is the orders waiting to be packed');
   assert.equal((await wp.route('/admin/push/status', {}, 'owner')).phones.length, 1, 'the phone that answered 410 was removed');
   assert.equal(await wp.tick(fetchImpl), 0, 'never twice');
   await transaction(s => s.put('orders', 'GLP-DRAFT', order('GLP-DRAFT', {status: 'payment_submitted', proof_required: true, submitted_at: t})));
@@ -70,5 +71,11 @@ test('Management page carries the app manifest and icon; the store page does not
   const man = await m.json(); assert.equal(man.short_name, 'Glow Admin'); assert.equal(man.display, 'standalone');
   for (const i of man.icons) assert.equal((await fetch(base + i.src)).status, 200, i.src);
   assert.equal((await fetch(base + '/img/admin-app-180.png')).status, 200);
-  const sw = await fetch(base + '/store-next/admin-sw.js'); assert.equal(sw.status, 200); assert.match(await sw.text(), /showNotification/);
+  const sw = await fetch(base + '/store-next/admin-sw.js'); assert.equal(sw.status, 200); const swText = await sw.text();
+  assert.match(swText, /showNotification/); assert.match(swText, /setAppBadge/); assert.match(swText, /No connection/);
+  const splash = [...admin.matchAll(/apple-touch-startup-image" href="([^"]+)"/g)].map(m => m[1]);
+  assert.equal(splash.length, 10);
+  for (const u of splash) assert.equal((await fetch(base + u)).status, 200, u);
+  const bell = await fetch(base + '/store-next/order-bell.mp3'); assert.equal(bell.status, 200); assert.equal(bell.headers.get('content-type'), 'audio/mpeg');
+  assert.equal(man.shortcuts.length, 3);
 });
