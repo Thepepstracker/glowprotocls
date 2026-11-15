@@ -3,6 +3,9 @@
 (function(root){
  'use strict';
  const phrases={
+ "I chose my password: sign in": "Ya elegí mi contraseña: iniciar sesión",
+ "Then come back to this app": "Luego regresa a esta app",
+ "Have the Glow Lab app on your home screen?": "¿Tienes la app de Glow Lab en tu pantalla de inicio?",
  "Bag": "Bolsa",
  "Alerts on this phone": "Alertas en este teléfono",
  "Checking…": "Revisando…",

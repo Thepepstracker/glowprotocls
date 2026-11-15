@@ -1064,3 +1064,6 @@ html.app-mode-store{-webkit-text-size-adjust:100%;background:#faf7f2}
 
 /* Tab bar labels: one typeface for all four tabs (links inherit the serif nav style otherwise). */
 .app-mode-store .sa-tabbar a,.app-mode-store .sa-tabbar button,.app-mode-store .sa-tabbar span{font-family:'Inter',system-ui,-apple-system,sans-serif!important;letter-spacing:0!important;text-transform:none!important;font-size:10.5px!important;font-weight:600!important}
+/* App: the page's last lines (footer) clear the tab bar too. */
+.app-mode-store .site-footer{padding-bottom:calc(84px + env(safe-area-inset-bottom))!important}
+.app-mode-store .app-back{margin-top:14px}
