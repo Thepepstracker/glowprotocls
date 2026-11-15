@@ -142,6 +142,8 @@ async function handle({path,method='GET',headers={},body={}}){
   });
  }
  const accountAuth=await accounts.authRoute(path,body,h,method);if(accountAuth)return accountAuth;
+ // Glow Lab customer app alerts (web-push.cjs): key, turn on/off, status. Subscribing needs a signed-in customer.
+ if(path.startsWith('/account/push/')&&method==='POST'){const out=await require('./web-push.cjs').customerRoute(path,body,h);if(out)return{status:200,headers:{},body:out}}
  // Subscribe & save, customer side (5 Nov 2026): bag quote, start (Stripe Checkout), and the account Subscriptions page.
  const subRoute=await require('./subscriptions.cjs').customerRoute(path,body,h,method);if(subRoute)return subRoute;
  // Skool member perks (Jonah, 5 Nov 2026): the account's member section, choosing perks, and "Link" (own email only).

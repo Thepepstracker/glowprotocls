@@ -50,19 +50,20 @@ function vapid(endpoint, k) {
 const okEndpoint = e => { try { const u = new URL(e); return u.protocol === 'https:' && e.length <= 1000; } catch { return false; } };
 
 async function send(sub, message, k, fetchImpl = fetch) {
-  const r = await fetchImpl(sub.endpoint, {method: 'POST', headers: {TTL: '3600', Urgency: 'high', 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', Authorization: vapid(sub.endpoint, k)}, body: encrypt(JSON.stringify(message), sub.keys.p256dh, sub.keys.auth)});
+  const r = await fetchImpl(sub.endpoint, {method: 'POST', signal: AbortSignal.timeout(10000), headers: {TTL: '3600', Urgency: 'high', 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', Authorization: vapid(sub.endpoint, k)}, body: encrypt(JSON.stringify(message), sub.keys.p256dh, sub.keys.auth)});
   return r.status;
 }
 
 // Sends to every saved phone. Phones the push service says are gone (404/410) are removed.
-async function sendAll(message, fetchImpl = fetch) {
-  const {subs, k} = await transaction(async s => ({subs: await s.list('push_subs'), k: await keys(s)}));
+async function sendAll(message, fetchImpl = fetch) { return sendTo('push_subs', null, message, fetchImpl); }
+async function sendTo(col, pick, message, fetchImpl = fetch) {
+  const {subs, k} = await transaction(async s => ({subs: (await s.list(col)).filter(x => !pick || pick(x)), k: await keys(s)}));
   const gone = [], results = [];
   for (const sub of subs) {
     try { const st = await send(sub, message, k, fetchImpl); results.push(st); if (st === 404 || st === 410) gone.push(sub.id); }
     catch (e) { results.push('error'); }
   }
-  if (gone.length) await transaction(async s => { for (const id of gone) await s.remove('push_subs', id); });
+  if (gone.length) await transaction(async s => { for (const id of gone) await s.remove(col, id); });
   return {sent: results.filter(x => x === 201 || x === 200).length, tried: subs.length, removed: gone.length};
 }
 
@@ -98,10 +99,72 @@ async function tick(fetchImpl = fetch) {
   return due.length;
 }
 
-let timer = null, busy = false;
+// ===== Glow Lab customer app (Jonah, 14 Nov 2026: "now lets make one for everyone"). Customers who turn alerts on in the
+// app's Account page get: payment received (+ points earned), shipped, out for delivery, delivered. Separately they can
+// choose "Deals & live shows", which Management sends by hand. Phones live in cust_push_subs; what each order already
+// announced lives in one record, integrations/cust-push-state (orders of the last 45 days). Orders from before the phone
+// was set up only have their current step remembered, so nothing old is sent. Glow orders only. Checked once a minute.
+const STAGES = [
+  ['paid', o => ['paid', 'shipped'].includes(o.status), o => ({title: 'Payment received 💛', body: `Order ${o.id} is paid and in line to ship.${o.points_earned > 0 ? ` You earned ${o.points_earned} Glow Points.` : ''}`})],
+  ['shipped', o => o.status === 'shipped', o => ({title: 'Your order is on its way 📦', body: `Order ${o.id} has shipped. Tap to see tracking in your account.`})],
+  ['out', o => o.delivery?.state === 'out_for_delivery' || o.delivery?.delivered === true, o => ({title: 'Out for delivery today 🚚', body: `Order ${o.id} is on the truck and should arrive today.`})],
+  ['delivered', o => o.delivery?.delivered === true, o => ({title: 'Delivered ✨', body: `Order ${o.id} was delivered. Enjoy!`})]
+];
+async function customerTick(fetchImpl = fetch) {
+  const due = await transaction(async s => {
+    const subs = (await s.list('cust_push_subs')).filter(x => x.orders !== false && x.customer_id); if (!subs.length) return [];
+    // When each customer's first phone was set up: orders made after that, or in the last 30 minutes, are "new" and get
+    // every step (a subscription charge or a card checkout can be paid within seconds of being made).
+    const since = now() - 45 * 86400, fresh = now() - 1800, joined = new Map();
+    for (const x of subs) joined.set(x.customer_id, Math.min(joined.get(x.customer_id) ?? Infinity, x.created || 0));
+    const rec = await s.get('integrations', 'cust-push-state') || {id: 'cust-push-state', orders: {}}, out = [], keep = {};
+    for (const o of (await (s.listLite ? s.listLite('orders') : s.list('orders')))) {
+      if (o.is_test !== false || !joined.has(o.customer_id) || (o.created || 0) < since || ['canceled', 'expired'].includes(o.status) || (o.brand || 'glow') !== 'glow') continue;
+      const reached = STAGES.filter(([, test]) => test(o)).map(([k]) => k);
+      let sent = rec.orders[o.id];
+      if (!sent) sent = (o.created || 0) >= Math.min(joined.get(o.customer_id), fresh) ? [] : reached;
+      const add = reached.filter(k => !sent.includes(k));
+      keep[o.id] = [...sent, ...add];
+      if (!add.length) continue;
+      // Several steps at once (e.g. shipped and delivered between checks): only the latest is sent.
+      const [k, , msg] = STAGES.filter(([key]) => add.includes(key)).pop();
+      out.push({customer: o.customer_id, m: {...msg(o), url: '/store-next/account', tag: o.id + ':' + k}});
+    }
+    rec.orders = keep; rec.checked = now(); await s.put('integrations', 'cust-push-state', rec);
+    return out;
+  });
+  for (const d of due) await sendTo('cust_push_subs', x => x.customer_id === d.customer && x.orders !== false, d.m, fetchImpl);
+  return due.length;
+}
+async function customerRoute(path, body, h) {
+  const accounts = require('./customer-accounts.cjs');
+  if (path === '/account/push/key') return transaction(async s => ({public: (await keys(s)).public}));
+  const sub = body?.subscription || {}, e = String(sub.endpoint || body?.endpoint || '');
+  if (path === '/account/push/subscribe') {
+    if (!okEndpoint(e) || typeof sub.keys?.p256dh !== 'string' || typeof sub.keys?.auth !== 'string' || sub.keys.p256dh.length > 200 || sub.keys.auth.length > 100) throw Object.assign(new Error('This phone could not be set up for alerts.'), {status: 400});
+    const id = hash(e).slice(0, 40);
+    return transaction(async s => {
+      const a = await accounts.session(s, h, true);
+      await s.put('cust_push_subs', id, {id, endpoint: e, keys: {p256dh: sub.keys.p256dh, auth: sub.keys.auth}, customer_id: a.id, orders: body.orders !== false, deals: body.deals === true, created: now()});
+      return {ok: true, orders: body.orders !== false, deals: body.deals === true};
+    });
+  }
+  if (path === '/account/push/status') return transaction(async s => { const x = okEndpoint(e) && await s.get('cust_push_subs', hash(e).slice(0, 40)); return x ? {on: true, orders: x.orders !== false, deals: !!x.deals} : {on: false}; });
+  if (path === '/account/push/unsubscribe') { await transaction(async s => s.remove('cust_push_subs', hash(e).slice(0, 40))); return {ok: true}; }
+  return null;
+}
+// Management: a deal or live-show alert to every customer who chose "Deals & live shows".
+async function broadcast(body) {
+  const title = String(body?.title || '').trim().slice(0, 60), text = String(body?.body || '').trim().slice(0, 160);
+  if (!title || !text) throw Object.assign(new Error('Write a title and a message.'), {status: 400});
+  const url = /^\/store-next\/[\w\-./?=&#]*$/.test(String(body?.url || '')) ? body.url : '/store-next/';
+  return sendTo('cust_push_subs', x => x.deals === true, {title, body: text, url, tag: 'deal-' + now()});
+}
+
+let timer = null, busy = false, lastCustomer = 0;
 function start(ms = 20000) {
   if (timer) return timer;
-  timer = setInterval(async () => { if (busy) return; busy = true; try { await tick(); } catch (e) { console.error('web-push tick', e.message); } finally { busy = false; } }, ms);
+  timer = setInterval(async () => { if (busy) return; busy = true; try { await tick(); } catch (e) { console.error('web-push tick', e.message); } if (Date.now() - lastCustomer >= 55000) { lastCustomer = Date.now(); try { await customerTick(); } catch (e) { console.error('web-push customers', e.message); } } busy = false; }, ms);
   if (timer.unref) timer.unref();
   return timer;
 }
@@ -120,7 +183,9 @@ async function route(path, body, who) {
   if (path === '/admin/push/unsubscribe') { const id = hash(String(body?.endpoint || '')).slice(0, 40); await transaction(async s => s.remove('push_subs', id)); return {ok: true}; }
   if (path === '/admin/push/test') return sendAll({title: 'Order alerts are on', body: 'You will get one of these for every new order.', url: '/store-next/admin', tag: 'test'});
   if (path === '/admin/push/status') return transaction(async s => ({phones: (await s.list('push_subs')).map(x => ({by: x.by, device: x.device, created: x.created}))}));
+  if (path === '/admin/push/customers') return transaction(async s => { const c = await s.list('cust_push_subs'); return {phones: c.length, orders: c.filter(x => x.orders !== false).length, deals: c.filter(x => x.deals).length}; });
+  if (path === '/admin/push/broadcast') return broadcast(body);
   return null;
 }
 
-module.exports = {keys, encrypt, vapid, send, sendAll, tick, start, stop, route, alertFor, counts};
+module.exports = {keys, encrypt, vapid, send, sendAll, sendTo, tick, customerTick, customerRoute, broadcast, start, stop, route, alertFor, counts, STAGES};
