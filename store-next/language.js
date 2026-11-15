@@ -3,6 +3,14 @@
 (function(root){
  'use strict';
  const phrases={
+ "Continue with Google": "Continuar con Google",
+ "or use your email": "o usa tu correo",
+ "Opening Google…": "Abriendo Google…",
+ "Signing you in with Google…": "Iniciando sesión con Google…",
+ "Signed in with Google.": "Sesión iniciada con Google.",
+ "Google sign-in was canceled.": "Se canceló el inicio de sesión con Google.",
+ "Google sign-in did not finish. Please try again.": "El inicio de sesión con Google no terminó. Inténtalo de nuevo.",
+ "You’re signed in.": "Ya iniciaste sesión.",
  "I chose my password: sign in": "Ya elegí mi contraseña: iniciar sesión",
  "Then come back to this app": "Luego regresa a esta app",
  "Have the Glow Lab app on your home screen?": "¿Tienes la app de Glow Lab en tu pantalla de inicio?",
