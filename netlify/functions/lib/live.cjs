@@ -31,12 +31,19 @@ function newId(t){const p={};new Intl.DateTimeFormat('en-US',{timeZone:'America/
 const BOT=/bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|pingdom|monitor/i;
 async function ping(body,h={}){
  const sid=String(body.sid||'');if(!/^[a-z0-9]{8,32}$/.test(sid)||BOT.test(String(h['user-agent']||'')))return{live:false};
- return transaction(async s=>{const L=await active(s);if(!L)return{live:false};const t=now();if(t-L.started_at>MAX_HOURS*3600)return{live:false};
+ return transaction(async s=>{const L=await active(s);if(!L){await seen(s,sid);return{live:false}}const t=now();if(t-L.started_at>MAX_HOURS*3600)return{live:false};
   const id=L.id+'-'+sid,v=await s.get('live_visitors',id)||{id,live:L.id,first:t,minutes:[],src:''};
   const m=Math.floor(t/60);if(v.minutes[v.minutes.length-1]!==m){if(v.minutes.length>=MAX_HOURS*60)return{live:true};v.minutes.push(m)}
   v.last=t;if(!v.src&&/^[a-z0-9_-]{1,24}$/.test(String(body.src||'')))v.src=String(body.src);if(body.bag===true)v.bag=true;if(body.checkout===true)v.checkout=true;
   await s.put('live_visitors',id,v);return{live:true}})}
 
+// "On the site now" when no live is on (Jonah, 15 Nov 2026: "add how many people are on the site to the live area").
+// Outside a live each open store tab says hello every 2 minutes; we keep only its random tab id and the time, in one
+// record, for 10 minutes. A tab counts as on the site if it said hello in the last 150 seconds. Staff pages don't send it.
+const SITE_WINDOW=150,PRESENCE='site-presence';
+async function seen(s,sid){const t=now(),r=await s.get('integrations',PRESENCE)||{id:PRESENCE,seen:{}};if(t-(r.seen[sid]||0)<60)return;
+ r.seen[sid]=t;for(const [k,v] of Object.entries(r.seen))if(t-v>600)delete r.seen[k];await s.put('integrations',PRESENCE,r)}
+async function siteNow(s){const t=now(),r=await s.get('integrations',PRESENCE);return r?Object.values(r.seen).filter(v=>t-v<=SITE_WINDOW).length:0}
 // Bounce (Jonah, 13 Nov 2026): a visitor who was on the site for one minute or less (one clock minute of pings) and never
 // added anything to the bag. Time on the site = the clock minutes the tab was open (a tab left open in the background counts).
 const bounced=v=>(v.minutes||[]).length<=1&&!v.bag&&!v.checkout;
@@ -135,7 +142,7 @@ async function route(path,body,h,method,{session}){
  if(path==='/admin/live'&&method==='GET')return ok(await transaction(async s=>{
   const all=(await s.list('live_sessions')).filter(x=>x.id!==ACTIVE&&x.started_at),orders=await list(s,'orders'),L=await active(s);
   let online_now=0;if(L){const t=now();online_now=(await s.list('live_visitors')).filter(v=>v.live===L.id&&t-(v.last||0)<=ONLINE_WINDOW).length}
-  return{active:L?{...summary(orders,L),online_now}:null,lives:all.sort((a,b)=>b.started_at-a.started_at).slice(0,100).map(x=>summary(orders,x))}}));
+  return{site_now:await siteNow(s),active:L?{...summary(orders,L),online_now}:null,lives:all.sort((a,b)=>b.started_at-a.started_at).slice(0,100).map(x=>summary(orders,x))}}));
  if(path==='/admin/live/start'&&method==='POST')return ok(await transaction(async s=>{
   if(await active(s))bad('A live is already running. End it first.',409);const t=now();let id=newId(t);for(let k=2;await s.get('live_sessions',id);k++){if(k>9)bad('Too many lives started this minute.',409);id=newId(t)+'-'+k}
   const goal=int(body.goal_dollars);const L={id,started_at:t,ended_at:null,started_by:who,goal_cents:goal?goal*100:0,tiktok:{},note:''};
@@ -161,4 +168,4 @@ async function route(path,body,h,method,{session}){
   return{report:report(await list(s,'orders'),await s.list('live_visitors'),await s.list('products'),L,all,{subs,accounts:await s.list('customers')})}}));
  bad('Not found.',404);
 }
-module.exports={route,ping,summary,report,newId,TIKTOK};
+module.exports={siteNow,route,ping,summary,report,newId,TIKTOK};

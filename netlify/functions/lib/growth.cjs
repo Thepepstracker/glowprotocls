@@ -106,7 +106,15 @@ async function reviewSummary(s){const ok=(await s.list('reviews')).filter(r=>r.s
 
 // ---- 4. Sales funnel ----
 const BOT=/bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|pingdom|monitor/i;
-async function event(s,body,h){const e=String(body.e||''),src=SOURCES.test(String(body.src||''))?body.src:'direct';if(!EVENTS.includes(e)||BOT.test(String(h['user-agent']||'')))return;
+// Glow Lab app (Jonah, 15 Nov 2026: "can we also see how many people got the app"). The home-screen app says "installed"
+// once per phone (the first time it opens) and "opened" once per launch. Counts only: nothing personal is kept.
+async function appEvent(s,e){const id='app-stats',r=await s.get('integrations',id)||{id,installs:0,days:{}},day=etDay(),d=r.days[day]||(r.days[day]={installs:0,opens:0});
+ if(e==='app_install'){r.installs++;d.installs++}else d.opens++;
+ for(const k of Object.keys(r.days))if(k<new Date(Date.parse(day+'T12:00:00Z')-90*864e5).toISOString().slice(0,10))delete r.days[k];await s.put('integrations',id,r)}
+async function appStats(s){const r=await s.get('integrations','app-stats')||{installs:0,days:{}},day=etDay(),week=new Date(Date.parse(day+'T12:00:00Z')-6*864e5).toISOString().slice(0,10);
+ const sum=(k,from)=>Object.entries(r.days).filter(([d])=>d>=from&&d<=day).reduce((n,[,v])=>n+(v[k]||0),0),alerts=await s.list('cust_push_subs');
+ return{installs:r.installs,installs_today:r.days[day]?.installs||0,installs_week:sum('installs',week),opens_today:r.days[day]?.opens||0,opens_week:sum('opens',week),alerts_on:alerts.length}}
+async function event(s,body,h){const e=String(body.e||''),src=SOURCES.test(String(body.src||''))?body.src:'direct';if(BOT.test(String(h['user-agent']||'')))return;if(e==='app_install'||e==='app_open')return appEvent(s,e);if(!EVENTS.includes(e))return;
  const id='day-'+etDay(),d=await s.get('analytics',id)||{id,day:etDay(),s:{}};const row=d.s[src]||(d.s[src]={visit:0,bag:0,checkout:0});if(Object.keys(d.s).length>60&&!d.s[src])return;row[e]=(row[e]||0)+1;await s.put('analytics',id,d)}
 async function funnel(s,days){const n=[7,30,90].includes(days)?days:7,today=etDay(),start=new Date(Date.parse(today+'T12:00:00Z')-(n-1)*864e5).toISOString().slice(0,10);
  const bySrc={},blank=()=>({visit:0,bag:0,checkout:0,orders:0,paid:0,revenue_cents:0}),daily={};
@@ -143,10 +151,10 @@ async function route(path,body,h,method,{session}){
  // Management → Today (Jonah, 8 Nov 2026): the month goal, subscription numbers, reviews waiting and today's funnel.
  if(path==='/admin/today'&&method==='GET'){await transaction(s=>session(s,h));const st=await require('./subscriptions.cjs').stats();
   return ok(await transaction(async s=>{const day=etDay(),month=day.slice(0,7),g=await s.get('integrations','goals')||{},a=await s.get('analytics','day-'+day),f={visit:0,bag:0,checkout:0};for(const v of Object.values(a?.s||{}))for(const e of EVENTS)f[e]+=v[e]||0;
-   return{day,month,goal_cents:Number(g.months?.[month])||0,subs:{mrr_cents:st.mrr_cents,active:st.active,upcoming:st.upcoming.length,upcoming_cents:st.upcoming.reduce((n,u)=>n+u.amount_cents,0),declined:st.attention.filter(x=>x.kind==='declined').length,attention:st.attention.length},reviews_pending:(await s.list('reviews')).filter(r=>r.status==='pending').length,funnel:f}}))}
+   return{app:await appStats(s),day,month,goal_cents:Number(g.months?.[month])||0,subs:{mrr_cents:st.mrr_cents,active:st.active,upcoming:st.upcoming.length,upcoming_cents:st.upcoming.reduce((n,u)=>n+u.amount_cents,0),declined:st.attention.filter(x=>x.kind==='declined').length,attention:st.attention.length},reviews_pending:(await s.list('reviews')).filter(r=>r.status==='pending').length,funnel:f}}))}
  if(path==='/admin/goal'&&method==='POST'){const cents=Math.round(Number(body.cents));if(!Number.isFinite(cents)||cents<0||cents>100000000)bad('Enter a goal in dollars.');
   return ok(await transaction(async s=>{const sid=await session(s,h),rec=await s.get('sessions',sid);if(rec?.staff_id)bad('Only the owner can set the goal.',403);const month=etDay().slice(0,7),g=await s.get('integrations','goals')||{id:'goals',months:{}};g.months=g.months||{};g.months[month]=cents;g.updated_at=now();await s.put('integrations','goals',g);return{month,goal_cents:cents}}))}
  if(path==='/admin/review'&&method==='POST'){await transaction(s=>session(s,h));const action=String(body.action||'');if(!['approve','hide','pending'].includes(action))bad('Choose approve or hide.');
   return ok(await transaction(async s=>{const r=await s.get('reviews',String(body.id||'').slice(0,40));if(!r)bad('Review not found.',404);r.status=action==='approve'?'approved':action==='hide'?'hidden':'pending';if(action==='approve')r.approved_at=now();await s.put('reviews',r.id,r);return r}))}
  return null}
-module.exports={RULES,route,reorders,bags,reviews,saveBag,bagItems,funnel,event,reviewSummary,flagsOf,makeRef,readRef,reorderEmail,bagEmail,reviewEmail,reviewDue,emailKey};
+module.exports={appStats,appEvent,RULES,route,reorders,bags,reviews,saveBag,bagItems,funnel,event,reviewSummary,flagsOf,makeRef,readRef,reorderEmail,bagEmail,reviewEmail,reviewDue,emailKey};
