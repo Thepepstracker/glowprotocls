@@ -1,7 +1,7 @@
 'use strict';
 const http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
 const ROOT=path.resolve(__dirname,'../..');
-const TYPES={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ico':'image/x-icon','.txt':'text/plain; charset=utf-8','.xml':'application/xml','.pdf':'application/pdf'};
+const TYPES={'.webmanifest':'application/manifest+json','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ico':'image/x-icon','.txt':'text/plain; charset=utf-8','.xml':'application/xml','.pdf':'application/pdf'};
 const security={'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Cache-Control':'no-store'};
 async function body(req,limit){const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>limit)throw Object.assign(new Error('Request too large'),{status:413});chunks.push(chunk)}return Buffer.concat(chunks).toString('utf8')}
 function publicFile(p){
@@ -32,6 +32,11 @@ function zaderRoute(p){
 // Glow Lab Protocols logo card (img/og-glow-logo.png, no vials) instead of the vial banner. Every other page is unchanged.
 function shareCard(html,p){if(!/^\/store-next\/account\/?$/.test(p)||!html.includes('/img/og-glow.jpg"'))return html;
  return html.replace(/(<meta (?:property="og:image"|name="twitter:image") content="[^"]*?)\/img\/og-glow\.jpg"/g,'$1/img/og-glow-logo.png"').replace('<meta property="og:image:alt" content="Glow Lab Protocols vials with gold caps">','<meta property="og:image:alt" content="Glow Lab Protocols logo">').replace('<meta property="og:url" content="https://glowglps.com/">','<meta property="og:url" content="https://glowglps.com/store-next/account">')}
+// Glow Admin phone app (Jonah, 14 Nov 2026: "an app for me and my mom that mimics the admin dashboard"). On the Management
+// page only: the app manifest, its own MANAGE icon and full-screen mode, so "Add to Home Screen" makes a separate app.
+function adminApp(html,p){if(!/^\/store-next\/admin\/?$/.test(p)||!html.includes('</head>'))return html;
+ return html.replace('<link rel="apple-touch-icon" href="/apple-touch-icon.png">','<link rel="apple-touch-icon" href="/img/admin-app-180.png">').replace('<meta name="theme-color" content="#f7f3ec">','<meta name="theme-color" content="#141414">')
+  .replace('</head>','<link rel="manifest" href="/store-next/admin.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Glow Admin"><meta name="apple-mobile-web-app-status-bar-style" content="default"></head>')}
 function createServer({apiHandler,webhook,ready=async()=>true,transform=async html=>html}={}){
  return http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,'http://localhost');
@@ -68,7 +73,7 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   const target=path.resolve(ROOT,file);if(!target.startsWith(ROOT+path.sep))return send(404,'Not found');
   let data;try{data=await fs.readFile(target)}catch{return send(404,'Not found')}
   const type=TYPES[path.extname(file)];
-  if(type.startsWith('text/html')){data=shareCard(await transform(data.toString(),req),decoded);return send(200,data,type)}
+  if(type.startsWith('text/html')){data=adminApp(shareCard(await transform(data.toString(),req),decoded),decoded);return send(200,data,type)}
   // Pages stay no-store. Photos may be kept for an hour; scripts and styles are re-checked on every visit (a 304 when unchanged).
   const etag='"'+crypto.createHash('sha1').update(data).digest('base64url')+'"',cache=type.startsWith('image/')?'public, max-age=3600, stale-while-revalidate=86400':'no-cache',headers={ETag:etag,'Cache-Control':cache};
   if(String(req.headers['if-none-match']||'').split(/\s*,\s*/).map(t=>t.replace(/^W\//,'')).includes(etag)){res.writeHead(304,{...security,...headers});return res.end()}
@@ -93,7 +98,9 @@ async function start(){
  const port=Number(process.env.PORT||8080);server.listen(port,'0.0.0.0',()=>console.log('Glow store listening on port '+port));
  // Autopilot: background jobs inside this process (Sevalla runs only the web process). Each job is OFF until the owner switches it on.
  require('../../netlify/functions/lib/autopilot.cjs').start();
+ // Phone app: new-order alerts to the phones that turned them on in Management → Today (web-push.cjs).
+ require('../../netlify/functions/lib/web-push.cjs').start();
  for(const sig of ['SIGTERM','SIGINT'])process.once(sig,()=>{server.close(()=>probe.end().finally(()=>process.exit(0)));setTimeout(()=>process.exit(1),15000).unref()});
 }
 if(require.main===module)start().catch(e=>{console.error(e.message);process.exitCode=1});
-module.exports={createServer,publicFile,zaderRoute,shareCard};
+module.exports={createServer,publicFile,zaderRoute,shareCard,adminApp};
