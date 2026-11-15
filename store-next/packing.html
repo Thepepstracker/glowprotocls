@@ -589,6 +589,8 @@ function slipHTML(list){
     else if(waiting)footText='<b>CLAIM YOUR '+esc(waiting)+' GLOW POINTS</b>Worth '+worth(waiting)+' off your next order. Scan, create your free account with the email you ordered with, and they are added for you.<br>';
     else if(o.customer_id||o.has_account)footText='<b>YOUR GLOW ACCOUNT</b>Scan to see your points balance and reorder in seconds.<br>';
     else footText='<b>JOIN GLOW REWARDS</b>Scan to create your free account and earn points on every order.<br>';
+    // The Glow Lab app (Jonah, 14 Nov 2026): the same QR opens the store, where iPhones are shown how to add the app.
+    if(!z)footText+='GET THE GLOW LAB APP: open this link on your phone, tap Share, then Add to Home Screen.<br>';
     var addr=[c.address,c.address2,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
     return '<section class="slip">'
      +'<div class="hd">'+(z?'':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>'

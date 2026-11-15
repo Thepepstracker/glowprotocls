@@ -1013,3 +1013,54 @@ html.app-mode{-webkit-text-size-adjust:100%;background:#faf7f2}
 .app-banner img{width:40px;height:40px;border-radius:10px}
 .app-banner b{display:block;font-size:16px}.app-banner small{display:block;color:#6b6457;font-size:13px}
 @keyframes appDrop{from{transform:translateY(-130%)}to{transform:none}}
+/* ===== Glow Lab customer app (14 Nov 2026). html.app-mode-store = the store opened from the home screen. ===== */
+.sa-tabbar{display:none}
+html.app-mode-store{-webkit-text-size-adjust:100%;background:#faf7f2}
+.app-mode-store body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none}
+.app-mode-store body>.demo{font-size:11px;padding:6px 10px;padding-top:calc(env(safe-area-inset-top) + 6px)}
+.app-mode-store body>header{padding:8px 16px;justify-content:center;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:30;background:rgba(250,247,242,.95);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.app-mode-store body>header nav{display:none}
+.app-mode-store body>header .brand img{width:48px;height:auto}
+.app-mode-store main{padding-bottom:calc(96px + env(safe-area-inset-bottom))!important}
+.app-mode-store body>footer{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+.app-mode-store input,.app-mode-store select,.app-mode-store textarea{font-size:16px}
+.app-mode-store button,.app-mode-store a{touch-action:manipulation}
+.app-mode-store .sa-tabbar{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.95);-webkit-backdrop-filter:saturate(1.6) blur(16px);backdrop-filter:saturate(1.6) blur(16px);border-top:1px solid rgba(0,0,0,.08);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.app-mode-store .sa-tabbar a,.app-mode-store .sa-tabbar button{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;border-radius:10px;padding:4px 0;margin:0;color:#8a8478;font-size:10.5px;font-weight:600;min-height:48px;text-decoration:none;box-shadow:none}
+.app-mode-store .sa-tabbar .on{color:#141414}.app-mode-store .sa-tabbar .on svg{stroke:#9c7a2e}
+.sa-badge{position:absolute;top:0;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#c9a24b;color:#141414;font-size:11px;line-height:18px;font-weight:800;font-style:normal}
+/* "Get the Glow Lab app" bar (Safari on phones) */
+.sa-get{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:45;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.16);animation:appUp .3s ease-out}
+.sa-get img{width:44px;height:44px;border-radius:11px;flex:0 0 44px}
+.sa-get div{flex:1;min-width:0}.sa-get b{display:block;font-size:15px}.sa-get small{display:block;color:#6b6457;font-size:13px;line-height:1.35}
+.sa-get small b{display:inline;font-size:13px}
+.sa-share{display:inline-block;border:1px solid #c9c2b4;border-radius:5px;padding:0 4px;font-size:11px;line-height:16px}
+.sa-get button{margin:0;padding:8px 14px;border-radius:999px;font-size:14px}
+.sa-get .sa-x{background:none;color:#8a8478;padding:6px 8px}
+@keyframes appUp{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+/* alerts card on the account page */
+.ca-card .ca-opt{display:flex;gap:12px;align-items:flex-start;margin:10px 0}
+.ca-card .ca-opt input{width:22px;height:22px;margin:2px 0 0;flex:0 0 22px;accent-color:#141414}
+.ca-card .ca-opt b{display:block}.ca-card .ca-opt small{display:block;color:var(--muted)}
+.ca-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.aa-card{margin-bottom:18px}.aa-card form{display:grid;gap:4px;max-width:560px}.aa-card button{justify-self:start}
+/* app modes: toasts sit above the tab bar; the store app keeps the language picker in its header */
+.app-mode #toast,.app-mode-store #toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+.app-mode-store body>header{justify-content:space-between}
+.app-mode-store body>header nav{display:flex!important;gap:0}
+.app-mode-store body>header nav>a,.app-mode-store body>header nav>.bag-toggle{display:none}
+.app-mode-store body>header .brand-wordmark{font-size:18px}
+.app-mode-store body>header{flex-wrap:nowrap!important;gap:10px;padding:8px 14px}
+.app-mode-store body>header .brand{flex:0 1 auto;min-width:0}
+.app-mode-store body>header .brand img{width:40px}
+.app-mode-store body>header .brand-wordmark{font-size:16px;letter-spacing:2px}
+.app-mode-store body>header .brand-wordmark small{font-size:9px}
+.app-mode-store body>header nav{flex:0 0 auto;margin:0;padding:0;border:0}
+.app-mode-store .glow-language{font-size:0!important;gap:0!important}
+.app-mode-store .glow-language select{min-width:0!important;width:auto!important;font-size:14px!important;padding:6px 26px 6px 10px!important;margin:0!important}
+.app-mode-store body>header nav{width:auto!important;overflow:visible!important}
+.app-mode-store body>header .brand{flex:1 1 auto!important}
+.app-mode-store .home-signup .hs-card{order:-1}
+
+/* Tab bar labels: one typeface for all four tabs (links inherit the serif nav style otherwise). */
+.app-mode-store .sa-tabbar a,.app-mode-store .sa-tabbar button,.app-mode-store .sa-tabbar span{font-family:'Inter',system-ui,-apple-system,sans-serif!important;letter-spacing:0!important;text-transform:none!important;font-size:10.5px!important;font-weight:600!important}
