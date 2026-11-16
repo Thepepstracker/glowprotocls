@@ -16,6 +16,8 @@ const TASKS={
  collect:{name:'Payment reminders',every:3600,help:'Emails invoiced, unpaid customers on day 1, day 3 and day 6. The store releases the order on day 7.'},
  reorders:{name:'Reorder reminders',every:3600,help:'About 30 days after a customer’s last order (up to 90), one email puts the same items back in their bag in one tap and mentions Subscribe & save. Not sent to subscribers or anyone who unsubscribed. 10 AM–7 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
  bags:{name:'Bag reminders',every:900,help:'Signed-in customers who leave items in their bag get one reminder 3–48 hours later (at most one every 7 days), unless they ordered. 9 AM–9 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
+ checkouts:{name:'Unfinished checkout reminders',every:900,help:'One email when a checkout is started but not finished: a Subscribe & save box whose card checkout was never completed (about 1 hour later, the link puts the box back in their bag with Subscribe & save), or a Venmo / Zelle / Cash App order that was saved but never sent (about 20 hours later, the link opens their order page). Only the newest one per person, never if they ordered since, at most one every 7 days. 9 AM–9 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
+ birthdays:{name:'Birthday gifts',every:3600,help:'At the start of each customer’s birthday month (9 AM–8 PM Eastern), adds Glow Points by level (Blue 100, Rose 150, Gold 250, Purple 400, Diamond 600) and emails them. Once a year. A birthday added within 2 weeks of its month starts the next year. Unsubscribed customers still get the points, just no email.'},
  reviews:{name:'Review requests',every:3600,help:'2 days after delivery (or 7 days after shipping), one email asks the customer to rate their order. Reviews only show on the store after you approve them in Management → Growth. Needs STORE_POSTAL_ADDRESS set.'},
  subscriptions:{name:'Subscribe & save orders',every:3600,help:'Two days before each subscription’s ship date (10 AM–6 PM Eastern), makes the repeat order at the customer’s tier price and charges their saved card through Stripe. Emails the customer 3 days before each charge. Confirms first payments made on Stripe Checkout. While this is OFF, customers cannot start a subscription in the bag. A declined card is flagged; it is never charged twice.'}
 };
@@ -63,6 +65,8 @@ async function runTask(key){
  if(key==='reorders')return require('./growth.cjs').reorders();
  if(key==='bags')return require('./growth.cjs').bags();
  if(key==='reviews')return require('./growth.cjs').reviews();
+ if(key==='checkouts')return require('./growth.cjs').checkouts();
+ if(key==='birthdays')return require('./glow-levels.cjs').birthdays();
 }
 let running=false;
 // One pass: runs each switched-on task whose interval has passed. Holds a short lease so two copies of the app never overlap.

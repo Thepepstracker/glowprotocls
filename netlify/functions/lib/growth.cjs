@@ -104,6 +104,47 @@ function publicReview(r){return{rating:r.rating,text:r.text||'',name:r.name||'Ve
 async function reviewSummary(s){const ok=(await s.list('reviews')).filter(r=>r.status==='approved');if(!ok.length)return{count:0,average:0,reviews:[]};
  const avg=Math.round(ok.reduce((n,r)=>n+r.rating,0)/ok.length*10)/10;return{count:ok.length,average:avg,reviews:ok.sort((a,b)=>(b.approved_at||b.created)-(a.approved_at||a.created)).slice(0,12).map(publicReview)}}
 
+// ---- 5. Unfinished checkouts (Jonah, 15 Nov 2026: "Auto follow-ups") ----
+// What was sent by hand that morning, done by the store itself. Payment reminders for invoiced orders already run
+// (Autopilot → Payment reminders). This covers the two checkouts nothing followed up on:
+//   box    a Subscribe & save first box whose card checkout was never finished (nothing was charged). The link puts
+//          the same items back in the bag with Subscribe & save and the same "how often" already chosen.
+//   draft  a Venmo / Zelle / Cash App checkout that was saved but never submitted. The link opens their order page.
+// One email per order, only the newest unfinished checkout per person, at most one every 7 days per person, never
+// after they placed or paid another order, never to anyone who unsubscribed. 9 AM–9 PM Eastern.
+const NUDGE={box_after_hours:1,draft_after_hours:20,max_hours:48,gap_days:7};
+function unfinishedKind(o){if(!o||o.is_test!==false||(o.brand||'glow')!=='glow'||!o.customer?.email||o.paid||o.receipt||o.has_receipt||o.order_for_customer)return '';
+ if(o.payment_method==='card_checkout'&&o.subscription_first&&['order_received','expired'].includes(o.status))return 'box';
+ if(o.proof_required===true&&o.checkout_stage==='draft'&&o.status==='order_received')return 'draft';return ''}
+function nudgeDue(o,ts){const kind=unfinishedKind(o);if(!kind||o.checkout_nudged_at)return '';const age=ts-(o.created||0);
+ if(age<(kind==='box'?NUDGE.box_after_hours:NUDGE.draft_after_hours)*3600||age>NUDGE.max_hours*3600)return '';
+ if(kind==='draft'&&(o.expires||0)&&o.expires<=ts+3*3600)return '';return kind}
+// Customers often type their name in lowercase; the greeting capitalizes it ("judy" → "Judy").
+const firstCap=n=>first(n).toLowerCase().replace(/^./,c=>c.toUpperCase());
+function checkoutEmail(kind,{name,orderId}){
+ if(kind==='box')return{subject:'Your Glow Lab box is still saved for you',title:'Your box is saved.',button:'Finish my subscription',
+  lines:['Hi '+firstCap(name)+',','It looks like your Subscribe & save box didn’t finish checking out, so nothing was charged.','Your items are still saved for you. Tap the button below to pick up right where you left off. Your 15% off and free shipping are still there.','If something got in the way, just reply to this email and we’ll help.']};
+ return{subject:'Your Glow Lab order is saved · '+orderId,title:'Your order is saved.',button:'Finish my order',
+  lines:['Hi '+firstCap(name)+',','You started order '+orderId+' but didn’t send it to us yet, so it isn’t in our packing queue.','Tap the button below to see your payment options and finish. If you already paid, add your payment screenshot there so we can find it.','If something got in the way, just reply to this email and we’ll help.']}}
+async function checkouts(limit=10,t=Date.now()){const why=ready();if(why)return{status:why,sent:0};const h=etHour(t);if(h<9||h>=21)return{status:'quiet_hours',sent:0};const ts=Math.floor(t/1000);
+ const jobs=await transaction(async s=>{const orders=(await list(s,'orders')).filter(o=>o.is_test===false&&o.customer?.email),out=[],asked=new Set();
+  // Newest unfinished checkout per person; nothing if they placed any real order since (paid, waiting, or under review).
+  const due=orders.filter(o=>nudgeDue(o,ts)).sort((a,b)=>(b.created||0)-(a.created||0));
+  for(const lite of due){if(out.length>=limit)break;const k=lower(lite.customer.email);if(asked.has(k))continue;asked.add(k);
+   const later=orders.some(x=>x.id!==lite.id&&lower(x.customer.email)===k&&(x.created||0)>=(lite.created||0)-6*3600&&!['canceled','expired'].includes(x.status)&&!unfinishedKind(x));
+   const o=await s.get('orders',lite.id),kind=nudgeDue(o,ts);if(!kind)continue;const p=await prefs(s,k);
+   const handSent=await s.get('email_outbox','reachout-2026-11-15-'+o.id);
+   if(later||p.unsubscribed||handSent||(p.last_checkout_nudge||0)>ts-NUDGE.gap_days*DAY){o.checkout_nudged_at=ts;o.checkout_nudge_skipped=later?'ordered since':p.unsubscribed?'unsubscribed':handSent?'emailed by hand':'asked recently';await s.put('orders',o.id,o);continue}
+   let url;if(kind==='box'){const {items}=await bagItems(s,o.items);if(!items.length){o.checkout_nudged_at=ts;o.checkout_nudge_skipped='nothing in stock';await s.put('orders',o.id,o);continue}url=origin()+'/store-next/?restore='+makeRef('order',o.id,7)+'#bag'}
+   else url=origin()+'/store-next/'+(o.affiliate||'')+'#order='+o.id+'.'+require('./store-core.cjs').reminderToken(o);
+   const job=await queue(s,{id:'checkout-nudge-'+o.id,kind:kind==='box'?'checkout_followup':'payment_reminder',to:o.customer.email,related:o.id,copy:checkoutEmail(kind,{name:o.customer.name,orderId:o.id}),url});
+   if(!job)continue;o.checkout_nudged_at=ts;o.checkout_nudge_job=job;await s.put('orders',o.id,o);p.last_checkout_nudge=ts;await s.put('email_prefs',p.id,p);
+   const log=await s.get('audit','log')||[];log.push({created:ts,action:'auto_checkout_followup_'+kind,order_id:o.id});await s.put('audit','log',log.slice(-5000));out.push(job)}
+  return out});
+ const emails=require('./store-email.cjs');for(const j of jobs)await emails.safeDispatch(j);return{status:'ok',sent:jobs.length}}
+// The restore link for a Subscribe & save box also brings back Subscribe & save and how often.
+async function restoreSub(s,o){if(!o?.subscription_id)return null;const x=await s.get('subscriptions',o.subscription_id);return x?.every?{every:x.every}:{every:''}}
+
 // ---- 4. Sales funnel ----
 const BOT=/bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|pingdom|monitor/i;
 // Glow Lab app (Jonah, 15 Nov 2026: "can we also see how many people got the app"). The home-screen app says "installed"
@@ -132,8 +173,12 @@ async function route(path,body,h,method,{session}){
   catch(e){return page('That link didn’t work','It may have expired. Reply to any Glow Lab email and we’ll take you off the list by hand.')}}
  if(path==='/event'&&method==='POST'){await transaction(s=>event(s,body,h));return ok({ok:true})}
  if(path==='/reviews'&&method==='GET')return ok(await transaction(reviewSummary));
- if(path==='/restore'&&method==='POST'){const r=readRef(body.ref,['order','bag']);return ok(await transaction(async s=>{const src=r.kind==='order'?(await s.get('orders',r.id))?.items:(await s.get('bags',r.id))?.items;if(!src)bad('This link is not valid.',404);return bagItems(s,src)}))}
+ if(path==='/restore'&&method==='POST'){const r=readRef(body.ref,['order','bag']);return ok(await transaction(async s=>{const o=r.kind==='order'?await s.get('orders',r.id):null,src=r.kind==='order'?o?.items:(await s.get('bags',r.id))?.items;if(!src)bad('This link is not valid.',404);const out=await bagItems(s,src),sub=await restoreSub(s,o);return sub?{...out,sub}:out}))}
  if(path==='/account/reorder'&&method==='POST')return ok(await transaction(async s=>{const a=await accounts.session(s,h,true),o=await s.get('orders',String(body.id||'').slice(0,40));if(!o||!ownsOrder(o,a))bad('Order not found.',404);return bagItems(s,o.items)}));
+ // Buy again (Jonah, 15 Nov 2026: "Buy again in 1 tap"): the signed-in customer's newest paid order, ready to go back in the bag.
+ if(path==='/account/buy-again'&&method==='GET')return ok(await transaction(async s=>{const a=await accounts.session(s,h);if(!a)return{order:null};
+  const mine=(await list(s,'orders')).filter(o=>o.is_test===false&&(o.brand||'glow')==='glow'&&['paid','shipped'].includes(o.status)&&(o.items||[]).length&&ownsOrder(o,a)).sort((x,y)=>(y.created||0)-(x.created||0));
+  for(const lite of mine.slice(0,3)){const o=await s.get('orders',lite.id),r=await bagItems(s,o.items);if(r.items.length)return{order:{id:o.id,date:longDate(o.created),...r}}}return{order:null}}));
  if(path==='/account/bag'&&method==='POST')return ok(await transaction(async s=>{const a=await accounts.session(s,h);if(!a)return{saved:false};await saveBag(s,a,body.items);return{saved:true}}));
  if(path==='/account/bag'&&method==='GET')return ok(await transaction(async s=>{const a=await accounts.session(s,h);if(!a)return{items:[]};const b=await s.get('bags',a.id);if(!b||!b.items?.length||now()-b.updated>7*DAY)return{items:[]};return bagItems(s,b.items)}));
  if(path==='/review/load'&&method==='POST'){const r=readRef(body.ref,['review']);return ok(await transaction(async s=>{const o=await s.get('orders',r.id);if(!o)bad('This link is not valid.',404);const done=await s.get('reviews',o.id);return{first_name:first(o.customer?.name),state:o.customer?.state||'',order_id:o.id,items:(o.items||[]).map(i=>i.name).slice(0,12),done:!!done}}))}
@@ -146,7 +191,7 @@ async function route(path,body,h,method,{session}){
   const emails=require('./store-email.cjs');for(const j of jobs)await emails.safeDispatch(j);return ok({ok:true})}
  if(path==='/admin/growth'&&method==='POST'){await transaction(s=>session(s,h));const days=Number(body.days)||7;
   return ok(await transaction(async s=>({funnel:await funnel(s,days),reviews:(await s.list('reviews')).sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,200),summary:await reviewSummary(s),ready:ready(),rules:RULES,
-   preview:{reorder:reorderEmail({name:'Jane Doe',date:'October 8',weeks:4,items:[{name:'KLOW · 80 mg',quantity:1},{name:'BAC Water · 3 mL',quantity:1}]}),bag:bagEmail({name:'Jane Doe',items:[{name:'GHK-Cu · 100 mg',quantity:1}]}),review:reviewEmail({name:'Jane Doe',orderId:'GLP-EXAMPLE'})},
+   preview:{reorder:reorderEmail({name:'Jane Doe',date:'October 8',weeks:4,items:[{name:'KLOW · 80 mg',quantity:1},{name:'BAC Water · 3 mL',quantity:1}]}),bag:bagEmail({name:'Jane Doe',items:[{name:'GHK-Cu · 100 mg',quantity:1}]}),review:reviewEmail({name:'Jane Doe',orderId:'GLP-EXAMPLE'}),box:checkoutEmail('box',{name:'Jane Doe',orderId:'GLP-EXAMPLE'}),draft:checkoutEmail('draft',{name:'Jane Doe',orderId:'GLP-EXAMPLE'})},
    unsubscribed:(await s.list('email_prefs')).filter(p=>p.unsubscribed).length})))}
  // Management → Today (Jonah, 8 Nov 2026): the month goal, subscription numbers, reviews waiting and today's funnel.
  if(path==='/admin/today'&&method==='GET'){await transaction(s=>session(s,h));const st=await require('./subscriptions.cjs').stats();
@@ -157,4 +202,4 @@ async function route(path,body,h,method,{session}){
  if(path==='/admin/review'&&method==='POST'){await transaction(s=>session(s,h));const action=String(body.action||'');if(!['approve','hide','pending'].includes(action))bad('Choose approve or hide.');
   return ok(await transaction(async s=>{const r=await s.get('reviews',String(body.id||'').slice(0,40));if(!r)bad('Review not found.',404);r.status=action==='approve'?'approved':action==='hide'?'hidden':'pending';if(action==='approve')r.approved_at=now();await s.put('reviews',r.id,r);return r}))}
  return null}
-module.exports={appStats,appEvent,RULES,route,reorders,bags,reviews,saveBag,bagItems,funnel,event,reviewSummary,flagsOf,makeRef,readRef,reorderEmail,bagEmail,reviewEmail,reviewDue,emailKey};
+module.exports={checkouts,checkoutEmail,unfinishedKind,nudgeDue,NUDGE,appStats,appEvent,RULES,route,reorders,bags,reviews,saveBag,bagItems,funnel,event,reviewSummary,flagsOf,makeRef,readRef,reorderEmail,bagEmail,reviewEmail,reviewDue,emailKey};
