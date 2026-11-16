@@ -66,12 +66,12 @@ test('Tier 5 bonus slot: deliveries 4, 8, 12 get one extra 1-slot item at no ext
 
 test('points: max(tier multiplier, normal multiplier), never multiplied together',async()=>{
  await transaction(seed);const purple=await signedIn('purple@example.test'),blue=await signedIn('blue@example.test');
- await transaction(async s=>{await accounts.event(s,purple.id,'opening','earned',1500,0,null,'test')}); // Purple level = 2×
+ await transaction(async s=>{await accounts.event(s,purple.id,'opening','earned',2500,0,null,'test')}); // Purple level = 2× (from 2,500 since 15 Nov 2026)
  const paid=async(c,mult,id)=>transaction(async s=>{const o={id,is_test:false,customer_id:c.id,created:Math.floor(Date.now()/1000),subtotal:10000,discount:0,subscription_points_multiplier:mult};await accounts.paid(s,o);return o});
  assert.equal((await paid(purple,2,'GLP-PT1')).points_earned,200,'Purple 2× with Tier 1 2× → 2×, not 4×');
  assert.equal((await paid(purple,4,'GLP-PT5')).points_earned,400,'Purple 2× with Tier 5 4× → 4×, not 8×');
- assert.equal((await paid(blue,3,'GLP-BT4')).points_earned,300,'Blue 1× with Tier 4 3× → 3×');
  assert.equal((await paid(blue,0,'GLP-BNONE')).points_earned,100,'not a subscription: normal 1×');
+ assert.equal((await paid(blue,3,'GLP-BT4')).points_earned,300,'Blue 1× with Tier 4 3× → 3×');
  await transaction(async s=>{const st=await s.get('settings','main');st.double_points={windows:[{from:0,until:2e9}]};await s.put('settings','main',st)});
  assert.equal((await paid(purple,3,'GLP-PDBL')).points_earned,400,'double points: Purple 2× × double 2× = 4× normal beats Tier 4 3×; still not 12×');
  await transaction(async s=>{const st=await s.get('settings','main');delete st.double_points;await s.put('settings','main',st)});

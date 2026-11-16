@@ -13,23 +13,23 @@ const ledger=id=>transaction(async s=>(await s.list('rewards_ledger')).filter(e=
 const settings=fn=>transaction(async s=>{const st=await s.get('settings','main');fn(st);await s.put('settings','main',st)});
 before(async()=>{await transaction(seed);const r=await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD});adminCookie=r.headers['Set-Cookie'].split(';')[0]});after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
 
-test('levels: Blue under 500 points earned, Gold from 500, Purple from 1,500',()=>{assert.equal(accounts.tierFor(0).id,'blue');assert.equal(accounts.tierFor(499).id,'blue');assert.equal(accounts.tierFor(500).id,'gold');assert.equal(accounts.tierFor(1499).id,'gold');assert.equal(accounts.tierFor(1500).id,'purple')});
+test('levels v2 (15 Nov 2026): Blue, Rose from 300, Gold from 1,000, Purple from 2,500, Diamond from 6,000 points earned',()=>{const t=n=>accounts.tierFor(n).id;assert.equal(t(0),'blue');assert.equal(t(299),'blue');assert.equal(t(300),'rose');assert.equal(t(999),'rose');assert.equal(t(1000),'gold');assert.equal(t(2499),'gold');assert.equal(t(2500),'purple');assert.equal(t(5999),'purple');assert.equal(t(6000),'diamond')});
 
 test('a Gold customer earns 1.5x on the next order; the level counts points earned before it, oldest order first',async()=>{const email='gold@example.com';
- await put(order('GLP-LVL0000001',email,30000,{created:1790000000}));await put(order('GLP-LVL0000002',email,25000,{created:1790000100}));await put(order('GLP-LVL0000003',email,10000,{created:1790000200}));
+ await put(order('GLP-LVL0000001',email,60000,{created:1790000000}));await put(order('GLP-LVL0000002',email,50000,{created:1790000100}));await put(order('GLP-LVL0000003',email,10000,{created:1790000200}));
  await put(order('GLP-LVL0000004',email,90000,{created:1790000050,status:'awaiting_payment',paid:0}));
  const a=await customer(email);const o=id=>transaction(s=>s.get('orders',id));
- assert.equal((await o('GLP-LVL0000001')).points_earned,300,'first order: Blue, nothing before it');
- assert.equal((await o('GLP-LVL0000002')).points_earned,250,'300 points before it is still Blue; the unpaid order never counts');
- assert.equal((await o('GLP-LVL0000003')).points_earned,150,'550 points before it: Gold, 100 x 1.5');
+ assert.equal((await o('GLP-LVL0000001')).points_earned,600,'first order: Blue, nothing before it');
+ assert.equal((await o('GLP-LVL0000002')).points_earned,625,'600 points before it: Rose, 500 x 1.25; the unpaid order never counts');
+ assert.equal((await o('GLP-LVL0000003')).points_earned,150,'1,225 points before it: Gold, 100 x 1.5');
  assert.equal((await o('GLP-LVL0000003')).points_multiplier,1.5);
- assert.equal((await wallet(a.id)).balance,700);
- const acct=(await call('/account',undefined,a.cookie)).body;assert.equal(acct.rewards.tier.id,'gold');assert.equal(acct.rewards.points_lifetime,700);assert.equal(acct.rewards.next.id,'purple');assert.equal(acct.rewards.next.needed_points,800)});
+ assert.equal((await wallet(a.id)).balance,1375);
+ const acct=(await call('/account',undefined,a.cookie)).body;assert.equal(acct.rewards.tier.id,'gold');assert.equal(acct.rewards.points_lifetime,1375);assert.equal(acct.rewards.next.id,'purple');assert.equal(acct.rewards.next.needed_points,1125)});
 
 test('spending points never lowers the level; bonuses count toward it',async()=>{const a=await customer('spender@example.com');
  await transaction(async s=>{await accounts.event(s,a.id,'test-earn','earned',480,0,null,'fixture');await accounts.event(s,a.id,'test-bonus','referral_bonus',40,0,null,'fixture');await accounts.event(s,a.id,'test-spend','redeemed',-500,0,null,'fixture')});
  assert.equal(await transaction(s=>accounts.lifetimePoints(s,a.id)),520);assert.equal((await wallet(a.id)).balance,20);
- assert.equal((await call('/account',undefined,a.cookie)).body.rewards.tier.id,'gold')});
+ assert.equal((await call('/account',undefined,a.cookie)).body.rewards.tier.id,'rose','520 earned: Rose')});
 
 test('double points: an order placed inside a window earns 2x on top of its level; outside it does not',async()=>{await settings(st=>{st.double_points={windows:[{from:1790100000,until:1790110000}]}});const email='double@example.com';
  await put(order('GLP-DBL0000001',email,10000,{created:1790105000}));await put(order('GLP-DBL0000002',email,10000,{created:1790200000}));const a=await customer(email);
@@ -66,7 +66,7 @@ test('checkout stores the referrer from a friend code; unknown codes and your ow
   const r3=await call('/orders',body('codeowner@example.com',code));assert.equal((await transaction(s=>s.get('orders',r3.body.order.id))).referred_by,undefined)}
  finally{delete process.env.STORE_LIVE_CHECKOUT_ENABLED;await transaction(s=>s.put('settings','main',saved))}});
 
-test('the checkout quote shows level and double-points earnings for a signed-in customer',async()=>{const email='quote-gold@example.com';await put(order('GLP-QTE0000001',email,60000,{created:1790000000}));const a=await customer(email);
+test('the checkout quote shows level and double-points earnings for a signed-in customer',async()=>{const email='quote-gold@example.com';await put(order('GLP-QTE0000001',email,120000,{created:1790000000}));const a=await customer(email);
  const q=b=>call('/quote',{items:[{id:1,quantity:1}],coupon:'',affiliate:'',points_redeemed:0},a.cookie).then(r=>r.body);
  const base=await q();assert.equal(base.points_multiplier,1.5);
  await settings(st=>{st.double_points={windows:[{from:1,until:Math.floor(Date.now()/1000)+600}]}});const dbl=await q();assert.equal(dbl.points_multiplier,3);assert.equal(dbl.points_to_earn,Math.floor(Math.floor((dbl.subtotal-dbl.discount)/100)*3));
