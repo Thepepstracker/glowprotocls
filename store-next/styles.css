@@ -1179,12 +1179,12 @@ a.vial-photo-frame{display:block}
 .pp-crumbs span:last-child{color:#1b1b1b;font-weight:600}
 .pp{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:48px;align-items:start}
 .pp-gallery{position:sticky;top:90px}
-.pp-main{border-radius:20px;overflow:hidden;background:var(--cream,#faf7f1);border:1px solid var(--line,#ece5d7);aspect-ratio:3/2}
-.pp-main img{width:100%;height:100%;object-fit:cover;display:block}
+.pp-main{border-radius:20px;overflow:hidden;background:var(--cream,#faf7f1);border:1px solid var(--line,#ece5d7);aspect-ratio:4/5;max-height:min(80vh,760px);margin:0 auto}
+.pp-main img{width:100%;height:100%;object-fit:contain;display:block}
 .pp-noimg{display:grid;place-items:center;font-family:Georgia,serif;font-size:64px;color:#c9a24b}
 .pp-thumbs{display:flex;gap:10px;margin-top:12px;overflow-x:auto;padding-bottom:4px}
-.pp-thumb{flex:none;width:84px;height:56px;padding:0;border-radius:10px;overflow:hidden;border:2px solid transparent;background:none;cursor:pointer;min-height:0}
-.pp-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.pp-thumb{flex:none;width:64px;height:80px;padding:0;border-radius:10px;overflow:hidden;border:2px solid transparent;background:none;cursor:pointer;min-height:0}
+.pp-thumb img{width:100%;height:100%;object-fit:contain;display:block;background:var(--cream,#faf7f1)}
 .pp-thumb.on{border-color:#1b1b1b}
 .pp-info h1{font-size:clamp(36px,5vw,54px);line-height:1.02;margin:6px 0 10px}
 .pp-rating{display:inline-flex;gap:6px;align-items:center;font-size:14px;color:#5b5348;text-decoration:none;margin-bottom:10px}
@@ -1223,8 +1223,8 @@ a.vial-photo-frame{display:block}
 .pp-cert{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:#fff;border:1px solid #d8ccb2;color:#1b1b1b;text-decoration:none;font-weight:700;font-size:14px;min-height:40px}
 .pp-minis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .pp-mini{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;border:1px solid var(--line,#ece5d7);background:#fff}
-.pp-mini-img{flex:none;width:72px;height:56px;border-radius:10px;overflow:hidden;background:var(--cream,#faf7f1)}
-.pp-mini-img img{width:100%;height:100%;object-fit:cover;display:block}
+.pp-mini-img{flex:none;width:56px;height:70px;border-radius:10px;overflow:hidden;background:var(--cream,#faf7f1)}
+.pp-mini-img img{width:100%;height:100%;object-fit:contain;display:block}
 .pp-mini-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .pp-mini-t a{color:inherit;text-decoration:none}
 .pp-mini-t b{font-size:14px;line-height:1.25;display:block}
@@ -1254,3 +1254,7 @@ a.vial-photo-frame{display:block}
 @media (min-width:700px){.nm-sheet{align-items:center}.nm-card{border-radius:24px;transform:translateY(30px) scale(.97);opacity:0;transition:transform .3s cubic-bezier(.2,.9,.3,1),opacity .2s}.nm-sheet.in .nm-card{transform:none;opacity:1}}
 @media (max-width:860px){.pp{grid-template-columns:1fr;gap:20px}.pp-gallery{position:static}.pp-minis{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.nm-card,.nm-sheet{transition:none}}
+/* Product photo: the whole vial, and on a computer the whole photo fits on screen without scrolling. */
+@media (min-width:861px){.pp-main{max-height:min(calc(100vh - 250px),760px)}}
+/* One card per peptide: the other sizes, one tap away on the product page. */
+.card-sizes{margin:.1rem 0 .4rem;font-size:.86rem}.card-sizes a{color:var(--gold-dark,#7a5c12);font-weight:600;text-decoration:none}.card-sizes a:hover{text-decoration:underline}.card-sizes b{color:var(--ink,#111)}
