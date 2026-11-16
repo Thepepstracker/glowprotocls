@@ -4,6 +4,17 @@
  'use strict';
  const phrases={
  "Continue with Google": "Continuar con Google",
+ "Buy again": "Comprar de nuevo",
+ "New Glow level": "Nuevo nivel Glow",
+ "Let’s go": "¡Vamos!",
+ "Save birthday": "Guardar cumpleaños",
+ "Month": "Mes",
+ "Day": "Día",
+ "Birthday saved. 🎂": "Cumpleaños guardado. 🎂",
+ "Glow level": "Nivel Glow",
+ "Your last order is in your bag. Change anything before you pay.": "Tu último pedido está en tu bolsa. Cambia lo que quieras antes de pagar.",
+ "Your Subscribe & save box is back in your bag. Change anything before you finish.": "Tu caja de Suscríbete y ahorra está de vuelta en tu bolsa. Cambia lo que quieras antes de terminar.",
+ "Your items are back in your bag. Change anything before you pay.": "Tus artículos están de vuelta en tu bolsa. Cambia lo que quieras antes de pagar.",
  "or use your email": "o usa tu correo",
  "Opening Google…": "Abriendo Google…",
  "Signing you in with Google…": "Iniciando sesión con Google…",
