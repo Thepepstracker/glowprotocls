@@ -5,7 +5,7 @@ const TYPES={'.webmanifest':'application/manifest+json','.mp3':'audio/mpeg','.ht
 const security={'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Cache-Control':'no-store'};
 async function body(req,limit){const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>limit)throw Object.assign(new Error('Request too large'),{status:413});chunks.push(chunk)}return Buffer.concat(chunks).toString('utf8')}
 function publicFile(p){
- if(p==='/'||p==='/store-next'||p==='/store-next/'||/^\/store-next\/(?:profile\/[a-z0-9-]+|[a-z0-9-]+)\/?$/.test(p)&&!p.includes('/merch'))return 'store-next/index.html';
+ if(p==='/'||p==='/store-next'||p==='/store-next/'||/^\/store-next\/(?:profile\/[a-z0-9-]+|p\/[a-z0-9-]{1,80}|[a-z0-9-]+)\/?$/.test(p)&&!p.includes('/merch'))return 'store-next/index.html';
  if(/^\/store-next\/merch\/?$/.test(p))return 'store-next/merch.html';
  const rel=p.replace(/^\//,'');
  if(rel.split('/').some(x=>!x||x.startsWith('.')||x==='..'))return null;
@@ -35,7 +35,7 @@ function shareCard(html,p){if(!/^\/store-next\/account\/?$/.test(p)||!html.inclu
 // Glow Lab customer app (Jonah, 14 Nov 2026: "now lets make one for everyone"). On the Glow store pages (not Management):
 // the app manifest, launch screens and full-screen mode. A customer who adds it from an affiliate's store keeps that store
 // (the manifest's start page is that store), so the affiliate keeps the credit.
-const STORE_APP_PAGE=/^\/(?:store-next\/?)?$|^\/store-next\/(?:account|merch|[a-z0-9-]{1,60})\/?$/;
+const STORE_APP_PAGE=/^\/(?:store-next\/?)?$|^\/store-next\/(?:account|merch|p\/[a-z0-9-]{1,80}|[a-z0-9-]{1,60})\/?$/;
 function storeApp(html,p){if(!STORE_APP_PAGE.test(p)||/^\/store-next\/admin\/?$/.test(p)||!html.includes('</head>')||html.includes('rel="manifest"'))return html;
  const slug=(p.match(/^\/store-next\/([a-z0-9-]{1,60})\/?$/)||[])[1],s=slug&&!['account','merch'].includes(slug)?'?s='+slug:'';
  return html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">')
@@ -79,6 +79,12 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   if(redirects[url.pathname])return send(302,'',undefined,{Location:redirects[url.pathname]});
   let decoded;try{decoded=decodeURIComponent(url.pathname)}catch{return send(400,'Invalid path')}
   if(decoded==='/store-next/app.webmanifest')return send(200,storeManifest(url.searchParams.get('s')),'application/manifest+json',{'Cache-Control':'no-cache'});
+  // Product pages and the sitemap (Jonah, 16 Nov 2026): a shared product link shows the product's name, price and photo,
+  // and Google finds every product. Uses the public catalog; if it can't be read, the page is served as usual.
+  const catalog=async()=>{try{const r=await apiHandler({httpMethod:'GET',headers:req.headers,queryStringParameters:{route:'/catalog'},body:''});return r.statusCode===200?JSON.parse(r.body).products||[]:null}catch{return null}};
+  const siteOrigin=['glowglps.com','www.glowglps.com','glowlabprotocols.com','www.glowlabprotocols.com'].includes(host)?'https://'+host.replace(/^www\./,''):String(process.env.STORE_ORIGIN||'https://glowglps.com').replace(/\/$/,'');
+  if(decoded==='/sitemap.xml'){let xml;try{xml=(await fs.readFile(path.join(ROOT,'sitemap.xml'))).toString()}catch{return send(404,'Not found')}const products=await catalog();if(products)xml=require('../../netlify/functions/lib/shop-extras.cjs').sitemapWith(xml,{products,origin:siteOrigin});return send(200,xml,'application/xml',{'Cache-Control':'no-cache'})}
+  const productSlug=(decoded.match(/^\/store-next\/p\/([a-z0-9-]{1,80})\/?$/)||[])[1];
   let file=publicFile(decoded);
   if(!file&&/^\/[a-z0-9-]+\/?$/.test(decoded)){
    const info=decoded.replace(/\/$/,'')+'.html';try{await fs.access(path.join(ROOT,info));file=info.slice(1)}catch{return send(302,'',undefined,{Location:'/store-next'+decoded})}
@@ -87,7 +93,7 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   const target=path.resolve(ROOT,file);if(!target.startsWith(ROOT+path.sep))return send(404,'Not found');
   let data;try{data=await fs.readFile(target)}catch{return send(404,'Not found')}
   const type=TYPES[path.extname(file)];
-  if(type.startsWith('text/html')){data=storeApp(adminApp(shareCard(await transform(data.toString(),req),decoded),decoded),decoded);return send(200,data,type)}
+  if(type.startsWith('text/html')){data=storeApp(adminApp(shareCard(await transform(data.toString(),req),decoded),decoded),decoded);if(productSlug){const products=await catalog();if(products)data=require('../../netlify/functions/lib/shop-extras.cjs').productHead(data,{products,slug:productSlug,origin:siteOrigin,brandName:'Glow Lab Protocols'})}return send(200,data,type)}
   // Pages stay no-store. Photos may be kept for an hour; scripts and styles are re-checked on every visit (a 304 when unchanged).
   const etag='"'+crypto.createHash('sha1').update(data).digest('base64url')+'"',cache=type.startsWith('image/')?'public, max-age=3600, stale-while-revalidate=86400':'no-cache',headers={ETag:etag,'Cache-Control':cache};
   if(String(req.headers['if-none-match']||'').split(/\s*,\s*/).map(t=>t.replace(/^W\//,'')).includes(etag)){res.writeHead(304,{...security,...headers});return res.end()}
