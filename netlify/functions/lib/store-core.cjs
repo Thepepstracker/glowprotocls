@@ -163,6 +163,8 @@ async function handle({path,method='GET',headers={},body={}}){
  const extrasRoute=await require('./shop-extras.cjs').route(path,body,h,method,{session});if(extrasRoute)return extrasRoute;
  // Waiting on (Jonah, 17 Nov 2026): products we are waiting on, and the orders held for them. See waiting-on.cjs.
  const waitingRoute=await require('./waiting-on.cjs').route(path,body,h,method,{session});if(waitingRoute)return waitingRoute;
+ // Refunds (Jonah, 17 Nov 2026): order page → Refund. Owner only. See refunds.cjs.
+ const refundRoute=await require('./refunds.cjs').route(path,body,h,method,{session,moveStock,audit});if(refundRoute)return refundRoute;
  // Label hub (Jonah, 8 Nov 2026): every approved vial label, one click to print. See labels.cjs.
  if(path.startsWith('/admin/labels')){const r=await require('./labels.cjs').route(path,body,h,method,{session});if(r)return r}
  // Live log + deep live analytics (Jonah, 9 Nov 2026). See live.cjs.
