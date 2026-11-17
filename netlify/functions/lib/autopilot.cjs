@@ -17,6 +17,7 @@ const TASKS={
  reorders:{name:'Reorder reminders',every:3600,help:'About 30 days after a customer’s last order (up to 90), one email puts the same items back in their bag in one tap and mentions Subscribe & save. Not sent to subscribers or anyone who unsubscribed. 10 AM–7 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
  bags:{name:'Bag reminders',every:900,help:'Signed-in customers who leave items in their bag get one reminder 3–48 hours later (at most one every 7 days), unless they ordered. 9 AM–9 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
  checkouts:{name:'Unfinished checkout reminders',every:900,help:'One email when a checkout is started but not finished: a Subscribe & save box whose card checkout was never completed (about 1 hour later, the link puts the box back in their bag with Subscribe & save), or a Venmo / Zelle / Cash App order that was saved but never sent (about 20 hours later, the link opens their order page). Only the newest one per person, never if they ordered since, at most one every 7 days. 9 AM–9 PM Eastern. Needs STORE_POSTAL_ADDRESS set.'},
+ holds:{name:'Waiting-on emails',every:300,help:'For products in Ship & stock → Waiting on: one email to each customer whose order is held (“We’re waiting on our … shipment, which is … right now”), and one when you tap It’s here. 9 AM–8 PM Eastern. Holds themselves work with this OFF; only the emails wait.'},
  restock:{name:'Back-in-stock alerts',every:300,help:'When a sold-out product is back in stock, everyone who tapped “Notify me” on it gets one email (and a phone alert if they have the Glow Lab app with alerts on), oldest request first. 8 AM–9 PM Eastern. Requests are saved while this is OFF and go out when it’s switched on.'},
  birthdays:{name:'Birthday gifts',every:3600,help:'At the start of each customer’s birthday month (9 AM–8 PM Eastern), adds Glow Points by level (Blue 100, Rose 150, Gold 250, Purple 400, Diamond 600) and emails them. Once a year. A birthday added within 2 weeks of its month starts the next year. Unsubscribed customers still get the points, just no email.'},
  reviews:{name:'Review requests',every:3600,help:'2 days after delivery (or 7 days after shipping), one email asks the customer to rate their order. Reviews only show on the store after you approve them in Management → Growth. Needs STORE_POSTAL_ADDRESS set.'},
@@ -69,12 +70,15 @@ async function runTask(key){
  if(key==='checkouts')return require('./growth.cjs').checkouts();
  if(key==='birthdays')return require('./glow-levels.cjs').birthdays();
  if(key==='restock')return require('./shop-extras.cjs').restocks();
+ if(key==='holds')return require('./waiting-on.cjs').emailsRun();
 }
 let running=false;
 // One pass: runs each switched-on task whose interval has passed. Holds a short lease so two copies of the app never overlap.
 async function tick(){
  if(running)return;running=true;
  try{
+  // Waiting on: hold new orders that have a product we are waiting on. Always runs (no switch); only the emails have one.
+  try{await require('./waiting-on.cjs').sweep()}catch(e){console.error('Waiting-on sweep failed.',{message:String(e&&e.message||e).slice(0,160)})}
   const plan=await transaction(async s=>{const rec=shape(await s.get('integrations','autopilot')),lease=await s.get('integrations','autopilot-lease');if(lease&&lease.until>now()&&lease.holder!==ID)return null;
    const due=Object.keys(TASKS).filter(k=>rec.tasks[k].on&&(rec.tasks[k].last_run||0)+TASKS[k].every<=now()+5);if(!due.length)return[];await s.put('integrations','autopilot-lease',{id:'autopilot-lease',holder:ID,until:now()+120});return due});
   if(!plan||!plan.length)return;
