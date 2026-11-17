@@ -1270,3 +1270,8 @@ a.vial-photo-frame{display:block}
 .wo-pend{color:#8a5a00;font-weight:600}
 .wo-card.wo-past{opacity:.85}.wo-past-h{margin:24px 0 8px}
 .wo-prev summary{cursor:pointer}.wo-mail{margin-top:12px;padding:12px;border:1px solid var(--line,#ece4d4);border-radius:12px;background:#fbf8f2}.wo-mail small{display:block;color:#7a7368}.wo-mail pre{white-space:pre-wrap;font:inherit;margin:8px 0 0}
+/* Refunds (17 Nov 2026) */
+.rf-open{border:1.5px solid var(--gold,#c9a24b)}.rf-amt{font-size:1.15rem}.rf-what{margin:10px 0;padding-left:0;list-style:none}.rf-what li{margin:6px 0}
+.rf-line{display:flex;gap:8px;align-items:center;margin:8px 0;font-weight:500}.rf-line input{width:auto;min-height:0}.rf-must{font-weight:700}
+.rf-stock{border:1px solid var(--line,#ece4d4);border-radius:12px;padding:8px 12px;margin:10px 0}.rf-hist{padding-left:18px}.rf-hist li{margin:4px 0}
+.rf-mail{margin:6px 0 12px}.rf-mail pre{white-space:pre-wrap;font:inherit;margin:6px 0 0;padding:10px;background:#fbf8f2;border-radius:10px}
