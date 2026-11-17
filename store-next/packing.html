@@ -215,6 +215,10 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 .snerr{color:#ffb4a6;font-weight:700;margin-top:10px;font-size:14px}.snerr:empty{display:none}
 .sn-sum .fine{font-size:12.5px;color:#a9a294;margin-top:10px;line-height:1.4}
 .tag.manual{background:#fdf0d5;color:#7a4b00}
+/* Waiting on (17 Nov 2026) */
+.tag.held{background:#ece6fb;color:#4b3a8a}
+.item.held{opacity:.55}
+.heldnote{margin-top:4px;font-size:13px;font-weight:700;color:#4b3a8a}
 .snhist{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:6px}
 .snhist .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.snhist h3{margin:0;font:700 20px Georgia,'Times New Roman',serif;flex:1}
 .snhist input[type=search]{flex:0 1 260px;min-width:160px;font-size:15px;padding:9px 12px}
@@ -365,8 +369,13 @@ function vials(i){var b=inside(i),per=[];b.list.forEach(function(x){for(var k=0;
   var out=[];for(var q=0;q<i.quantity;q++)per.forEach(function(nm,j){out.push({name:nm,set:q,sets:i.quantity,pos:j,of:per.length,kind:b.kind})});return out}
 function insideText(i){var b=inside(i);if(b.kind==='one')return '';if(b.kind==='kit')return b.list[0][1]+' vials per kit';
   return 'Inside each: '+b.list.map(function(x){return (x[1]>1?x[1]+'× ':'')+x[0]}).join(' + ')}
-function units(o){return (o.items||[]).reduce(function(n,i){return n+vials(i).length},0)}
-function allTicks(o){var t={};(o.items||[]).forEach(function(i,idx){for(var u=0;u<vials(i).length;u++)t[idx+'-'+u]=true});return t}
+// Waiting on (17 Nov 2026): lines the store is still waiting on are left out of the box; the rest ships now.
+function heldQ(o,i){var h=(o&&o.hold&&o.hold.lines)||[],n=0;h.forEach(function(l){if(l.id===Number(i.id))n+=l.quantity});return Math.min(n,i.quantity)}
+function packV(o,i){var vs=vials(i),q=heldQ(o,i);return q?vs.filter(function(v){return v.set<i.quantity-q}):vs}
+function heldAll(o){var h=(o&&o.hold&&o.hold.lines)||[];return h.length>0&&(o.items||[]).every(function(i){return heldQ(o,i)>=i.quantity})}
+function heldNames(o){var seen={},out=[];((o&&o.hold&&o.hold.lines)||[]).forEach(function(l){var n=String(l.name||'').split(' · ')[0];if(!seen[n]){seen[n]=1;out.push(n)}});return out.join(', ')}
+function units(o){return (o.items||[]).reduce(function(n,i){return n+packV(o,i).length},0)}
+function allTicks(o){var t={};(o.items||[]).forEach(function(i,idx){for(var u=0;u<packV(o,i).length;u++)t[idx+'-'+u]=true});return t}
 function serverPacked(o){return !!(o.packed&&sameFp(o.packed.fp,o))}
 function ticks(o){var s=saved[o.id];if(s&&sameFp(s.fp,o))return s.t||{};if(serverPacked(o))return allTicks(o);return{}}
 function tickCount(o){var t=ticks(o),n=0;Object.keys(t).forEach(function(k){if(t[k])n++});return n}
@@ -431,7 +440,7 @@ function visibleList(){if(view==='pick'||view==='restock'||view==='stats'||view=
 function packFirst(o){return o.member_priority===true&&!o.replacement&&!isBlocked(o)?0:1}
 function render(){setTimeout(fitNowBar,0);
   var npc=document.querySelector('[data-chip="unprinted"]');if(npc){var npn=orders.filter(function(o){return !isDone(o)&&notPrinted(o)}).length;npc.textContent='🖨️ Not printed yet'+(npn?' ('+npn+')':'')}
-  var done=orders.filter(isDone).length,sk=orders.filter(isSkipped).length,todo=orders.filter(function(o){return !isSkipped(o)&&!isDone(o)});
+  var done=orders.filter(isDone).length,sk=orders.filter(isSkipped).length,todo=orders.filter(function(o){return !isSkipped(o)&&!isDone(o)&&!heldAll(o)});
   document.getElementById('count').textContent=done+' of '+orders.length+' orders checked'+(sk?' · '+sk+' skipped':'');
   var leftUnits=todo.reduce(function(n,o){return n+units(o)-tickCount(o)},0);
   document.getElementById('left').textContent=todo.length?todo.length+' to go · '+leftUnits+' items · ~'+(todo.length*MIN_PER_ORDER)+' min':'All packed';
@@ -452,7 +461,7 @@ function render(){setTimeout(fitNowBar,0);
   if(!orders.length){out.innerHTML='<div class="msg">No orders waiting to be packed right now.</div>';return}
   if(!list.length){out.innerHTML='<div class="msg">'+(view==='todo'&&chip==='all'&&!query?'Every order is checked'+(sk?' (skipped ones are in the Skipped tab)':'')+'. ✅':'Nothing matches here.')+'</div>';return}
   var html='',lastGroup='';
-  list.forEach(function(o){var g=view==='todo'?(isBlocked(o)?'Waiting on stock — pack these last':hasLabel(o)?((printLog[o.id]||{}).label?'Label printed — pack and stick':'Label bought — print it, then pack'):'No label yet'):'';
+  list.forEach(function(o){var g=view==='todo'?(heldAll(o)?'On hold — everything in these is still on the way':isBlocked(o)?'Waiting on stock — pack these last':hasLabel(o)?((printLog[o.id]||{}).label?'Label printed — pack and stick':'Label bought — print it, then pack'):'No label yet'):'';
     if(g&&g!==lastGroup){html+='<div class="group">'+esc(g)+'</div>';lastGroup=g}html+=card(o)});
   out.innerHTML=html;
   markTarget(list);
@@ -473,7 +482,7 @@ function alerts(){
 }
 function target(list){
   for(var a=0;a<list.length;a++){var o=list[a];if(isDone(o)||isSkipped(o)||isBlocked(o))continue;var t=ticks(o);
-    for(var i=0;i<(o.items||[]).length;i++){var vs=vials(o.items[i]);for(var u=0;u<vs.length;u++){var k=i+'-'+u;if(!t[k])return{o:o,k:k,item:o.items[i],unit:u,v:vs[u],n:vs.length}}}}
+    for(var i=0;i<(o.items||[]).length;i++){var vs=packV(o,o.items[i]);for(var u=0;u<vs.length;u++){var k=i+'-'+u;if(!t[k])return{o:o,k:k,item:o.items[i],unit:u,v:vs[u],n:vs.length}}}}
   return null;
 }
 function markTarget(list){
@@ -575,7 +584,7 @@ function slipHTML(list){
     var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',first=String(c.name||'').trim().split(/\s+/)[0]||'friend',u=units(o);
     var items=o.items||[],many=items.length>7;
     var rows=items.map(function(i){var parts=String(i.name||'').split(' · '),nm=parts.shift(),det=parts.join(' · ');
-      var ins=insideText(i);return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+(ins?'<span class="ins">'+esc(ins)+'</span>':'')+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
+      var ins=insideText(i),hq=heldQ(o,i);return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+(ins?'<span class="ins">'+esc(ins)+'</span>':'')+(hq?'<span class="ins">'+(hq>=i.quantity?'COMING SEPARATELY':hq+' COMING SEPARATELY')+'</span>':'')+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
     var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
     var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer=(o.packed&&o.packed.by&&o.packed.by!=='you'&&o.packed.by!=='Owner')?String(o.packed.by):'Jonah';
     var service=(o.shipment&&o.shipment.service)||(o.tracking?carrierName(o):'');
@@ -784,19 +793,19 @@ function callsView(){var list=callList(),todo=list.filter(function(o){return !ca
 function card(o){
   var t=ticks(o),c=o.customer||{},done=isDone(o),blk=isBlocked(o),brand=o.brand==='zader'?'<span class="tag z">ZADER</span>':'';
   var rows=(o.items||[]).map(function(i,idx){
-    var vs=vials(i),taps='';vs.forEach(function(v,u){var k=idx+'-'+u,on=!!t[k];taps+=(v.kind!=='one'&&v.pos===0&&v.set>0?'<span class="setgap"></span>':'')+'<button class="tap'+(on?' on':'')+'" data-o="'+esc(o.id)+'" data-k="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(v.name)+' '+(u+1)+' of '+vs.length+'" title="'+esc(v.name)+'">'+(on?'✓':(u+1))+'</button>'});
+    var vs=packV(o,i),hq=heldQ(o,i),taps='';vs.forEach(function(v,u){var k=idx+'-'+u,on=!!t[k];taps+=(v.kind!=='one'&&v.pos===0&&v.set>0?'<span class="setgap"></span>':'')+'<button class="tap'+(on?' on':'')+'" data-o="'+esc(o.id)+'" data-k="'+k+'" aria-pressed="'+on+'" aria-label="'+esc(v.name)+' '+(u+1)+' of '+vs.length+'" title="'+esc(v.name)+'">'+(on?'✓':(u+1))+'</button>'});
     var ins=insideText(i);
-    return '<li class="item"><div class="qty'+(i.quantity>1?' multi':'')+'">'+i.quantity+' ×</div><div class="name">'+esc(i.name)+(ins?'<div class="inside">'+esc(ins)+' · <b>'+vs.length+' taps</b></div>':'')+(o.replacement||o.manual?'':stockNote(i))+'</div><div class="taps">'+taps+'</div></li>';
+    return '<li class="item'+(hq&&hq>=i.quantity?' held':'')+'"><div class="qty'+(i.quantity>1?' multi':'')+'">'+i.quantity+' ×</div><div class="name">'+esc(i.name)+(hq?'<div class="heldnote">⏳ '+(hq>=i.quantity?'Leave '+(hq>1?'these':'it')+' out':'Leave '+hq+' out')+' · we’re still waiting on it. It ships later on its own.</div>':'')+(ins?'<div class="inside">'+esc(ins)+' · <b>'+vs.length+' taps</b></div>':'')+(o.replacement||o.manual?'':stockNote(i))+'</div><div class="taps">'+taps+'</div></li>';
   }).join('');
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].concat((o.staff_notes||[]).map(function(n){return n&&n.text?'📝 '+n.text+(n.author?' — '+n.author:''):''})).filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
-  var tags=brand+(o.ships_with?'<span class="tag cust" title="Two Subscribe &amp; save packages for the same person, same address, same day. Pack them in one box with one label.">📦 SAME BOX AS '+esc(o.ships_with)+'</span>':'')+(o.member_priority===true&&!o.replacement?'<span class="tag pf" title="Skool member who picked Packed first">⭐ PACK FIRST</span>':'')+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.manual?'<span class="tag manual">📮 '+esc(SN_REASONS[o.manual.reason]||'SHIPMENT').toUpperCase()+'</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
-  var ship=o.manual&&!hasLabel(o)?manualBuyBox(o):!hasLabel(o)&&canBuy(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" data-plabel="'+esc(o.id)+'" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||carrierName(o))+'</span>'+(o.tracking?'<span>'+trkLink(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
+  var tags=brand+(o.ships_with?'<span class="tag cust" title="Two Subscribe &amp; save packages for the same person, same address, same day. Pack them in one box with one label.">📦 SAME BOX AS '+esc(o.ships_with)+'</span>':'')+(o.member_priority===true&&!o.replacement?'<span class="tag pf" title="Skool member who picked Packed first">⭐ PACK FIRST</span>':'')+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.hold&&o.hold.lines&&o.hold.lines.length?'<span class="tag held" title="Management → Ship &amp; stock → Waiting on">⏳ '+(heldAll(o)?'ON HOLD':'PART ON HOLD')+' · '+esc(heldNames(o).toUpperCase())+'</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.manual?'<span class="tag manual">📮 '+esc(SN_REASONS[o.manual.reason]||'SHIPMENT').toUpperCase()+'</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
+  var ship=o.manual&&!hasLabel(o)?manualBuyBox(o):!hasLabel(o)&&canBuy(o)&&!heldAll(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" data-plabel="'+esc(o.id)+'" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||carrierName(o))+'</span>'+(o.tracking?'<span>'+trkLink(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   if(o.manual&&hasLabel(o))ship=ship.slice(0,-6)+manualEmailBtn(o)+'</div>';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement||o.manual?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">'+(o.manual?'Made':'Paid')+' '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+(o.manual?'<div class="small">'+esc(manualWhy(o.manual))+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
-    +ship+printBadges(o)+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(done?'✅ All '+u+' in the bag. '+(hasLabel(o)?'Put the label on.':'Ready for its label.'):blk?'⛔ Waiting on: '+esc(blockedItems(o).map(function(i){return i.name}).join(', ')):n+' of '+u+' checked')+'</span>'+'<span class="btns">'+(o.replacement?'':'<button data-slip="'+esc(o.id)+'" title="Print a packing slip for this box">🧾 Slip</button> ')+(n?'<button data-reset="'+esc(o.id)+'">Start over</button> ':'')+(o.manual?'<button data-sncancel="'+esc(o.id)+'" title="Cancel this shipment: voids the label in Shippo (if bought) and puts the items back in stock">Cancel shipment</button> ':'')+'<button data-skip="'+esc(o.id)+'">'+(isSkipped(o)?'Un-skip':'Skip for now')+'</button></span></div></section>';
+    +ship+printBadges(o)+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(heldAll(o)?'⏳ On hold: everything in this order is still on the way ('+esc(heldNames(o))+'). Nothing to pack yet.':done?'✅ All '+u+' in the bag. '+(o.hold&&o.hold.lines&&o.hold.lines.length?'('+esc(heldNames(o))+' ships later.) ':'')+(hasLabel(o)?'Put the label on.':'Ready for its label.'):blk?'⛔ Waiting on: '+esc(blockedItems(o).map(function(i){return i.name}).join(', ')):n+' of '+u+' checked')+'</span>'+'<span class="btns">'+(o.replacement?'':'<button data-slip="'+esc(o.id)+'" title="Print a packing slip for this box">🧾 Slip</button> ')+(n?'<button data-reset="'+esc(o.id)+'">Start over</button> ':'')+(o.manual?'<button data-sncancel="'+esc(o.id)+'" title="Cancel this shipment: voids the label in Shippo (if bought) and puts the items back in stock">Cancel shipment</button> ':'')+'<button data-skip="'+esc(o.id)+'">'+(isSkipped(o)?'Un-skip':'Skip for now')+'</button></span></div></section>';
 }
 // What to pull off the shelf for one order line: a kit of 10 is 10 of that vial; a bundle is the vials inside it.
 function productByName(nm){var best=null;products.forEach(function(p){if(p.name===nm&&(!best||p.brand!=='zader'))best=p});return best}
@@ -838,9 +847,9 @@ function restock(){
 // their orders it is for (its items can be added with one tap). Saved to the store's manual_shipments (never orders),
 // then packed here like any order, with its own Buy label (price shown before buying, same $15 check), Email tracking
 // (preview first, sent once) and Cancel. History below lists every one with label costs.
-var SN_REASONS={missing:'Missing item',damaged:'Damaged',wrong:'Wrong item sent',resend:'Resend',gift:'Gift / sample',other:'Something else'};
-var SN_ICON={missing:'📦',damaged:'💔',wrong:'🔄',resend:'🚚',gift:'🎁',other:'✏️'};
-var SN_LEAD={missing:'Here is the item that was missing from your order. Thank you for your patience!',damaged:'Here is your replacement. Thank you for your patience!',wrong:'Here is the right item. Thank you for your patience!',resend:'Here is your order, sent again. Thank you for your patience!',gift:'A little something from us. Thank you for being part of Glow Lab!'};
+var SN_REASONS={missing:'Missing item',damaged:'Damaged',wrong:'Wrong item sent',resend:'Resend',gift:'Gift / sample',waiting:'Was on hold',other:'Something else'};
+var SN_ICON={missing:'📦',damaged:'💔',wrong:'🔄',resend:'🚚',gift:'🎁',waiting:'⏳',other:'✏️'};
+var SN_LEAD={missing:'Here is the item that was missing from your order. Thank you for your patience!',damaged:'Here is your replacement. Thank you for your patience!',wrong:'Here is the right item. Thank you for your patience!',resend:'Here is your order, sent again. Thank you for your patience!',gift:'A little something from us. Thank you for being part of Glow Lab!',waiting:'Here is the item we were waiting on for your order. Thank you for your patience!'};
 var sn={key:snKey(),reason:'',order:'',lines:[],cust:null,busy:false,addr:null},shippoCfg={},snHistQ='',snShowCx=false;
 function snKey(){var a=new Uint8Array(12);(window.crypto||window.msCrypto).getRandomValues(a);return Array.prototype.map.call(a,function(x){return ('0'+x.toString(16)).slice(-2)}).join('')}
 function manualWhy(m){return 'Why: '+(SN_REASONS[m.reason]||m.reason)+(m.order_id?' · for '+m.order_id:'')+(m.note?' · '+m.note:'')+(m.parcel?' · box '+m.parcel.length+'×'+m.parcel.width+'×'+m.parcel.height+' in, '+m.parcel.weight_lb+' lb':'')+(m.created_by?' · made by '+m.created_by:'')}

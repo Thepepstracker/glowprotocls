@@ -1258,3 +1258,15 @@ a.vial-photo-frame{display:block}
 @media (min-width:861px){.pp-main{max-height:min(calc(100vh - 250px),760px)}}
 /* One card per peptide: the other sizes, one tap away on the product page. */
 .card-sizes{margin:.1rem 0 .4rem;font-size:.86rem}.card-sizes a{color:var(--gold-dark,#7a5c12);font-weight:600;text-decoration:none}.card-sizes a:hover{text-decoration:underline}.card-sizes b{color:var(--ink,#111)}
+/* Waiting on (17 Nov 2026) */
+.wo-add{display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:12px;align-items:end;margin-top:12px}
+@media (max-width:760px){.wo-add{grid-template-columns:1fr}}
+.wo-ap{margin:12px 0 0;font-size:.92rem}
+.wo-h{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}.wo-h h3{margin:0 0 4px}
+.wo-acts{display:flex;gap:8px;flex-wrap:wrap}
+.wo-t{width:100%;border-collapse:collapse;font-size:.92rem}.wo-t th,.wo-t td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line,#ece4d4);vertical-align:top}
+.wo-t tr.wo-out td{opacity:.55}.wo-row-acts{white-space:nowrap}.wo-row-acts .link{background:none;border:0;padding:0;color:var(--gold-dark,#7a5c12);font-weight:600;cursor:pointer;min-height:0;width:auto}
+.wo-row-acts .link+.link{margin-left:12px}
+.wo-pend{color:#8a5a00;font-weight:600}
+.wo-card.wo-past{opacity:.85}.wo-past-h{margin:24px 0 8px}
+.wo-prev summary{cursor:pointer}.wo-mail{margin-top:12px;padding:12px;border:1px solid var(--line,#ece4d4);border-radius:12px;background:#fbf8f2}.wo-mail small{display:block;color:#7a7368}.wo-mail pre{white-space:pre-wrap;font:inherit;margin:8px 0 0}
