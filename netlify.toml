@@ -261,6 +261,12 @@
   to = "/store-next/index.html"
   status = 200
 
+# Gift lists (18 Nov 2026): /store-next/registry/<list>.
+[[redirects]]
+  from = "/store-next/registry/:list"
+  to = "/store-next/index.html"
+  status = 200
+
 [[redirects]]
   from = "/store-next/admin"
   to = "/store-next/index.html"

@@ -578,10 +578,11 @@ function slipHTML(list){
    +'.ft{margin-top:auto;display:flex;gap:8px;align-items:center;border-top:4px solid #000;padding-top:6px}.qr{flex:0 0 .85in}.qr svg{width:.85in;height:.85in;display:block}'
    +'.fq{flex:1;font-size:10px;font-weight:800;line-height:1.3}.fq b{display:block;font-size:13px;font-weight:900;margin-bottom:2px}.fq .sm{display:block;margin-top:3px;font-size:9.5px;font-weight:800}'
    +'.thx{margin-top:5px;text-align:center;font-size:9.5px;font-weight:900;letter-spacing:.06em}'
+   +'.gm{border:2px dashed #000;border-radius:6px;padding:5px 8px;margin:4px 0 6px;font-size:12px;font-weight:700;line-height:1.3;font-style:italic}.gm b{display:block;font-style:normal;font-size:9.5px;letter-spacing:.06em;margin-bottom:2px}'
    // The site's seasonal edge function adds decorations before the first closing body tag it sees; slips must stay one clean 4x6 page.
    +'.glow-season-corner,[class*=season-],[class*=glow-season]{display:none!important}';
   var slips=list.map(function(o){
-    var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',first=String(c.name||'').trim().split(/\s+/)[0]||'friend',u=units(o);
+    var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',gift=o.gift||null,shipName=gift&&gift.to_name||c.name||'',first=String(shipName).trim().split(/\s+/)[0]||'friend',u=units(o);
     var items=o.items||[],many=items.length>7;
     var rows=items.map(function(i){var parts=String(i.name||'').split(' · '),nm=parts.shift(),det=parts.join(' · ');
       var ins=insideText(i),hq=heldQ(o,i);return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+(ins?'<span class="ins">'+esc(ins)+'</span>':'')+(hq?'<span class="ins">'+(hq>=i.quantity?'COMING SEPARATELY':hq+' COMING SEPARATELY')+'</span>':'')+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
@@ -593,7 +594,9 @@ function slipHTML(list){
     var acct='https://glowglps.com/store-next/account',earned=o.points_earned>0?o.points_earned:0,waiting=!(o.customer_id||o.has_account)?Math.max(0,Math.floor(((o.subtotal||0)-(o.discount||0))/100)):0;
     var worth=function(n){return '$'+(n*5/100).toFixed(2)};
     var footUrl=z?'https://'+site:acct,footText;
-    if(z)footText='<b>SHOP AGAIN</b>'+esc(site)+'<br>';
+    // Gift list orders (18 Nov 2026): the points belong to the buyer, so the owner's slip invites them to make their own list.
+    if(gift&&!z){footUrl='https://glowglps.com/store-next/registry';footText='<b>MAKE YOUR OWN GIFT LIST</b>Scan to start a list and share it with friends. Gifts ship straight to you.<br>'}
+    else if(z)footText='<b>SHOP AGAIN</b>'+esc(site)+'<br>';
     else if(earned)footText='<b>+'+esc(earned)+' GLOW POINTS ADDED</b>They are already in your account (worth '+worth(earned)+' off). Scan to see your balance and reorder.<br>';
     else if(waiting)footText='<b>CLAIM YOUR '+esc(waiting)+' GLOW POINTS</b>Worth '+worth(waiting)+' off your next order. Scan, create your free account with the email you ordered with, and they are added for you.<br>';
     else if(o.customer_id||o.has_account)footText='<b>YOUR GLOW ACCOUNT</b>Scan to see your points balance and reorder in seconds.<br>';
@@ -603,8 +606,9 @@ function slipHTML(list){
     var addr=[c.address,c.address2,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
     return '<section class="slip">'
      +'<div class="hd">'+(z?'':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>'
-     +'<h1>'+(o.manual?'Hi, ':'Thank you, ')+esc(first)+'!</h1><p class="lead">'+(o.manual&&SN_LEAD[o.manual.reason]?SN_LEAD[o.manual.reason]+' ':'')+'Every item in this box was checked by hand, one at a time, before it was sealed.</p>'
-     +'<div class="grid"><div class="to"><b>SHIP TO</b><div class="nm">'+esc(c.name||'')+'</div>'+addr.map(esc).join('<br>')+'</div>'
+     +'<h1>'+(gift?'A gift for you, ':o.manual?'Hi, ':'Thank you, ')+esc(first)+'!</h1><p class="lead">'+(gift?'Sent from your Glow Lab gift list by '+esc(gift.from_name||'a friend')+'. ':'')+(o.manual&&SN_LEAD[o.manual.reason]?SN_LEAD[o.manual.reason]+' ':'')+'Every item in this box was checked by hand, one at a time, before it was sealed.</p>'
+     +(gift&&gift.message?'<div class="gm"><b>A NOTE FROM '+esc(String(gift.from_name||'YOUR FRIEND').split(/\s+/)[0].toUpperCase())+'</b>'+esc(gift.message)+'</div>':'')
+     +'<div class="grid"><div class="to"><b>SHIP TO</b><div class="nm">'+esc(shipName)+'</div>'+addr.map(esc).join('<br>')+'</div>'
      +'<div class="kv"><span>'+(o.manual?'SENT':'ORDERED')+'</span><em>'+esc(when(o.created))+'</em><span>PACKED</span><em>'+esc(packed.toLocaleDateString('en-US',{month:'short',day:'numeric'}))+(packer?' · '+esc(packer):'')+'</em>'+(service?'<span>SHIP VIA</span><em>'+esc(service)+'</em>':'')+'<span>ITEMS</span><em>'+u+'</em></div></div>'
      +'<div class="sec"><span>IN THIS BOX</span><span>'+u+' ITEM'+(u===1?'':'S')+'</span></div>'
      +'<table class="'+(many?'many':'')+'">'+rows+'</table>'
