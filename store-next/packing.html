@@ -603,6 +603,8 @@ function slipHTML(list){
     else footText='<b>JOIN GLOW REWARDS</b>Scan to create your free account and earn points on every order.<br>';
     // The Glow Lab app (Jonah, 14 Nov 2026): the same QR opens the store, where iPhones are shown how to add the app.
     if(!z)footText+='GET THE GLOW LAB APP: open this link on your phone, tap Share, then Add to Home Screen.<br>';
+    // Mystery gift (Jonah, 18 Nov 2026): every Glow slip's QR is its own one-time gift box with bonus points (unbox.cjs).
+    if(!z&&o.unbox_key){footUrl='https://glowglps.com/store-next/unbox/'+o.unbox_key;footText='<b>SCAN TO OPEN YOUR MYSTERY GIFT</b>Every box has bonus Glow Points inside: 50, 100 or the 250 jackpot. Scan it with your phone camera.<br>'}
     var addr=[c.address,c.address2,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
     return '<section class="slip">'
      +'<div class="hd">'+(z?'':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>'

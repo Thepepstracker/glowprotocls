@@ -5,7 +5,7 @@ const TYPES={'.webmanifest':'application/manifest+json','.mp3':'audio/mpeg','.ht
 const security={'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Cache-Control':'no-store'};
 async function body(req,limit){const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>limit)throw Object.assign(new Error('Request too large'),{status:413});chunks.push(chunk)}return Buffer.concat(chunks).toString('utf8')}
 function publicFile(p){
- if(p==='/'||p==='/store-next'||p==='/store-next/'||/^\/store-next\/(?:profile\/[a-z0-9-]+|p\/[a-z0-9-]{1,80}|registry\/[a-z0-9]{10}|[a-z0-9-]+)\/?$/.test(p)&&!p.includes('/merch'))return 'store-next/index.html';
+ if(p==='/'||p==='/store-next'||p==='/store-next/'||/^\/store-next\/(?:profile\/[a-z0-9-]+|p\/[a-z0-9-]{1,80}|registry\/[a-z0-9]{10}|unbox\/[A-Za-z0-9._-]{10,40}|[a-z0-9-]+)\/?$/.test(p)&&!p.includes('/merch'))return 'store-next/index.html';
  if(/^\/store-next\/merch\/?$/.test(p))return 'store-next/merch.html';
  const rel=p.replace(/^\//,'');
  if(rel.split('/').some(x=>!x||x.startsWith('.')||x==='..'))return null;
@@ -35,7 +35,7 @@ function shareCard(html,p){if(!/^\/store-next\/account\/?$/.test(p)||!html.inclu
 // Glow Lab customer app (Jonah, 14 Nov 2026: "now lets make one for everyone"). On the Glow store pages (not Management):
 // the app manifest, launch screens and full-screen mode. A customer who adds it from an affiliate's store keeps that store
 // (the manifest's start page is that store), so the affiliate keeps the credit.
-const STORE_APP_PAGE=/^\/(?:store-next\/?)?$|^\/store-next\/(?:account|merch|p\/[a-z0-9-]{1,80}|registry\/[a-z0-9]{10}|[a-z0-9-]{1,60})\/?$/;
+const STORE_APP_PAGE=/^\/(?:store-next\/?)?$|^\/store-next\/(?:account|merch|p\/[a-z0-9-]{1,80}|registry\/[a-z0-9]{10}|unbox\/[A-Za-z0-9._-]{10,40}|[a-z0-9-]{1,60})\/?$/;
 function storeApp(html,p){if(!STORE_APP_PAGE.test(p)||/^\/store-next\/admin\/?$/.test(p)||!html.includes('</head>')||html.includes('rel="manifest"'))return html;
  const slug=(p.match(/^\/store-next\/([a-z0-9-]{1,60})\/?$/)||[])[1],s=slug&&!['account','merch'].includes(slug)?'?s='+slug:'';
  return html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">')

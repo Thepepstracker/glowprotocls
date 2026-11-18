@@ -64,6 +64,7 @@ async function run(b,h,{session,moveStock,audit}){const key=String(b.key||'').re
   if(o.customer_id&&o.is_test===false){if(p.points>0){await accounts.event(s,o.customer_id,'refund:'+o.id+':'+key,'refund',-p.points,0,o.id,'Order refunded'+(p.full?'':' in part'));o.points_earned=Math.max(0,(o.points_earned||0)-p.points)}
    if(p.redeemed>0){await accounts.event(s,o.customer_id,'refund-spent:'+o.id+':'+key,'refund',p.redeemed,0,o.id,'Points spent on a refunded order, given back');o.points_redeemed_returned=p.redeemed}}
   if(p.full&&o.gift)await require('./gift-registry.cjs').unthank(s,o,accounts.event,':'+key,'Gift order refunded'); // gift list thank-you points
+  if(p.full&&o.unbox)await require('./unbox.cjs').takeBack(s,o,accounts.event,'Order refunded: mystery gift points taken back');
   // Stock: everything for a full refund whose box never went; otherwise only what was ticked.
   const back=p.full&&!p.gone?o.items.map(i=>({...i})):[];if(!p.full&&Array.isArray(b.restock))for(const x of b.restock){const line=o.items.find(i=>i.id===Number(x.id));const q=Math.min(Number(x.quantity)||0,line?.quantity||0);if(line&&q>0)back.push({...line,quantity:q})}
   for(const l of back)await moveStock(s,l,1);if(back.length)r.restocked=back.map(l=>({id:l.id,name:l.name,quantity:l.quantity}));

@@ -261,6 +261,12 @@
   to = "/store-next/index.html"
   status = 200
 
+# Mystery gift QR on the packing slip (18 Nov 2026): /store-next/unbox/<order>.<code>.
+[[redirects]]
+  from = "/store-next/unbox/:code"
+  to = "/store-next/index.html"
+  status = 200
+
 # Gift lists (18 Nov 2026): /store-next/registry/<list>.
 [[redirects]]
   from = "/store-next/registry/:list"
