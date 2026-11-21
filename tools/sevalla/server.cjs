@@ -1,7 +1,7 @@
 'use strict';
 const http=require('node:http'),fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
 const ROOT=path.resolve(__dirname,'../..');
-const TYPES={'.webmanifest':'application/manifest+json','.mp3':'audio/mpeg','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ico':'image/x-icon','.txt':'text/plain; charset=utf-8','.xml':'application/xml','.pdf':'application/pdf'};
+const TYPES={'.webmanifest':'application/manifest+json','.mp3':'audio/mpeg','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.svg':'image/svg+xml','.webp':'image/webp','.ico':'image/x-icon','.txt':'text/plain; charset=utf-8','.xml':'application/xml','.pdf':'application/pdf','.woff2':'font/woff2'};
 const security={'X-Content-Type-Options':'nosniff','X-Frame-Options':'DENY','Referrer-Policy':'no-referrer','Cache-Control':'no-store'};
 async function body(req,limit){const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>limit)throw Object.assign(new Error('Request too large'),{status:413});chunks.push(chunk)}return Buffer.concat(chunks).toString('utf8')}
 function publicFile(p){
@@ -41,6 +41,17 @@ function storeApp(html,p){if(!STORE_APP_PAGE.test(p)||/^\/store-next\/admin\/?$/
  return html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">')
   .replace('</head>','<link rel="manifest" href="/store-next/app.webmanifest'+s+'"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Glow Lab"><meta name="apple-mobile-web-app-status-bar-style" content="default">'+SPLASH+'</head>')}
 const SPLASH='<link rel="apple-touch-startup-image" href="/img/app/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"><link rel="apple-touch-startup-image" href="/img/app/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">';
+// Zader Health app (Jonah, 19 Nov 2026: "make the app for zader health to be just like glow lab"): on zaderhealth.com store
+// pages, the same full-screen app with Zader's own name, icon (img/zader/app) and navy launch screens.
+const ZADER_SPLASH=()=>SPLASH.replace(/\/img\/app\/splash-/g,'/img/zader/app/splash-');
+function zaderApp(html){if(!html.includes('</head>')||html.includes('rel="manifest"'))return html;
+ return html.replace('<meta name="viewport" content="width=device-width,initial-scale=1">','<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">')
+  .replace('<link rel="apple-touch-icon" href="/img/zader/apple-touch-icon.png">','<link rel="apple-touch-icon" href="/img/zader/app/zader-app-180.png">')
+  .replace('</head>','<link rel="manifest" href="/store-next/app.webmanifest"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Zader Health"><meta name="apple-mobile-web-app-status-bar-style" content="black">'+ZADER_SPLASH()+'</head>')}
+function zaderManifest(q){const s=/^[a-z0-9-]{1,60}$/.test(q||'')&&!['admin','account','merch'].includes(q)?q:'';
+ return JSON.stringify({name:'Zader Health',short_name:'Zader',description:'Shop Zader Health, track your orders and use your Zader Points.',id:'/store-next/',start_url:'/store-next/'+(s?s:'')+'?app=1',scope:'/',display:'standalone',background_color:'#031628',theme_color:'#031628',
+  icons:[{src:'/img/zader/app/zader-app-192.png',sizes:'192x192',type:'image/png'},{src:'/img/zader/app/zader-app-512.png',sizes:'512x512',type:'image/png'},{src:'/img/zader/app/zader-app-maskable-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}],
+  shortcuts:[{name:'My account',url:'/store-next/account?app=1'},{name:'Bag',url:'/store-next/'+(s?s:'')+'?app=1#bag'}]})}
 function storeManifest(q){const s=/^[a-z0-9-]{1,60}$/.test(q||'')&&!['admin','account','merch'].includes(q)?q:'';
  return JSON.stringify({name:'Glow Lab',short_name:'Glow Lab',description:'Shop Glow Lab Protocols, track your orders and use your Glow Points.',id:'/store-next/',start_url:'/store-next/'+(s?s:'')+'?app=1',scope:'/store-next/',display:'standalone',background_color:'#faf7f2',theme_color:'#faf7f2',
   icons:[{src:'/img/store-app-192.png',sizes:'192x192',type:'image/png'},{src:'/img/store-app-512.png',sizes:'512x512',type:'image/png'},{src:'/img/store-app-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'}],
@@ -71,9 +82,10 @@ function createServer({apiHandler,webhook,ready=async()=>true,transform=async ht
   if(ZADER_HOSTS.has(host)){
    if(host==='www.zaderhealth.com')return send(301,'',undefined,{Location:'https://zaderhealth.com'+url.pathname+url.search});
    let zp;try{zp=decodeURIComponent(url.pathname)}catch{return send(400,'Invalid path')}
+   if(zp==='/store-next/app.webmanifest')return send(200,zaderManifest(url.searchParams.get('s')),'application/manifest+json',{'Cache-Control':'no-cache'});
    const z=zaderRoute(zp);
    if(z?.redirect)return send(301,'',undefined,{Location:z.redirect});
-   if(z?.file){const data=await fs.readFile(path.join(ROOT,z.file));const type=TYPES[path.extname(z.file)];return send(200,type.startsWith('text/html')?data.toString():data,type)}
+   if(z?.file){const data=await fs.readFile(path.join(ROOT,z.file));const type=TYPES[path.extname(z.file)];return send(200,type.startsWith('text/html')?(z.file==='store-next/zader.html'?zaderApp(data.toString()):data.toString()):data,type)}
   }
   const redirects={'/index.html':'/store-next/','/checkout.html':'/store-next/','/checkout':'/store-next/','/cart':'/store-next/','/shop':'/store-next/','/my-account':'/store-next/account','/account':'/store-next/account'};
   if(redirects[url.pathname])return send(302,'',undefined,{Location:redirects[url.pathname]});
@@ -123,4 +135,4 @@ async function start(){
  for(const sig of ['SIGTERM','SIGINT'])process.once(sig,()=>{server.close(()=>probe.end().finally(()=>process.exit(0)));setTimeout(()=>process.exit(1),15000).unref()});
 }
 if(require.main===module)start().catch(e=>{console.error(e.message);process.exitCode=1});
-module.exports={createServer,publicFile,zaderRoute,shareCard,adminApp,storeApp,storeManifest};
+module.exports={createServer,publicFile,zaderRoute,shareCard,adminApp,storeApp,storeManifest,zaderApp,zaderManifest};

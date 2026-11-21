@@ -55,3 +55,70 @@ html:has(body.brand-zader){background:#021221}.brand-zader footer{margin-bottom:
 .brand-zader #products .card>.bottom{grid-area:bottom;align-self:end;margin-top:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
 .brand-zader #products .card>.product-more-photos{display:none}
 }
+/* Zader Health app (19 Nov 2026): tab bar, "get the app" bar, member card and scanner in Zader navy and teal. */
+.brand-zader .sa-tabbar{background:rgba(3,22,40,.94);border-top-color:#ffffff1f}
+.brand-zader .sa-tabbar.sa-four{grid-template-columns:repeat(4,1fr)}
+.brand-zader .sa-tabbar a,.brand-zader.app-mode-store .sa-tabbar button,.app-mode-store .brand-zader .sa-tabbar button,.brand-zader .sa-tabbar button{background:none!important;color:#8fa6b8;box-shadow:none}
+.brand-zader .sa-tabbar .on{color:#f4f6f9!important}
+.brand-zader .sa-tabbar .on svg{stroke:#03b9d5}
+.brand-zader .sa-badge{background:#03b9d5;color:#021221}
+.brand-zader .sa-get{background:#071e33;border-color:#ffffff26;color:#f4f6f9;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.brand-zader .sa-get small{color:#b8c6d2}
+.brand-zader .sa-share{border-color:#ffffff40}
+.brand-zader .sa-get .sa-x{background:none;color:#8fa6b8}
+.brand-zader .gc-wrap .gc:not(.gc-vip){box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.brand-zader .gc-top img{object-fit:contain}
+.brand-zader .gc-vip{background:radial-gradient(120% 140% at 85% 0%,#0d4a6b 0%,#062238 45%,#020d18 100%);color:#e6f8fb;border-color:rgba(3,185,213,.5)}
+.brand-zader .gc-chip-lv{background:rgba(3,185,213,.14);border-color:rgba(3,185,213,.55);color:#7fe3f0}
+.brand-zader .gc-chip-vip{background:linear-gradient(135deg,#7fe3f0,#03b9d5);color:#021221;border-color:#7fe3f0}
+.brand-zader .gc-bar{background:rgba(255,255,255,.18)}
+.brand-zader .gc-perks{background:#071e33;color:#e6f8fb;border-color:rgba(3,185,213,.4)}
+.brand-zader .gc-perks-h{color:#55d4e2}
+.brand-zader .gc-howvip{color:#b8c6d2}
+.brand-zader .gc-act{background:#071e33!important;color:#f4f6f9!important;border-color:#ffffff26!important}
+.brand-zader .scan-type button{background:#03b9d5;color:#021221}
+
+/* Zader mystery gift page (19 Nov 2026): the same gift box and effects as Glow, with the gold turned to Zader teal. */
+.brand-zader .ub{position:fixed;inset:0;z-index:200;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;color:#fff;text-align:center;background:radial-gradient(80% 55% at 50% 42%,#0f343b 0%,#071416 55%,#040707 100%);padding:calc(14px + env(safe-area-inset-top)) 20px calc(84px + env(safe-area-inset-bottom))}
+.brand-zader .ub-spot{position:fixed;left:50%;top:-4vh;width:120vw;height:78vh;transform:translateX(-50%);pointer-events:none;clip-path:polygon(43% 0,57% 0,88% 100%,12% 100%);background:linear-gradient(to bottom,rgba(190,244,255,.20),rgba(190,244,255,.05) 70%,transparent);filter:blur(14px);animation:ub-spot 6s ease-in-out infinite alternate}
+.brand-zader .ub-flash{position:fixed;inset:0;z-index:5;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 42%,#f4fdff 0%,rgba(200,246,255,.85) 30%,rgba(150,237,255,0) 70%)}
+.brand-zader .ub-top{position:relative;z-index:6;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--serif);letter-spacing:.32em;font-size:15px;color:#9ae6f5}
+.brand-zader .ub-top img{border-radius:9px;box-shadow:0 0 18px rgba(154,230,245,.35)}
+.brand-zader .ub-kicker{margin:0;color:#88dbeb;font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase}
+.brand-zader .ub-hint{margin:0;font-weight:800;color:#9ae6f5;letter-spacing:.04em;animation:ub-pulse 1.6s ease-in-out infinite}
+.brand-zader .ub-box:focus-visible{outline:2px solid #9ae6f5;outline-offset:-10px;border-radius:24px}
+.brand-zader .ub-f{position:absolute;display:block;--rib:linear-gradient(90deg,transparent 40.5%,#1a6c7c 40.5%,#a6eaf8 44%,#63c8dc 47%,#c9f6ff 50%,#48b6cc 53%,#a6eaf8 56%,#1a6c7c 59.5%,transparent 59.5%);
+ background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.10) 44%,transparent 56%) 0 0/300% 100%,var(--rib),radial-gradient(circle at 30% 20%,rgba(72,182,204,.18) 0 1px,transparent 1.5px) 0 0/9px 9px,linear-gradient(165deg,#2b2b2e 0%,#151517 45%,#08080a 100%);box-shadow:inset 0 0 0 1.5px rgba(136,219,235,.45),inset 0 -18px 30px rgba(0,0,0,.45);animation:ub-sheen 5s ease-in-out infinite}
+.brand-zader .ub-bow i{position:absolute;bottom:6px;width:52px;height:42px;box-sizing:border-box;border:9px solid;border-color:#c9f6ff #48b6cc #217b8d #88dbeb;border-radius:55% 55% 45% 45%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+.brand-zader .ub-bow b{position:absolute;left:44px;bottom:2px;width:24px;height:20px;border-radius:7px;background:radial-gradient(circle at 35% 30%,#c9f6ff,#48b6cc 60%,#1a6c7c)}
+.brand-zader .ub-halo{position:absolute;pointer-events:none;left:50%;top:170px;width:320px;height:320px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(154,230,245,.5),rgba(72,182,204,.16) 42%,transparent 68%);animation:ub-breathe 2.6s ease-in-out infinite;transition:filter .4s}
+.brand-zader .ub-rays{position:absolute;pointer-events:none;left:50%;top:150px;width:640px;height:640px;transform:translate(-50%,-50%) scale(.3);border-radius:50%;opacity:.14;background:repeating-conic-gradient(from 0deg,rgba(190,244,255,.55) 0 6deg,transparent 6deg 20deg);-webkit-mask:radial-gradient(circle,#000 12%,transparent 66%);mask:radial-gradient(circle,#000 12%,transparent 66%);animation:ub-spin 40s linear infinite;transition:opacity .6s,transform 1s cubic-bezier(.2,.9,.3,1)}
+.brand-zader .ub-beam{position:absolute;z-index:2;mix-blend-mode:screen;pointer-events:none;left:50%;bottom:172px;width:150px;height:560px;margin-left:-75px;transform-origin:50% 100%;transform:scaleY(0) scaleX(.4);opacity:0;background:linear-gradient(to top,rgba(232,251,255,.95),rgba(154,230,245,.55) 35%,rgba(154,230,245,0));filter:blur(9px);border-radius:50% 50% 30% 30%;transition:transform .7s cubic-bezier(.2,.9,.2,1),opacity .4s}
+.brand-zader .ub-ring{position:absolute;z-index:2;pointer-events:none;left:50%;top:150px;width:80px;height:80px;margin:-40px 0 0 -40px;border-radius:50%;border:3px solid rgba(200,246,255,.95);box-shadow:0 0 30px rgba(154,230,245,.8),inset 0 0 20px rgba(154,230,245,.6);opacity:0;transform:scale(0)}
+.brand-zader .ub-boxwrap.is-charging .ub-lid .ub-f{box-shadow:inset 0 0 0 1.5px rgba(200,246,255,.9),0 12px 26px rgba(120,232,255,.95)}
+.brand-zader .ub-tier{display:inline-block;padding:6px 16px;border-radius:999px;background:rgba(6,18,20,.7);border:1px solid rgba(154,230,245,.6);color:#9ae6f5;font-weight:900;letter-spacing:.16em;font-size:13px;text-transform:uppercase;box-shadow:0 0 24px rgba(154,230,245,.25);animation:ub-stamp .55s .55s cubic-bezier(.2,1.6,.4,1) both}
+.brand-zader .ub-num{display:flex;align-items:flex-start;justify-content:center;margin-top:6px;font-family:var(--serif);font-weight:700;font-size:clamp(76px,23vw,112px);line-height:1;filter:drop-shadow(0 0 22px rgba(154,230,245,.35))}
+.brand-zader .ub-plus,.brand-zader .ub-dg span,.brand-zader .ub-dg.static{background:linear-gradient(180deg,#eafbff 8%,#9ae6f5 46%,#48b6cc 82%,#2b8b9f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand-zader .ub-p250 .ub-plus,.brand-zader .ub-p250 .ub-dg span,.brand-zader .ub-p250 .ub-dg.static{background:linear-gradient(100deg,#c9f6ff 0%,#9ae6f5 20%,#f2fdff 32%,#48b6cc 48%,#a6eaf8 64%,#f2fdff 76%,#48b6cc 100%) 0 0/250% 100%;-webkit-background-clip:text;background-clip:text;animation:ub-shimmer 2.2s linear infinite}
+.brand-zader .ub-p250 .ub-tier{background:linear-gradient(90deg,#a6eaf8,#48b6cc,#a6eaf8);color:#1b1b1b;border:0;font-size:15px;box-shadow:0 0 34px rgba(154,230,245,.7)}
+.brand-zader .ub-unit{font-size:15px;font-weight:900;letter-spacing:.32em;text-transform:uppercase;color:#9ae6f5;margin-top:2px}
+.brand-zader .ub-card{position:relative;z-index:5;width:100%;margin-top:24px;padding:18px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.04));border:1px solid rgba(154,230,245,.25);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);text-align:left;animation:ub-up .6s cubic-bezier(.2,1.2,.4,1) both}
+.brand-zader .ub-card strong{color:#9ae6f5}
+.brand-zader .ub-btn{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;border-radius:14px;background:linear-gradient(180deg,#a6eaf8,#48b6cc);color:#1b1b1b!important;font-weight:900;font-size:16px;text-decoration:none;border:0;cursor:pointer;box-shadow:0 8px 24px rgba(72,182,204,.35)}
+.brand-zader .ub-arrow{position:fixed;z-index:7;left:50%;bottom:calc(6px + env(safe-area-inset-bottom));transform:translateX(-50%);font-size:34px;color:#9ae6f5;animation:ub-bounce 1.1s ease-in-out infinite;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.brand-zader .ub-link{position:relative;z-index:5;display:inline-block;margin-top:20px;color:#9ae6f5!important;font-weight:800;text-decoration:none}
+/* Zader app header (full-screen app) and the level ladder labels on the dark account page. */
+.app-mode-store body.brand-zader>header{background:rgba(3,22,40,.95);border-bottom-color:#ffffff1f}
+.brand-zader .lv-stop{color:#8fa6b8}
+.brand-zader .lv-stop.on{color:#f4f6f9}
+.brand-zader .lv-bday p{color:#b8c6d2}
+.brand-zader .lv-tile-h em{background:#03b9d5;color:#021221}
+/* Zader app opener. */
+.brand-zader .op{background:radial-gradient(120% 80% at 50% 0%,#0b3a5c 0%,#062238 50%,#031628 100%);color:#f4f6f9}
+.brand-zader .op-glow{background:radial-gradient(circle,rgba(3,185,213,.35),rgba(3,185,213,0) 65%)}
+.brand-zader .op-ic{box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.brand-zader .op-eb{color:#55d4e2}
+.brand-zader .op-h{color:#f4f6f9;font-family:'Montserrat','Inter',system-ui,sans-serif;font-weight:700}
+.brand-zader .op-h span{background:linear-gradient(180deg,#9feaf5,#03b9d5);-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand-zader .op-l li{background:rgba(255,255,255,.06);border-color:rgba(3,185,213,.35);color:#e6f8fb;box-shadow:none}
+.brand-zader .op-go{background:#03b9d5;color:#021221}

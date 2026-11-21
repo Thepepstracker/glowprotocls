@@ -560,10 +560,14 @@ function statsView(){var st=packStats(),left=orders.filter(function(o){return !i
 function toggleBig(){var on=!document.body.classList.contains('big');document.body.classList.toggle('big',on);lsSet('glp_packing_big',on);var b=document.getElementById('bigscreen');b.setAttribute('aria-pressed',String(on));b.textContent=on?'🖥️ Normal size':'🖥️ Big screen'}
 if(ls('glp_packing_big',false)){document.body.classList.add('big');setTimeout(function(){var b=document.getElementById('bigscreen');if(b){b.setAttribute('aria-pressed','true');b.textContent='🖥️ Normal size'}},0)}
 function qrSvg(text){try{var q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:3,margin:0,scalable:true})}catch(e){return ''}}
+var zaderLive=false;
+var SLIP_ICON={gift:'<svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="9" width="18" height="4" rx="1"/><path d="M5 13v8h14v-8M12 9v12"/><path d="M12 9c-1.5-3.5-6-4.5-6-2s3 2 6 2c3 0 6 .5 6-2s-4.5-1.5-6 2z"/></svg>',
+  heart:'<svg viewBox="0 0 24 24"><path fill="#000" d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 5 6.4 5c2 0 3.7 1.1 5.6 3.2C13.9 6.1 15.6 5 17.6 5 21 5 23.1 8.4 21.6 11.8 19.5 16.4 12 21 12 21z"/></svg>',
+  spark:'<svg viewBox="0 0 24 24"><path fill="#000" d="M12 1.5l2.4 7.1 7.1 2.4-7.1 2.4L12 20.5l-2.4-7.1L2.5 11l7.1-2.4z"/></svg>'};
 // 4x6 packing slip for the thermal label printer: black only, big type, every line checkable.
 function slipHTML(list){
   var CSS='@page{size:4in 6in;margin:.16in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;font-family:Arial,Helvetica,sans-serif;font-weight:700;color:#000;text-rendering:geometricPrecision}'
-   +'.slip{height:5.66in;display:flex;flex-direction:column;page-break-after:always;overflow:hidden}.slip:last-child{page-break-after:auto}'
+   +'.slip{height:5.66in;display:flex;flex-direction:column;page-break-after:always;overflow:hidden}.slip>*{flex-shrink:0}.slip:last-child{page-break-after:auto}'
    +'.hd{display:flex;align-items:center;gap:7px;padding-bottom:5px;border-bottom:4px solid #000}.mk{width:.44in;height:.38in;object-fit:contain;filter:grayscale(1) brightness(0) contrast(2)}'
    +'.wm{flex:1;line-height:1}.wm b{display:block;font-size:13px;font-weight:900;letter-spacing:.02em;white-space:nowrap}.wm i{display:block;font-style:normal;font-size:8px;font-weight:800;letter-spacing:.04em;margin-top:3px;white-space:nowrap}'
    +'.on{text-align:right;line-height:1}.on small{display:block;font-size:9px;font-weight:900;letter-spacing:.1em}.on b{display:block;font:900 13px/1.1 Arial,Helvetica,sans-serif;margin-top:2px}'
@@ -577,8 +581,20 @@ function slipHTML(list){
    +'.chk{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:900;margin-top:5px}.chk b{font-size:11px}.sig{flex:0 0 1.25in;border-bottom:2px solid #000;height:12px}'
    +'.ft{margin-top:auto;display:flex;gap:8px;align-items:center;border-top:4px solid #000;padding-top:6px}.qr{flex:0 0 .85in}.qr svg{width:.85in;height:.85in;display:block}'
    +'.fq{flex:1;font-size:10px;font-weight:800;line-height:1.3}.fq b{display:block;font-size:13px;font-weight:900;margin-bottom:2px}.fq .sm{display:block;margin-top:3px;font-size:9.5px;font-weight:800}'
-   +'.thx{margin-top:5px;text-align:center;font-size:9.5px;font-weight:900;letter-spacing:.06em}'
+   // Mystery gift ticket: one QR for both the phone camera and the Scan button in the Glow Lab app.
+   +'.tk{margin-top:auto;border:2.5px dashed #000;border-radius:9px;padding:7px 8px 6px;display:flex;gap:9px;align-items:center;position:relative}'
+   +'.tk .qr{flex:0 0 1.12in;padding:4px;border:2.5px solid #000;border-radius:6px;background:#fff}.tk .qr svg{width:100%;height:auto}'
+   +'.tt{flex:1;min-width:0;line-height:1.25}.tt .kk{display:flex;align-items:center;gap:4px;font-size:8px;font-weight:900;letter-spacing:.16em}.tt .kk svg{width:13px;height:13px}'
+   +'.tt h2{font:900 15.5px/1.05 Arial,Helvetica,sans-serif;margin:3px 0 2px;letter-spacing:-.01em}.tt p{margin:0;font-size:9.5px;font-weight:800}'
+   +'.tt ol{list-style:none;margin:5px 0 0;padding:0;display:grid;gap:2px}.tt li{display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:900}.tt li i{flex:0 0 13px;height:13px;border-radius:50%;background:#000;color:#fff;font:900 8.5px/13px Arial,Helvetica,sans-serif;text-align:center;font-style:normal}'
+   +'.tt .app{margin-top:5px;padding-top:4px;border-top:1.5px solid #000;font-size:8.5px;font-weight:800;line-height:1.3}'
+   +'.thx{margin-top:5px;text-align:center;font-size:9.5px;font-weight:900;letter-spacing:.06em}.thx span{font-weight:800;letter-spacing:0}'
    +'.gm{border:2px dashed #000;border-radius:6px;padding:5px 8px;margin:4px 0 6px;font-size:12px;font-weight:700;line-height:1.3;font-style:italic}.gm b{display:block;font-style:normal;font-size:9.5px;letter-spacing:.06em;margin-bottom:2px}'
+   // Long orders: the slip tightens itself (see fit() below) so nothing is ever cut off the 4x6 page.
+   +'.t1 .lead{font-size:9.5px}.t1 .grid{font-size:9.5px}.t1 .to .nm{font-size:11px}'
+   +'.t2 td{padding:2px}.t2 .q{font-size:12.5px}.t2 .pn{font-size:11.5px}.t2 .pd{font-size:10.5px}.t2 .tk .qr{flex-basis:.98in}.t2 .tt ol{display:none}.t2 .sec{margin-top:4px}'
+   +'.t3 .lead{display:none}.t3 .tt .app{display:none}.t3 h1{font-size:19px}'
+   +'.t4 .ins{display:none}.t4 td{padding:1px 2px}.t4 .pn{font-size:10.5px}.t4 .q{font-size:11px}.t4 .tk .qr{flex-basis:.88in}.t4 .tt p{display:none}'
    // The site's seasonal edge function adds decorations before the first closing body tag it sees; slips must stay one clean 4x6 page.
    +'.glow-season-corner,[class*=season-],[class*=glow-season]{display:none!important}';
   var slips=list.map(function(o){
@@ -589,35 +605,48 @@ function slipHTML(list){
     var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
     var packed=o.packed&&o.packed.at?new Date(o.packed.at*1000):new Date(),packer=(o.packed&&o.packed.by&&o.packed.by!=='you'&&o.packed.by!=='Owner')?String(o.packed.by):'Jonah';
     var service=(o.shipment&&o.shipment.service)||(o.tracking?carrierName(o):'');
-    // Footer: Glow orders invite the customer to their account. Points already credited say so; a guest is told how many
-    // points are waiting and that creating an account with the order email adds them (the store claims them on sign-up).
+    // Points: already credited, or waiting for a guest to make an account with the order email (claimed on sign-up).
     var acct='https://glowglps.com/store-next/account',earned=o.points_earned>0?o.points_earned:0,waiting=!(o.customer_id||o.has_account)?Math.max(0,Math.floor(((o.subtotal||0)-(o.discount||0))/100)):0;
     var worth=function(n){return '$'+(n*5/100).toFixed(2)};
     var footUrl=z?'https://'+site:acct,footText;
-    // Gift list orders (18 Nov 2026): the points belong to the buyer, so the owner's slip invites them to make their own list.
     if(gift&&!z){footUrl='https://glowglps.com/store-next/registry';footText='<b>MAKE YOUR OWN GIFT LIST</b>Scan to start a list and share it with friends. Gifts ship straight to you.<br>'}
     else if(z)footText='<b>SHOP AGAIN</b>'+esc(site)+'<br>';
     else if(earned)footText='<b>+'+esc(earned)+' GLOW POINTS ADDED</b>They are already in your account (worth '+worth(earned)+' off). Scan to see your balance and reorder.<br>';
     else if(waiting)footText='<b>CLAIM YOUR '+esc(waiting)+' GLOW POINTS</b>Worth '+worth(waiting)+' off your next order. Scan, create your free account with the email you ordered with, and they are added for you.<br>';
     else if(o.customer_id||o.has_account)footText='<b>YOUR GLOW ACCOUNT</b>Scan to see your points balance and reorder in seconds.<br>';
     else footText='<b>JOIN GLOW REWARDS</b>Scan to create your free account and earn points on every order.<br>';
-    // The Glow Lab app (Jonah, 14 Nov 2026): the same QR opens the store, where iPhones are shown how to add the app.
     if(!z)footText+='GET THE GLOW LAB APP: open this link on your phone, tap Share, then Add to Home Screen.<br>';
-    // Mystery gift (Jonah, 18 Nov 2026): every Glow slip's QR is its own one-time gift box with bonus points (unbox.cjs).
-    if(!z&&o.unbox_key){footUrl='https://glowglps.com/store-next/unbox/'+o.unbox_key;footText='<b>SCAN TO OPEN YOUR MYSTERY GIFT</b>Every box has bonus Glow Points inside: 50, 100 or the 250 jackpot. Scan it with your phone camera.<br>'}
     var addr=[c.address,c.address2,[c.city,c.state].filter(Boolean).join(', ')+(c.zip?' '+c.zip:'')].filter(function(x){return String(x||'').trim()});
-    return '<section class="slip">'
-     +'<div class="hd">'+(z?'':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>'
-     +'<h1>'+(gift?'A gift for you, ':o.manual?'Hi, ':'Thank you, ')+esc(first)+'!</h1><p class="lead">'+(gift?'Sent from your Glow Lab gift list by '+esc(gift.from_name||'a friend')+'. ':'')+(o.manual&&SN_LEAD[o.manual.reason]?SN_LEAD[o.manual.reason]+' ':'')+'Every item in this box was checked by hand, one at a time, before it was sealed.</p>'
+    var head='<div class="hd">'+(z?'<img class="mk" src="https://glowglps.com/img/zader/mark.png" alt="">':'<img class="mk" src="https://glowglps.com/img/mono-8ae0a0b7.png" alt="">')+'<div class="wm"><b>'+(z?'ZADER HEALTH':'GLOW LAB PROTOCOLS')+'</b><i>'+(z?'RESEARCH PEPTIDES &amp; COMPOUNDS':'ADVANCED PEPTIDE SCIENCE')+'</i></div><div class="on"><small>ORDER</small><b>'+esc(o.id)+'</b></div></div>';
+    var grid='<div class="grid"><div class="to"><b>SHIP TO</b><div class="nm">'+esc(shipName)+'</div>'+addr.map(esc).join('<br>')+'</div>'
+     +'<div class="kv"><span>'+(o.manual?'SENT':'ORDERED')+'</span><em>'+esc(when(o.created))+'</em><span>PACKED</span><em>'+esc(packed.toLocaleDateString('en-US',{month:'short',day:'numeric'}))+(packer?' · '+esc(packer):'')+'</em>'+(service?'<span>SHIP VIA</span><em>'+esc(service)+'</em>':'')+'<span>ITEMS</span><em>'+u+'</em></div></div>';
+    var box='<div class="sec"><span>IN THIS BOX</span><span>'+u+' ITEM'+(u===1?'':'S')+'</span></div><table class="'+(many?'many':'')+'">'+rows+'</table>';
+    // Zader (19 Nov 2026: "make the app for zader health just like glow lab ... everything, with points"): the same slip in
+    // Zader's words. Its mystery gift ticket prints once zaderhealth.com runs on this store (zaderLive, from Management data);
+    // until then the Zader footer stays "Shop again".
+    var BN=z?'Zader':'Glow',zLive=z&&zaderLive;
+    // The slip keeps its original layout (Jonah, 19 Nov 2026: "keep the same format with just new stuff"; the welcome-back
+    // touches live in the app instead). The new part is the mystery gift ticket below.
+    var hero='<h1>'+(gift?'A gift for you, ':o.manual?'Hi, ':'Thank you, ')+esc(first)+'!</h1><p class="lead">'+(gift?'Sent from your gift list by '+esc(gift.from_name||'a friend')+'. ':'')+(o.manual&&SN_LEAD[o.manual.reason]?SN_LEAD[o.manual.reason]+' ':'')+'Every item in this box was checked by hand, one at a time, before it was sealed.</p>';
+    var foot;
+    if(o.unbox_key&&(!z||zLive)){
+      // Mystery gift (Jonah, 18-19 Nov 2026): the same code works from the phone camera and from Scan in the Glow Lab app.
+      // Opening it on a phone that doesn't have the app yet shows how to add it (store-next/app.js, ubAfter).
+      foot='<div class="tk"><div class="qr">'+qrSvg('https://'+(z?'zaderhealth.com':'glowglps.com')+'/store-next/unbox/'+o.unbox_key)+'</div><div class="tt">'
+       +'<div class="kk">'+SLIP_ICON.gift+'A LITTLE SURPRISE FOR YOU</div><h2>OPEN YOUR MYSTERY GIFT</h2><p>50, 100 or the 250 jackpot: bonus '+BN+' Points are hiding inside.</p>'
+       +'<ol><li><i>1</i>Open your phone camera</li><li><i>2</i>Point it at this code</li><li><i>3</i>Tap the link and open your box</li></ol>'
+       +'<div class="app">Have the '+(z?'Zader Health':'Glow Lab')+' app? Tap <b>Scan</b> in the app. No app yet? Your gift page shows you how to add it.</div></div></div>';
+    }else foot='<div class="ft"><div class="qr">'+qrSvg(footUrl)+'</div><div class="fq">'+footText+(mail?'<span class="sm">Questions? '+esc(mail)+'</span>':'')+'</div></div>';
+    return '<section class="slip">'+head+hero
      +(gift&&gift.message?'<div class="gm"><b>A NOTE FROM '+esc(String(gift.from_name||'YOUR FRIEND').split(/\s+/)[0].toUpperCase())+'</b>'+esc(gift.message)+'</div>':'')
-     +'<div class="grid"><div class="to"><b>SHIP TO</b><div class="nm">'+esc(shipName)+'</div>'+addr.map(esc).join('<br>')+'</div>'
-     +'<div class="kv"><span>'+(o.manual?'SENT':'ORDERED')+'</span><em>'+esc(when(o.created))+'</em><span>PACKED</span><em>'+esc(packed.toLocaleDateString('en-US',{month:'short',day:'numeric'}))+(packer?' · '+esc(packer):'')+'</em>'+(service?'<span>SHIP VIA</span><em>'+esc(service)+'</em>':'')+'<span>ITEMS</span><em>'+u+'</em></div></div>'
-     +'<div class="sec"><span>IN THIS BOX</span><span>'+u+' ITEM'+(u===1?'':'S')+'</span></div>'
-     +'<table class="'+(many?'many':'')+'">'+rows+'</table>'
+     +grid+box
      +'<div class="chk"><span><b>☐ All '+u+' checked</b></span><span>Packed by <b>'+esc(packer)+'</b></span></div>'
-     +'<div class="ft"><div class="qr">'+qrSvg(footUrl)+'</div><div class="fq">'+footText+(mail?'<span class="sm">Questions? '+esc(mail)+'</span>':'')+'</div></div>'
-     +'<div class="thx">'+(z?'THANK YOU FOR CHOOSING ZADER HEALTH':'THANK YOU FOR GLOWING WITH US')+'</div></section>'}).join('');
-  return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style><\/head><body>'+slips+'<\/body><\/html>';
+     +foot
+     +'<div class="thx">'+(z?'THANK YOU FOR CHOOSING ZADER HEALTH · <span>Call or text 943-241-8176</span>':'THANK YOU FOR GLOWING WITH US · <span>'+esc(mail)+'</span>')+'</div></section>'}).join('');
+  // fit(): if a slip runs past the 4x6 page, step through t1..t4 (each a little tighter) until it fits. It runs right away
+  // and again once the script font is ready; window.__fit lets the print step wait for it.
+  var FIT='<script>(function(){function fit(){var s=document.querySelectorAll(".slip");for(var i=0;i<s.length;i++){var el=s[i];el.classList.remove("t1","t2","t3","t4");["t1","t2","t3","t4"].forEach(function(c){if(el.scrollHeight>el.clientHeight+1)el.classList.add(c)})}}fit();window.__fit=(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(fit,fit)})()<\/script>';
+  return '<!doctype html><html><head><meta charset="utf-8"><title>Packing slips</title><style>'+CSS+'</style><\/head><body>'+slips+FIT+'<\/body><\/html>';
 }
 // Printed or not (Jonah, 9 Nov 2026): every label and packing slip printed from this page is recorded on the server, so
 // every computer sees the same ✓ Printed / Not printed on each order. See print-log.cjs.
@@ -636,7 +665,7 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
 function printSlips(list){
   var w=window.open('','_blank');if(!w){toast('Allow pop-ups for this site to print slips');return}
   logPrint(list.filter(function(o){return !o.replacement}).map(function(o){return o.id}),'slip','browser');
-  w.document.write(slipHTML(list).replace('<\/body>','<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script><\/body>'));
+  w.document.write(slipHTML(list).replace('<\/body>','<script>window.onload=function(){(window.__fit||Promise.resolve()).then(function(){setTimeout(function(){window.print()},250)})}<\/script><\/body>'));
   w.document.close();
 }
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show')},2600)}
@@ -996,7 +1025,7 @@ function fetchOrders(quiet){
   }).then(function(d){
     var before={};orders.forEach(function(o){before[o.id]=1});var hadData=lastLoad>0;
     all=d.orders||[];products=d.products||[];byId={};products.forEach(function(p){byId[p.id]=p});
-    manuals=d.manual_shipments||[];var firstCfg=!shippoCfg.parcel;shippoCfg=d.shippo||{};if(firstCfg&&!sn.boxEdited)snBox(true);orders=all.filter(needsPacking).concat(replacementCards(all)).concat(manualCards(manuals)).sort(function(a,b){return ((a.member_priority===true&&!a.replacement?0:1)-(b.member_priority===true&&!b.replacement?0:1))||((a.paid||a.created||0)-(b.paid||b.created||0))});
+    zaderLive=d.zader_app_live===true;manuals=d.manual_shipments||[];var firstCfg=!shippoCfg.parcel;shippoCfg=d.shippo||{};if(firstCfg&&!sn.boxEdited)snBox(true);orders=all.filter(needsPacking).concat(replacementCards(all)).concat(manualCards(manuals)).sort(function(a,b){return ((a.member_priority===true&&!a.replacement?0:1)-(b.member_priority===true&&!b.replacement?0:1))||((a.paid||a.created||0)-(b.paid||b.created||0))});
     var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);var ks={};orders.forEach(function(o){if(skipped[o.id])ks[o.id]=skipped[o.id]});skipped=ks;saveSkip();
     var fresh=hadData?orders.filter(function(o){return !before[o.id]}):[];
     if(!hadData){orders.forEach(function(o){seen[o.id]=1});lsSet(SEEN,seen)}

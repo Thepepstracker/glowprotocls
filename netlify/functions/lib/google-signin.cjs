@@ -111,7 +111,7 @@ async function finish(body, h, fetchImpl = fetch) {
     // The window that started this (it holds the nonce) is signed in now; nothing is left to claim.
     if (body.nonce && same(r.nonce_hash, sha(body.nonce))) r.claimed = now();
     await s.put(COL, id, r);
-    return {status: 200, headers: {'Set-Cookie': await accounts.newSession(s, a)}, body: {...await accounts.accountData(s, a), back: r.back}};
+    return {status: 200, headers: {'Set-Cookie': await accounts.newSession(s, a)}, body: {...await accounts.accountData(s, a, require('./brands.cjs').fromHeaders(h).id), back: r.back}};
   });
 }
 
@@ -128,7 +128,7 @@ async function claim(body, h) {
     const a = await s.get('customers', r.customer_id);
     if (!a?.verified || a.auth_version !== r.auth_version) fail('Please sign in again.', 403);
     r.claimed = now(); await s.put(COL, id, r);
-    return {status: 200, headers: {'Set-Cookie': await accounts.newSession(s, a)}, body: {...await accounts.accountData(s, a), back: r.back}};
+    return {status: 200, headers: {'Set-Cookie': await accounts.newSession(s, a)}, body: {...await accounts.accountData(s, a, require('./brands.cjs').fromHeaders(h).id), back: r.back}};
   });
 }
 

@@ -17,7 +17,7 @@ test('a code belongs to one order and cannot be guessed or moved',()=>{
  assert.equal(unbox.parse(k),'GLP-AAAAAAAAA1');
  assert.equal(unbox.parse('GLP-AAAAAAAAA2.'+k.split('.')[1]),null,'same code on another order fails');
  assert.equal(unbox.parse(k.slice(0,-1)+(k.endsWith('A')?'B':'A')),null,'a changed code fails');
- assert.equal(unbox.key({id:'ZDR-AAAAAAAAA1',brand:'zader'}),null,'Zader has no Glow Points');
+ assert.match(unbox.key({id:'ZDR-AAAAAAAAA1',brand:'zader'}),/^ZDR-/,'Zader has points too since 19 Nov 2026 (shown as Zader Points)');assert.equal(unbox.key({id:'PEP-AAAAAAAAA1',brand:'peppuppy'}),null,'Pep Puppy has no points');
 });
 
 test('the prize draw is 50 / 100 / 250 at about 75 / 20 / 5 percent',()=>{const n={50:0,100:0,250:0};for(let i=0;i<20000;i++)n[unbox.draw()]++;
@@ -59,7 +59,7 @@ test('a test order opens but adds no real points; a full refund takes real ones 
 test('Management data gives the slip its code; the packing slip and live server use it',async()=>{
  const lg=await call('/admin/login',{password:process.env.STORE_ADMIN_PASSWORD});assert.ok(lg.headers,JSON.stringify(lg.body));const owner=lg.headers['Set-Cookie'].split(';')[0];
  const d=(await call('/admin/data',undefined,owner)).body;const o=d.orders.find(x=>x.id==='GLP-AAAAAAAAA1');assert.equal(o.unbox_key,unbox.key({id:'GLP-AAAAAAAAA1'}));assert.ok(o.unbox.prize);
- const pack=fs.readFileSync(path.join(__dirname,'../../store-next/packing.html'),'utf8');assert.ok(pack.includes("'https://glowglps.com/store-next/unbox/'+o.unbox_key"));
+ const pack=fs.readFileSync(path.join(__dirname,'../../store-next/packing.html'),'utf8');assert.ok(pack.includes("(z?'zaderhealth.com':'glowglps.com')+'/store-next/unbox/'+o.unbox_key"));
  const app=fs.readFileSync(path.join(__dirname,'../../store-next/app.js'),'utf8');for(const s of ['function loadUnbox','function ubOpen',"loadUnbox()"])assert.ok(app.includes(s),s);
  assert.equal(require('../../tools/sevalla/server.cjs').publicFile('/store-next/unbox/'+unbox.key({id:'GLP-AAAAAAAAA1'})),'store-next/index.html');
 });

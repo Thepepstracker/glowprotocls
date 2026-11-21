@@ -1547,3 +1547,24 @@ html.scan-lock,html.scan-lock body{overflow:hidden}
 @media (max-width:360px){.ub-boxwrap{transform:scale(.88);margin-top:-10px;margin-bottom:-20px}}
 @media (prefers-reduced-motion:reduce){.ub-scene,.ub-cube,.ub-halo,.ub-hint,.ub-spot,.ub-f,.ub-rays,.ub-arrow,.ub-shadow,.ub-btn::after,.ub-p250 .ub-dg.static,.ub-tier{animation:none!important}.ub-lid,.ub-beam,.ub-strip{transition:none!important}.ub-prize,.ub-card,.ub-app{animation:none}}
 .ub-box,.ub-box:hover,.ub-box:focus,.ub-box:active,.ub-box:disabled,.ub-box[disabled]{background:none!important;box-shadow:none!important;border:0!important;opacity:1!important;transform:none!important;filter:none!important;color:inherit!important}
+/* App opener (19 Nov 2026): a short hello when a signed-in customer opens the app. */
+@font-face{font-family:GlowHello;src:url(/store-next/vendor/fonts/pacifico-latin-400.woff2) format("woff2");font-display:swap}
+.op-lock,.op-lock body{overflow:hidden}
+.op{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;padding:24px 28px calc(24px + env(safe-area-inset-bottom));background:radial-gradient(120% 80% at 50% 0%,#fffaf0 0%,#f6efe1 55%,#efe4cf 100%);color:#1b1b1b;text-align:center;animation:op-in .45s ease both;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.op-out{animation:op-out .42s ease forwards}
+.op-glow{position:absolute;left:50%;top:22%;width:360px;height:360px;margin-left:-180px;border-radius:50%;background:radial-gradient(circle,rgba(201,162,75,.32),rgba(201,162,75,0) 65%);animation:op-breathe 3.2s ease-in-out infinite;pointer-events:none}
+.op-in{position:relative;max-width:420px;width:100%}
+.op-ic{width:68px;height:68px;border-radius:17px;box-shadow:0 10px 30px rgba(120,90,30,.22);animation:op-pop .6s cubic-bezier(.2,1.4,.4,1) .05s both}
+.op-eb{margin-top:20px;font:800 11.5px/1.2 Inter,system-ui,sans-serif;letter-spacing:.24em;color:#9c7a2e;animation:op-up .5s ease .2s both}
+.op-h{margin:10px 0 0;font:600 30px/1.15 var(--serif,Georgia,serif);color:#1b1b1b;animation:op-up .55s ease .3s both}
+.op-h span{display:inline-block;margin-top:4px;font:400 50px/1.25 GlowHello,'Snell Roundhand',cursive;background:linear-gradient(180deg,#c9a24b,#9c7a2e);-webkit-background-clip:text;background-clip:text;color:transparent;padding:0 6px 6px}
+.op-l{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:10px}
+.op-l li{display:flex;align-items:center;gap:10px;text-align:left;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(201,162,75,.3);font:600 15px/1.35 Inter,system-ui,sans-serif;color:#2a2418;box-shadow:0 6px 18px rgba(120,90,30,.08);animation:op-up .5s ease calc(.55s + var(--i)*.14s) both}
+.op-l li i{font-style:normal;font-size:22px;flex:0 0 28px;text-align:center}
+.op-go{margin-top:22px;min-width:180px;border-radius:999px;padding:14px 28px;background:#141414;color:#fff;font:700 16px Inter,system-ui,sans-serif;border:0;animation:op-up .5s ease .9s both}
+@keyframes op-in{from{opacity:0}to{opacity:1}}
+@keyframes op-out{to{opacity:0;transform:scale(1.03)}}
+@keyframes op-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes op-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+@keyframes op-breathe{0%,100%{transform:scale(.92);opacity:.8}50%{transform:scale(1.06);opacity:1}}
+@media(prefers-reduced-motion:reduce){.op,.op *{animation:none!important}}

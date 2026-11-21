@@ -13,11 +13,12 @@ const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs');
 const now=()=>Math.floor(Date.now()/1000);
 const bad=(m,status=400)=>{throw Object.assign(new Error(m),{status})};
 const PRIZES=[[75,50],[20,100],[5,250]];
-const TOKEN=/^((?:GLP)-[A-F0-9]{10})\.([A-Za-z0-9_-]{12})$/;
+const TOKEN=/^((?:GLP|ZDR)-[A-F0-9]{10})\.([A-Za-z0-9_-]{12})$/;
 function secret(){const s=process.env.STORE_SESSION_SECRET||'';if(s.length<32)bad('Mystery gifts are not set up yet.',503);return s}
 function sig(id){return crypto.createHmac('sha256',secret()).update('unbox:'+id).digest('base64url').slice(0,12)}
-// The slip's code for an order (Management only). Glow orders only: Zader and Pep Puppy have no Glow Points.
-function key(o){if(!o||!/^GLP-[A-F0-9]{10}$/.test(String(o.id||''))||(o.brand&&o.brand!=='glow'))return null;try{return o.id+'.'+sig(o.id)}catch{return null}}
+// The slip's code for an order (Management only). Glow and Zader orders (Zader since 19 Nov 2026: "everything, with points";
+// the points go to the same shared balance, shown there as Zader Points). Pep Puppy has no points.
+function key(o){const id=String(o&&o.id||''),b=o&&o.brand||'glow';if(!o||!((/^GLP-[A-F0-9]{10}$/.test(id)&&b==='glow')||(/^ZDR-[A-F0-9]{10}$/.test(id)&&b==='zader')))return null;try{return o.id+'.'+sig(o.id)}catch{return null}}
 function parse(token){const m=TOKEN.exec(String(token||''));if(!m)return null;const want=Buffer.from(sig(m[1])),got=Buffer.from(m[2]);return want.length===got.length&&crypto.timingSafeEqual(want,got)?m[1]:null}
 function draw(){const r=crypto.randomInt(100);let acc=0;for(const [pct,pts] of PRIZES){acc+=pct;if(r<acc)return pts}return PRIZES[0][1]}
 const open_=o=>['paid','shipped'].includes(o.status)&&!o.refund_due_cents;
@@ -47,4 +48,11 @@ async function route(path,body,h,method){const m=path.match(/^\/unbox\/([A-Za-z0
  if(method==='GET'&&!m[2]){const out=await transaction(async s=>{const o=await s.get('orders',id);if(!o)bad('Order not found.',404);return view(s,o)});return{status:200,headers:{'cache-control':'no-store'},body:out}}
  if(method==='POST'&&m[2]){const out=await transaction(async s=>{const o=await s.get('orders',id);if(!o)bad('Order not found.',404);await open(s,o);await s.put('orders',o.id,o);return view(s,o)});return{status:200,headers:{'cache-control':'no-store'},body:out}}
  bad('Method not allowed.',405)}
-module.exports={route,key,parse,draw,open,view,claimHeld,takeBack,PRIZES};
+// Zader's mystery gift only prints on slips once zaderhealth.com is served by this store (the DNS move, Nov 2026); before
+// that the old Zader site has no gift page. Checked in the background: the manifest only this server gives Zader.
+let zLive={ok:false,at:0,busy:false};
+function zaderLive(){const t=Date.now();if(!zLive.busy&&t-zLive.at>(zLive.ok?3600e3:600e3)&&typeof fetch==='function'){zLive.busy=true;
+ const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),4000);
+ Promise.resolve().then(()=>fetch('https://zaderhealth.com/store-next/app.webmanifest',{signal:ac.signal,headers:{accept:'application/manifest+json'}})).then(r=>r.ok?r.json():null).then(j=>{zLive.ok=!!(j&&j.name==='Zader Health')}).catch(()=>{zLive.ok=false}).finally(()=>{clearTimeout(tm);zLive.at=Date.now();zLive.busy=false})}
+ return zLive.ok}
+module.exports={route,key,parse,draw,open,view,claimHeld,takeBack,zaderLive,PRIZES};

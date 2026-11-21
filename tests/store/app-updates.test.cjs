@@ -36,7 +36,7 @@ test('each order carries a truck trip: carrier and stage, never the address', as
 });
 
 test('the app has Scan, the Glow card, the trucks and the coupon QR maker', () => {
-  for (const s of ['function readScan', 'function scanOpen', 'data-action="scan-open"', "['shop','merch','scan','bag','account']", 'function glowCardHtml', 'function truckRoad', 'function couponQr', 'data-action="coupon-qr"', 'couponRejected'])
+  for (const s of ['function readScan', 'function scanOpen', 'data-action="scan-open"', 'data-sa-k="merch"', 'data-sa-k="scan"', 'el.dataset.saK===k', 'function glowCardHtml', 'function truckRoad', 'function couponQr', 'data-action="coupon-qr"', 'couponRejected'])
     assert.ok(app.includes(s), s);
   assert.match(app, /JSQR_SRI\s*=\s*'sha384-/, 'scanner library is pinned with integrity');
   assert.ok(css.includes('repeat(5,1fr)'), 'five tabs fit on one row');
