@@ -21,6 +21,9 @@ const LADDER=[ // lowest first
 const TIERS=LADDER.slice().reverse(); // highest first, the shape the rest of the store already uses
 const OLD=[{id:'purple',min_points:1500},{id:'gold',min_points:500},{id:'blue',min_points:0}];
 const EARN_KINDS=['earned','opening_balance','migration_reconciliation','order_adjustment','staff_adjustment','signup_bonus','referral_bonus'];
+// What counts toward a level: earning kinds, minus points a refund took back (Jonah, 21 Nov 2026: a refunded or canceled
+// order never counts). Points given back to a customer on a refund (positive 'refund') are not earned, so they don't count.
+const countsToLevel=e=>EARN_KINDS.includes(e.kind)||(e.kind==='refund'&&(e.points||0)<0);
 const POINT_CENTS=5;
 const dollars=pts=>{const c=pts*POINT_CENTS;return '$'+(c%100?(c/100).toFixed(2):String(c/100))};
 const rank=id=>LADDER.findIndex(t=>t.id===id);
@@ -31,7 +34,7 @@ const pub=t=>({id:t.id,name:t.name,multiplier:t.multiplier,min_points:t.min_poin
 
 async function ladderFrom(s){let r=await s.get('integrations','levels-v2');if(!r){r={id:'levels-v2',from:now()};await s.put('integrations','levels-v2',r)}return r.from}
 // Points earned in total, and before the new ladder started (for kept levels).
-async function points(s,id,from){let all=0,before=0;for(const e of await s.list('rewards_ledger'))if(e.customer_id===id&&EARN_KINDS.includes(e.kind)){all+=e.points||0;if((e.created||0)<from)before+=e.points||0}return{all:Math.max(0,all),before:Math.max(0,before)}}
+async function points(s,id,from){let all=0,before=0;for(const e of await s.list('rewards_ledger'))if(e.customer_id===id&&countsToLevel(e)){all+=e.points||0;if((e.created||0)<from)before+=e.points||0}return{all:Math.max(0,all),before:Math.max(0,before)}}
 function keptFrom(before){return(OLD.find(t=>before>=t.min_points)||OLD[OLD.length-1]).id}
 function pick(all,kept){const t=tierFor(all);return rank(kept)>rank(t.id)?byId(kept):t}
 // The customer's level now: {tier, points, kept, next}.
@@ -79,7 +82,7 @@ async function hint(s,a,base,dbl){if(!a)return null;const lv=await levelOf(s,a.i
 
 // ---- Management: who is where, who is close, birthdays this month ----
 async function overview(s){const from=await ladderFrom(s),ledger=await s.list('rewards_ledger'),per=new Map();
- for(const e of ledger)if(EARN_KINDS.includes(e.kind)){const r=per.get(e.customer_id)||{all:0,before:0};r.all+=e.points||0;if((e.created||0)<from)r.before+=e.points||0;per.set(e.customer_id,r)}
+ for(const e of ledger)if(countsToLevel(e)){const r=per.get(e.customer_id)||{all:0,before:0};r.all+=e.points||0;if((e.created||0)<from)r.before+=e.points||0;per.set(e.customer_id,r)}
  const n=etParts(),rows=[];for(const a of await s.list('customers')){if(!a.verified)continue;const p=per.get(a.id)||{all:0,before:0},all=Math.max(0,p.all),t=pick(all,keptFrom(Math.max(0,p.before))),nx=nextTier(all,t.id);
   rows.push({id:a.id,name:a.name||'',email:a.email,level:t.id,points:all,kept:t.id!==tierFor(all).id,next:nx?{name:nx.name,needed:nx.needed_points,pct:Math.round(100*(all-t.min_points)/Math.max(1,nx.min_points-t.min_points))}:null,birthday:a.birthday?MONTHS[a.birthday.m-1].slice(0,3)+' '+a.birthday.d:'',birthday_now:a.birthday?.m===n.m,level_up_at:a.level_up?.at||0})}
  const counts=Object.fromEntries(LADDER.map(t=>[t.id,rows.filter(r=>r.level===t.id).length]));
@@ -99,4 +102,4 @@ async function route(path,body,h,method,{session}){const ok=b=>({status:200,head
  return null}
 function publicBirthday(b){if(!b)return null;const n=etParts(),y=giftYear(b);return{month:b.m,day:b.d,label:MONTHS[b.m-1]+' '+b.d,gift_this_year:y===n.y&&b.m>=n.m}}
 
-module.exports={LADDER,TIERS,OLD,EARN_KINDS,rank,tierFor,nextTier,levelOf,ladderFrom,afterEarn,levelUpEmail,birthdays,birthdayEmail,giftYear,validDay,hint,overview,route,publicBirthday,pub,MONTHS};
+module.exports={LADDER,TIERS,OLD,EARN_KINDS,countsToLevel,rank,tierFor,nextTier,levelOf,ladderFrom,afterEarn,levelUpEmail,birthdays,birthdayEmail,giftYear,validDay,hint,overview,route,publicBirthday,pub,MONTHS};

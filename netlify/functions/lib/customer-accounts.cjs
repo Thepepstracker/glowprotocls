@@ -21,7 +21,8 @@ const levels=require('./glow-levels.cjs'),{TIERS,EARN_KINDS}=levels;
 const SIGNUP_BONUS=100,REFERRAL_BONUS=200,REFERRAL_MIN_CENTS=5000,BONUS_FROM=1792728000; // when switched on (settings.rewards_bonuses.on), signup bonuses go to accounts created from 23 Oct 2026 00:00 ET
 async function bonusesOn(s){const st=await s.get('settings','main');return st?.rewards_bonuses?.on===true?(st.rewards_bonuses.from||BONUS_FROM):null}
 const tierFor=levels.tierFor;
-async function lifetimePoints(s,id){let n=0;for(const e of await s.list('rewards_ledger'))if(e.customer_id===id&&EARN_KINDS.includes(e.kind))n+=e.points||0;return Math.max(0,n)}
+// Points taken back by a refund come off the lifetime total too, so a refunded or canceled order never counts toward a level (Jonah, 21 Nov 2026).
+async function lifetimePoints(s,id){let n=0;for(const e of await s.list('rewards_ledger'))if(e.customer_id===id&&levels.countsToLevel(e))n+=e.points||0;return Math.max(0,n)}
 function productCents(o){return Math.max(0,(o.subtotal||0)-(o.discount||0))}
 function emailId(o){try{return hash(email(o.customer?.email||''))}catch{return null}}
 function doubleOn(settings,ts){return (settings?.double_points?.windows||[]).some(w=>ts>=w.from&&ts<w.until)}
@@ -50,7 +51,7 @@ async function rewardsInfo(s,a){const lv=await levels.levelOf(s,a.id),pts=lv.poi
  return{tier:{id:t.id,name:t.name,multiplier:t.multiplier,birthday_points:t.birthday},points_lifetime:pts,next:lv.next,kept:lv.kept,level_up:up,birthday:levels.publicBirthday(a.birthday),tiers:TIERS.map(levels.pub),bonuses_on:(await bonusesOn(s))!==null,referral_code:a.verified?code:null,signup_bonus:SIGNUP_BONUS,referral_bonus:REFERRAL_BONUS,double_points_until:live?live.until:null}}
 function publicWallet(w){return{balance:w.balance,reserved:w.reserved,available:Math.max(0,w.balance-w.reserved),value_cents:Math.max(0,w.balance-w.reserved)*5}}
 async function event(s,id,key,kind,points,reserved_delta=0,order_id=null,note=''){const eventId=id+':'+key;if(await s.get('rewards_ledger',eventId))return false;const w=await wallet(s,id);w.balance+=points;w.reserved+=reserved_delta;w.sequence=(w.sequence||0)+1;if(!Number.isSafeInteger(w.balance)||!Number.isSafeInteger(w.reserved)||w.reserved<0)fail('Rewards ledger requires review.',409);await s.put('rewards_wallets',id,w);await s.put('rewards_ledger',eventId,{id:eventId,customer_id:id,kind,points,reserved_delta,order_id,note,created:now(),balance_after:w.balance,reserved_after:w.reserved,sequence:w.sequence});
- if(points>0&&EARN_KINDS.includes(kind)){const all=await lifetimePoints(s,id);await levels.afterEarn(s,id,all-points,all)}return true}
+ if(points>0&&EARN_KINDS.includes(kind)){const all=await lifetimePoints(s,id);await levels.afterEarn(s,id,Math.max(0,all-points),all)}return true}
 async function claimMigration(s,a){const pending=await s.get('rewards_imports',a.id);if(!a.verified||!pending||pending.claimed||pending.held)return;await event(s,a.id,'migration-opening','opening_balance',pending.points,0,null,'Balance carried from WooCommerce');pending.claimed=true;pending.claimed_at=now();await s.put('rewards_imports',a.id,pending)}
 // A guest who later creates (and verifies) an account with the same email gets the points for their
 // earlier paid orders, exactly as if they had been signed in: 1 point per whole dollar after discounts.
@@ -105,7 +106,7 @@ async function authRoute(path,body,h,method){
  return null;
 }
 async function reserve(s,o){if(o.is_test!==false||!o.customer_id||!o.points_redeemed)return;const w=await wallet(s,o.customer_id);if(w.balance-w.reserved<o.points_redeemed)fail('Your available points changed. Review the order again.',409);await event(s,o.customer_id,'reserve:'+o.id+(o.reservation_version?':'+o.reservation_version:''),'reserved',0,o.points_redeemed,o.id,'Points held for this unpaid order')}
-async function release(s,o){if(o.is_test!==false||!o.customer_id||!o.points_redeemed)return;await event(s,o.customer_id,'release:'+o.id+(o.reservation_version?':'+o.reservation_version:''),'released',0,-o.points_redeemed,o.id,'Unpaid order canceled or expired')}
+async function release(s,o){if(o.is_test!==false||!o.customer_id||!o.points_redeemed)return;if(await s.get('rewards_ledger',o.customer_id+':spend:'+o.id+payKey(o)))return;await event(s,o.customer_id,'release:'+o.id+(o.reservation_version?':'+o.reservation_version:''),'released',0,-o.points_redeemed,o.id,'Unpaid order canceled or expired')}
 const payKey=o=>o.payment_version?':'+o.payment_version:'';
 async function paid(s,o){await require('./gift-registry.cjs').thank(s,o,event,payKey(o));if(o.is_test!==false||!o.customer_id)return;const a=await s.get('customers',o.customer_id);if(!a?.verified)return;if(o.points_redeemed)await event(s,a.id,'spend:'+o.id+payKey(o),'redeemed',-o.points_redeemed,-o.points_redeemed,o.id,'Points redeemed after verified payment');const e=await earnFor(s,a.id,o);o.points_earned=e.points;o.points_tier=e.tier;o.points_multiplier=e.multiplier;if(o.member)o.member.extra_points=e.member_extra;await event(s,a.id,'earn:'+o.id+payKey(o),'earned',o.points_earned,0,o.id,earnNote(e))}
 // Staff marked an order paid by mistake: take back exactly what that payment gave, and hold redeemed points again.
@@ -117,6 +118,18 @@ async function unpaid(s,o){const v=payKey(o);await require('./gift-registry.cjs'
  }
  if(o.referral_bonus_awarded&&o.referred_by)await event(s,o.referred_by,'referral-undo:'+o.id+v,'order_adjustment',-o.referral_bonus_awarded,0,o.id,'Referral bonus removed: the friend\u2019s payment was marked by mistake');
  o.points_earned=0;o.referral_bonus_awarded=0;o.payment_version=(o.payment_version||0)+1}
+// The friend's order that earned a referral bonus was refunded in full or canceled: the bonus comes back off.
+async function undoReferral(s,o,key,why){if(!o.referral_bonus_awarded||!o.referred_by)return false;const ok=await event(s,o.referred_by,'referral-undo:'+o.id+key,'order_adjustment',-o.referral_bonus_awarded,0,o.id,why);o.referral_bonus_awarded=0;return ok}
+// A paid order canceled without a refund (a duplicate): nothing it gave stays — earned points, mystery gift, gift-list thanks,
+// referral bonus — and points spent on it go back to the customer (Jonah, 21 Nov 2026: no points from canceled orders).
+async function canceledPaid(s,o,why){const k=':cancel';
+ if(o.is_test===false&&o.customer_id){
+  if((o.points_earned||0)>0){await event(s,o.customer_id,'cancel-earn:'+o.id,'order_adjustment',-o.points_earned,0,o.id,why+': points earned on it removed');o.points_earned=0}
+  if(o.points_redeemed&&!o.points_redeemed_returned&&await s.get('rewards_ledger',o.customer_id+':spend:'+o.id+payKey(o))){await event(s,o.customer_id,'cancel-spent:'+o.id,'refund',o.points_redeemed,0,o.id,why+': points spent on it given back');o.points_redeemed_returned=o.points_redeemed}
+ }
+ await undoReferral(s,o,k,'Referral bonus removed: the friend\u2019s order was canceled');
+ if(o.gift)await require('./gift-registry.cjs').unthank(s,o,event,k,why+': gift thank-you points removed');
+ if(o.unbox)await require('./unbox.cjs').takeBack(s,o,event,why+': mystery gift points taken back')}
 function importRows(b){const rows=b.customers;if(!Array.isArray(rows)||!rows.length||rows.length>2000)fail('Upload a migration file with 1–2,000 customer rows.');const seen=new Set();return rows.map(r=>{const address=email(r.email);if(seen.has(address))fail('Duplicate email in migration file.');seen.add(address);if(!Number.isSafeInteger(r.points)||r.points<0||r.points>10000000)fail('Invalid points balance in migration file.');if(r.redeem_points!==null&&(!Number.isSafeInteger(r.redeem_points)||r.redeem_points<0))fail('Invalid redeemed points history.');return{id:hash(address),email:address,source_name:clean(r.source_name),points:r.points,redeem_points:r.redeem_points,held:address.endsWith('@gmail.coml'),claimed:false}})}
 async function previewImport(s,b){
  const rows=importRows(b),id=crypto.randomBytes(16).toString('hex'),existing=await s.list('rewards_imports');
@@ -149,5 +162,5 @@ async function checkoutAccount(s,address,name,o,brandId){let addr;try{addr=email
  if(!a){a={id,email:addr,name:String(name||'').trim().slice(0,150),created:now(),verified:false,auth_version:0,password:null,created_at_checkout:o.id};await s.put('customers',id,a)}
  if(a.verified||!emails.configuration().ready||(a.last_setup_email||0)>now()-300)return null;const held=await s.get('rewards_imports',id);if(held?.held)return null;
  const link=await issueSetup(s,id);a=await s.get('customers',id);a.last_setup_email=now();await s.put('customers',id,a);return emails.queueSetup(s,link,false,brandId,o)}
-module.exports={forBrand,newSession,rate,BONUS_FROM,earnFor,lifetimePoints,tierFor,doubleOn,referralWhy,referralPaid,referralCode,TIERS,SIGNUP_BONUS,REFERRAL_BONUS,claimGuestOrders,passwordHash,passwordMatches,email,hash,session,authRoute,cookie,accountData,issueSetup,wallet,publicWallet,event,reserve,release,paid,unpaid,previewImport,importBatch,reconcileBatch,adminData,claimMigration,checkoutAccount};
+module.exports={forBrand,newSession,rate,BONUS_FROM,earnFor,lifetimePoints,tierFor,doubleOn,referralWhy,referralPaid,referralCode,TIERS,SIGNUP_BONUS,REFERRAL_BONUS,claimGuestOrders,passwordHash,passwordMatches,email,hash,session,authRoute,cookie,accountData,issueSetup,wallet,publicWallet,event,reserve,release,paid,unpaid,undoReferral,canceledPaid,previewImport,importBatch,reconcileBatch,adminData,claimMigration,checkoutAccount};
 

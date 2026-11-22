@@ -20,7 +20,7 @@ const paidCents=o=>Number.isSafeInteger(o.verified_payment_cents)?o.verified_pay
 function refundable(o){return Math.max(0,paidCents(o))}
 function boxGone(o){const t=o.track||{},d=o.delivery||{};return !!o.packed||!!(t.first_scan_at||d.first_scan_at)||['in_transit','out_for_delivery','delivered'].includes(t.state)||['in_transit','out_for_delivery','delivered'].includes(d.state)}
 const labelVoidable=o=>!!o.shippo_transaction_id&&!o.label_refund&&!boxGone(o);
-function pointsBack(o,amount,full){const earned=Number(o.points_earned)||0;if(!o.customer_id||o.is_test!==false||!earned)return 0;if(full)return earned;return Math.min(earned,Math.floor(Math.floor(amount/100)*(Number(o.points_multiplier)||1)))}
+function pointsBack(o,amount,full){const earned=Number(o.points_earned)||0;if(!o.customer_id||o.is_test!==false||!earned)return 0;if(full||amount>=refundable(o))return earned;return Math.min(earned,Math.floor(Math.floor(amount/100)*(Number(o.points_multiplier)||1)))}
 function email(o,{amount,full,method,gone}){const first=firstName(o),where=method.kind==='stripe'||method.kind==='card_manual'?'It’s going back to the card you paid with. Most banks show it within 5–10 business days.':'We sent it back to you on '+method.name+'.';
  return{subject:'Your refund for order '+o.id+' · Glow Lab',title:'Your refund is on its way.',lines:['Hi '+first+',','We’ve refunded '+money(amount)+' for your order '+o.id+'. '+where,
   ...(full&&!gone?['Your order has been canceled, so nothing will ship.']:[]),'Thank you, and just reply here if you have any questions.']}}
@@ -64,6 +64,7 @@ async function run(b,h,{session,moveStock,audit}){const key=String(b.key||'').re
   if(o.customer_id&&o.is_test===false){if(p.points>0){await accounts.event(s,o.customer_id,'refund:'+o.id+':'+key,'refund',-p.points,0,o.id,'Order refunded'+(p.full?'':' in part'));o.points_earned=Math.max(0,(o.points_earned||0)-p.points)}
    if(p.redeemed>0){await accounts.event(s,o.customer_id,'refund-spent:'+o.id+':'+key,'refund',p.redeemed,0,o.id,'Points spent on a refunded order, given back');o.points_redeemed_returned=p.redeemed}}
   if(p.full&&o.gift)await require('./gift-registry.cjs').unthank(s,o,accounts.event,':'+key,'Gift order refunded'); // gift list thank-you points
+  if(p.full)await accounts.undoReferral(s,o,':'+key,'Referral bonus removed: the friend\u2019s order was refunded');
   if(p.full&&o.unbox)await require('./unbox.cjs').takeBack(s,o,accounts.event,'Order refunded: mystery gift points taken back');
   // Stock: everything for a full refund whose box never went; otherwise only what was ticked.
   const back=p.full&&!p.gone?o.items.map(i=>({...i})):[];if(!p.full&&Array.isArray(b.restock))for(const x of b.restock){const line=o.items.find(i=>i.id===Number(x.id));const q=Math.min(Number(x.quantity)||0,line?.quantity||0);if(line&&q>0)back.push({...line,quantity:q})}

@@ -40,9 +40,10 @@ async function open(s,o){if(o.unbox)return;if(!open_(o))bad('This gift unlocks o
  const rid=recipientId(o),a=rid?await s.get('customers',rid):null;
  if(a?.verified)await credit(s,o,a.id);else o.unbox.held=true}
 // Called when an account is loaded (after its guest orders are claimed): add any prize a guest opened before signing up.
-async function claimHeld(s,a){if(!a?.verified)return 0;let n=0;for(const o of await s.list('orders')){if(!o.unbox?.held||o.unbox.credited_to||o.is_test!==false||o.gift)continue;if(o.customer_id!==a.id)continue;await credit(s,o,a.id);await s.put('orders',o.id,o);n++}return n}
-// A full refund takes the bonus back (refunds.cjs).
-async function takeBack(s,o,event,why){const u=o.unbox;if(!u?.credited_to||u.taken_back)return;await event(s,u.credited_to,'unbox-undo:'+o.id,'order_adjustment',-u.prize,0,o.id,why);u.taken_back=now()}
+async function claimHeld(s,a){if(!a?.verified)return 0;let n=0;for(const o of await s.list('orders')){if(!o.unbox?.held||o.unbox.credited_to||o.unbox.taken_back||o.is_test!==false||o.gift||!open_(o))continue;if(o.customer_id!==a.id)continue;await credit(s,o,a.id);await s.put('orders',o.id,o);n++}return n}
+// A full refund or a duplicate cancel takes the bonus back (refunds.cjs, customer-accounts canceledPaid). Kind 'unbox_undo', not
+// an earning kind, so taking it back doesn't lower the customer's level (the bonus never raised it).
+async function takeBack(s,o,event,why){const u=o.unbox;if(!u||u.taken_back)return;if(!u.credited_to){if(u.held){delete u.held;u.taken_back=now()}return}await event(s,u.credited_to,'unbox-undo:'+o.id,'unbox_undo',-u.prize,0,o.id,why);u.taken_back=now()}
 async function route(path,body,h,method){const m=path.match(/^\/unbox\/([A-Za-z0-9._-]{10,40})(\/open)?$/);if(!m)return null;
  const id=parse(m[1]);if(!id)bad('This gift code isn’t valid. Check the QR code on your packing slip.',404);
  if(method==='GET'&&!m[2]){const out=await transaction(async s=>{const o=await s.get('orders',id);if(!o)bad('Order not found.',404);return view(s,o)});return{status:200,headers:{'cache-control':'no-store'},body:out}}
