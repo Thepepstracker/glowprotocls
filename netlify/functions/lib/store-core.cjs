@@ -69,7 +69,7 @@ async function quote(s,b,h={},brand=brands.fromHeaders(h),opts={}){
   // No doubling up on a sale (Jonah, 8 Nov 2026): an item at a sale price (intro price below its regular price) takes no promo
   // code and no member % on top. Same rule as subscriptions: the better deal, never both. Glow Points still work (stored value).
   const on_sale=!!p.intro_active&&Number(p.regular_price)>p.price;
-  items.push({id,name:p.name,sku:p.sku,quantity,price:p.price,amount,promo_excluded:!!p.promo_excluded||on_sale,...(on_sale?{on_sale:true}:{}),...(u>1?{units:u}:{}),...(draws?{draws}:{})})}
+  items.push({id,name:p.name,sku:p.sku,quantity,price:p.price,amount,promo_excluded:!!p.promo_excluded||on_sale,...(on_sale?{on_sale:true}:{}),...(p.black_friday==='fixed'?{bf_fixed:true}:{}),...(u>1?{units:u}:{}),...(draws?{draws}:{})})}
  const coupon_eligible_subtotal=items.reduce((n,i)=>n+(i.promo_excluded?0:i.amount),0),coupon_excluded_subtotal=subtotal-coupon_eligible_subtotal;let appliedCoupons=await couponRules.apply(s,b,brand,subtotal,coupon_eligible_subtotal,clock(),items);let code=appliedCoupons.coupon;const couponAffiliate=appliedCoupons.coupon_affiliate;let discount=appliedCoupons.coupon_discount;
  if(!brand.affiliates&&!couponAffiliate&&b.affiliate)fail('Affiliate storefront is unavailable.');if(!brand.rewards&&b.points_redeemed)fail('Rewards points are not available in this store.');const slug=couponAffiliate||text(b.affiliate||'',60,false).toLowerCase();const affiliate=slug?await s.get('affiliates',slug):null;if(slug&&(!affiliate||!affiliate.active||nativeAffiliates.brandOf(affiliate)!==brand.id||(couponAffiliate&&!affiliate.goaffpro_id&&!nativeAffiliates.isNative(affiliate))))fail(couponAffiliate?'This affiliate coupon is unavailable.':'Affiliate storefront is unavailable.');
  const settings=await s.get('settings','main');if(a&&nativeAffiliates.isNative(affiliate))nativeAffiliates.validateSelf(affiliate,a);const requested=int(b.points_redeemed??0,0,10000000);let coupon_discount=discount,rewards_discount=0;
@@ -87,7 +87,7 @@ async function quote(s,b,h={},brand=brands.fromHeaders(h),opts={}){
  // free shipping and no affiliate commission on that order (Jonah, 12 Nov 2026: "i do not want to lose money here").
  const bundleOnly=(appliedCoupons.coupon_discounts||[]).some(x=>x.kind==='bundle');
  if(requested&&bundleOnly)fail((appliedCoupons.coupon||'This code')+' is already our lowest price, so Glow Points can\u2019t be added to it.');
- if(requested){if(settings.demo!==false)fail('Test orders do not spend real rewards points.');if(!a)fail('Sign in to use rewards points.',401);const w=await accounts.wallet(s,a.id);if(requested>Math.max(0,w.balance-w.reserved))fail('You do not have enough available points.',409);if(requested>Math.floor((subtotal-discount)/5))fail('Points cannot exceed the remaining product amount.');rewards_discount=requested*5;discount+=rewards_discount}
+ if(requested){if(settings.demo!==false)fail('Test orders do not spend real rewards points.');if(!a)fail('Sign in to use rewards points.',401);const w=await accounts.wallet(s,a.id);if(requested>Math.max(0,w.balance-w.reserved))fail('You do not have enough available points.',409);const bfFixed=items.reduce((n,i)=>n+(i.bf_fixed?i.amount:0),0);if(bfFixed&&requested>Math.floor(Math.max(0,subtotal-discount-bfFixed)/5))fail(subtotal-discount-bfFixed>0?'Glow Points can’t be used on Black Friday catalog prices. Use them on the rest of your order.':'Glow Points can’t be used on Black Friday catalog prices.');if(requested>Math.floor((subtotal-discount)/5))fail('Points cannot exceed the remaining product amount.');rewards_discount=requested*5;discount+=rewards_discount}
  let shipping=settings.free_shipping_cents>0&&subtotal-discount>=settings.free_shipping_cents?0:settings.shipping_cents;
  // Member free shipping: the 2nd, 4th, 6th… qualifying order (products after promo/member discounts, before points, at
  // or over the level's minimum). The store's own free-shipping-over rule above still applies on its own.
@@ -174,6 +174,7 @@ async function handle({path,method='GET',headers={},body={}}){
  // Live log + deep live analytics (Jonah, 9 Nov 2026). See live.cjs.
  if(path==='/live/ping'||path==='/admin/live'||path.startsWith('/admin/live/')){const r=await require('./live.cjs').route(path,body,h,method,{session});if(r)return r}
  if(path==='/admin/end-of-day'){const r=await require('./end-of-day.cjs').route(path,body,h,method,{session});if(r)return r}
+ if(path.startsWith('/admin/black-friday')){const r=await require('./black-friday.cjs').route(path,body,h,method,{session});if(r)return r}
  // Print log (Jonah, 9 Nov 2026): which labels and packing slips have been printed. See print-log.cjs.
  if(path==='/admin/printed'){const r=await require('./print-log.cjs').route(path,body,h,method,{session});if(r)return r}
  if(path==='/admin/members'||path.startsWith('/admin/members/')){const sid=await transaction(s=>session(s,h));return members.adminRoute(path,body,method,{transaction,sid,audit})}
@@ -434,6 +435,7 @@ async function handle({path,method='GET',headers={},body={}}){
   if(!await s.get('migrations','nad-promo-excluded-20261014')){const nad=await s.get('products',7);if(nad&&nad.sku==='nad-500-mg'&&brands.productBrand(nad)==='glow'){nad.promo_excluded=true;await s.put('products',nad.id,nad);await s.put('migrations','nad-promo-excluded-20261014',{applied:clock(),product_id:nad.id});await audit(s,'nad_promo_exclusion_enabled');}}
   if(reqBrand.id==='zader')await brands.ensureZaderCatalog(s,validSlug);
   await ensureMerchCatalog(s);
+  {const bf=require('./black-friday.cjs');if(await bf.tick(s,settings,clock()))Object.assign(settings,await s.get('settings','main'))}
   if(path==='/catalog'&&method==='GET'){const mctx=await members.context(s,(await accounts.session(s,h))?.email,reqBrand.id);return{products:await (async()=>{const all=await s.list('products'),byId=new Map(all.map(x=>[x.id,x])),out=[];for(const p of all.filter(p=>p.active&&brands.productBrand(p)===reqBrand.id&&members.visible(mctx,p)))out.push(productLimits.publicLimits(brands.publicProduct(withProductPhotos(await bundleStock(async id=>byId.get(id),p)),settings.demo===false)));return out})(),brand:brands.publicBrand(reqBrand),settings:{...settings,...autoInvoice.publicFlags(settings),email_enabled:emails.configuration().ready,google_signin:require('./google-signin.cjs').configured(),subscribe_open:!(await require('./subscriptions.cjs').offerOpen(s,reqBrand)),...(reqBrand.waitlist?{checkout_enabled:false,waitlist:true}:{})},...(mctx?{members_on:true}:{})}}
   if(path.startsWith('/native-affiliates')){
    if(reqBrand.id!=='zader')fail('Affiliate program not found.',404);

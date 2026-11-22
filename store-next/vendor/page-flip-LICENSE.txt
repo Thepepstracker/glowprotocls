@@ -1,0 +1,1 @@
+StPageFlip 2.0.7 (page-flip on npm), MIT License, Copyright (c) 2020 Nodlik. https://github.com/Nodlik/StPageFlip

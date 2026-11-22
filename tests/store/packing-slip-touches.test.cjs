@@ -6,7 +6,7 @@ test('the slip keeps its original format; the personal hello lives in the app op
  for(const s of ["'Thank you, ')+esc(first)+'!</h1>",'Packed by <b>','window.__fit','(window.__fit||Promise.resolve())'])assert.ok(pack.includes(s),s);
  for(const s of ['Welcome back','GlowScript','function boxNumber'])assert.ok(!pack.includes(s),'not on the slip any more: '+s);
  const app=fs.readFileSync(path.join(root,'store-next/app.js'),'utf8');
- for(const s of ['function opShow(c)','function opLines(c','function opHello(','WELCOME BACK','Your box is out for delivery today.'])assert.ok(app.includes(s),s);
+ for(const s of ['function opShow(c)','function opLines(c','function opHello(','WELCOME BACK','Your order is out for delivery today.'])assert.ok(app.includes(s),s);
  assert.ok(!/your first order/i.test(app.slice(app.indexOf('// ===== App opener'))),'the opener never claims a first order');
 });
 test('one QR for the phone camera and the app’s Scan button, with the steps printed',()=>{

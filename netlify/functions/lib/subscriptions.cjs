@@ -57,7 +57,10 @@ function priceFor(items,products,tier=null,deliveryNumber=1,opts={}){
  // Items already on sale (Jonah, 8 Nov 2026: "better of the two"): the subscriber pays the sale price or 15% off the
  // regular price, whichever is lower, never both. Everything else: exactly 15% off, rounded down on the total as before.
  const list=lines.reduce((n,l)=>n+m.get(l.id).price*l.quantity,0);let full=0,sale=0;
- for(const l of lines){const p=m.get(l.id),reg=Math.max(Number(p.regular_price)||0,p.price);if(reg>p.price)sale+=Math.min(p.price,Math.floor(reg*FAIR_PCT/100))*l.quantity;else full+=p.price*l.quantity}
+ // Black Friday 2026 (black-friday.cjs): catalog items take no subscribe discount; the FIRST box of a new subscription
+ // pays 40% off the regular price on 30%-off items ("For this first purchase only"). Renewals use the normal rule above.
+ const bfFirst=deliveryNumber===1&&opts.settings?.black_friday?.on===true;
+ for(const l of lines){const p=m.get(l.id),reg=Math.max(Number(p.regular_price)||0,p.price);if(p.black_friday==='fixed')sale+=p.price*l.quantity;else if(bfFirst&&p.black_friday==='pct'&&reg>p.price)sale+=Math.min(p.price,Math.floor(reg*60/100))*l.quantity;else if(reg>p.price)sale+=Math.min(p.price,Math.floor(reg*FAIR_PCT/100))*l.quantity;else full+=p.price*l.quantity}
  const cap=Math.floor(full*FAIR_PCT/100)+sale,price=cap;
  // Tier 5 bonus: every 4th package IN A ROW at Tier 5 (opts.streak), so nobody can jump to Tier 5 for one package to collect it.
  const bp=!opts.no_bonus&&bonusDelivery(t,opts.streak!=null?opts.streak:deliveryNumber)?pickBonus(lines,m,opts.bonus_id):null;
