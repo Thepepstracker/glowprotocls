@@ -45,7 +45,8 @@ test('a gift order ships to the owner; the buyer never gets the street; only lis
  const pub=r.body.order;assert.equal(pub.customer.address,'');assert.equal(pub.customer.zip,'');assert.equal(pub.customer.city,'Canton');assert.equal(pub.gift.to_first,'Bria');assert.equal(pub.gift.to_name,undefined);assert.equal(pub.gift.owner_id,undefined);
  assert.ok(!JSON.stringify(pub).includes('Holly')&&!JSON.stringify(pub).includes('9 Sam St'));
  const o=await transaction(s=>s.get('orders',pub.id));assert.equal(o.customer.address,'42 Holly Lane','the label address is the owner’s');assert.equal(o.customer.zip,'30114');assert.equal(o.customer.email,'sam@example.test','emails still go to the buyer');
- assert.equal(o.gift.message,'Merry Christmas, Bria! Love, Sam');assert.equal(o.gift.from_name,'Sam Buyer');assert.equal(o.gift.owner_id,bria.id);
+ assert.equal(o.gift.message,'Merry Christmas, Bria! Love, Sam');assert.equal(o.gift.occasion,'christmas','the slip card knows the occasion');
+ const rude=await call('/orders',{...base,gift_message:'Merry f*cking Christmas',items:[{id:9,quantity:1}],idempotency_key:crypto.randomUUID()},sam.cookie);assert.equal(rude.status,400);assert.match(rude.body.error,/keep the gift note friendly/);assert.equal(o.gift.from_name,'Sam Buyer');assert.equal(o.gift.owner_id,bria.id);
  assert.notEqual((await call('/orders/'+pub.id)).status,200,'needs the order token');
  const g=await handle({path:'/orders/'+pub.id,method:'GET',headers:{'x-store-request':'1','x-order-token':r.body.token},body:{}}).catch(e=>({status:e.status,body:{}}));assert.equal(g.status,200);assert.equal(g.body.customer.address,'');assert.equal(g.body.gift.to_first,'Bria');
  const g2=await call('/orders/'+pub.id,undefined,sam.cookie);assert.equal(g2.status,200);assert.equal(g2.body.customer.zip,'');
@@ -83,4 +84,10 @@ test('the live server opens the app for a gift list link',()=>{
  const srv=require('../../tools/sevalla/server.cjs');
  assert.equal(srv.publicFile('/store-next/registry/abcdefghij'),'store-next/index.html');
  assert.equal(srv.publicFile('/store-next/registry'),'store-next/index.html');
+});
+test('saving: full state names and 9-digit ZIPs are accepted; an empty list is refused with a plain message',async()=>{
+ const r=await call('/account/registries/save',{title:'Name test',items:[{id:9}],ship_to:{...HOME,state:'Georgia',zip:'301141234'}},bria.cookie);
+ assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.ship_to.state,'GA');assert.equal(r.body.ship_to.zip,'30114-1234');
+ const e=await call('/account/registries/save',{title:'Empty',items:[],ship_to:HOME},bria.cookie);assert.equal(e.status,400);assert.match(e.body.error,/at least one product/);
+ const gone=await call('/account/registries/save',{title:'Gone',items:[{id:11}],ship_to:HOME},bria.cookie);assert.equal(gone.status,400);assert.match(gone.body.error,/aren’t in the store right now/);
 });

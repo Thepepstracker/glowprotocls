@@ -1657,3 +1657,31 @@ body.xm-snowing{background:transparent}
 @media(max-width:640px){.bf-home{flex-direction:column}.bf-home-cat{flex-basis:auto;max-width:180px;align-self:center}.bf-nav{width:34px;height:52px;font-size:24px}}
 .bf-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 20px;border-radius:999px;background:#141414;color:#fff!important;text-decoration:none!important;font-weight:600;font-size:15px;white-space:nowrap}
 .bf-btn:hover{background:#3a2a12}.bf-btn-2{background:#fff;color:#141414!important;border:1px solid #d9c9a6}
+/* The Christmas catalog inside the gift registry (22 Nov 2026). */
+.reg-cat{border:1px solid #ecdcb2;background:#fbf6e8;border-radius:14px;padding:12px 12px 6px}
+.reg-cat-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.reg-cat-h b{display:block;font-size:16px}.reg-cat-h .muted{font-size:13.5px}
+.reg-cat-h a{white-space:nowrap;font-weight:700;font-size:14px;color:#1f5c3d}
+.reg-cat-strip{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x proximity;scrollbar-width:thin}
+.reg-cat-card{flex:0 0 150px;scroll-snap-align:start;display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px}
+.reg-cat-card img{width:100%;height:auto;aspect-ratio:688/1024;object-fit:cover;border-radius:6px;background:#f3ecdc}
+.reg-cat-n{display:flex;flex-direction:column;gap:2px;flex:1}.reg-cat-n b{font-size:14px;line-height:1.25}
+.reg-cat-n .bf-price{font-size:14px}.reg-cat-n .bf-price del{color:var(--muted);margin-right:5px;font-weight:500}
+.reg-cat-card select{width:100%;font-size:13px;padding:6px}
+.reg-cat-card button{width:100%;padding:8px 10px}
+.reg-cat-on{font-size:13px;font-weight:800;color:#1f5c3d;text-align:center;padding:8px 0}
+.reg-catbar{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:center;margin:22px 0;padding:16px;border-radius:18px;background:#fbf6e8;border:1px solid #ecdcb2}
+.reg-catbar-img img{display:block;width:100%;height:auto;border-radius:8px;box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.reg-catbar h2{margin:4px 0 6px;font-family:var(--serif);font-size:clamp(22px,4vw,30px)}
+.reg-catbar p{margin:0 0 12px;color:#3c3c3c}
+.bf-glink{display:inline-block;font-size:13.5px;font-weight:700;color:#1f5c3d;white-space:nowrap;margin-left:6px}
+@media (max-width:560px){.reg-catbar{grid-template-columns:96px 1fr;gap:12px}.reg-catbar p{font-size:14.5px}}
+.reg-form fieldset{min-width:0}.reg-cat,.reg-cat-strip{min-width:0;max-width:100%}
+.reg-form [aria-invalid="true"]{border-color:#c8102e;box-shadow:0 0 0 3px rgba(200,16,46,.15)}
+.reg-form .error:not(:empty){padding:10px 12px;border-radius:10px;background:#fdecee;border:1px solid #f3c2c9}
+.reg-form select{width:100%}
+/* Gift card preview at gift checkout (23 Nov 2026). */
+.gift-card-pv{border:2px dashed #2f6b4a;border-radius:12px;background:#fff;padding:10px 14px;text-align:center}
+.gcp-t{font-family:var(--serif);font-size:20px;font-weight:700;color:#173d2b}
+.gcp-m{font-style:italic;font-size:15px;margin:4px 0 2px;white-space:pre-wrap;word-break:break-word}.gcp-m.empty{color:var(--muted)}
+.gcp-f{font-size:12px;color:var(--muted)}

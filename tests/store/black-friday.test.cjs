@@ -46,3 +46,14 @@ test('scheduled start at 12 AM and end time happen by themselves on the next sto
  await transaction(async s=>{const st=await s.get('settings','main');st.black_friday.end_at=t-1;await s.put('settings','main',st)});
  assert.equal((await call('/catalog')).body.settings.black_friday.on,false);assert.equal((await P(131)).price,10299);
 });
+test('gift lists: before the sale, catalog items can go on a list (catalog price shown) but cannot be bought; minis never',async()=>{
+ await transaction(async s=>{const st=await s.get('settings','main');st.black_friday={start_at:Math.floor(Date.now()/1000)+3600,end_at:Math.floor(Date.now()/1000)+86400};await s.put('settings','main',st)});
+ const cat=(await call('/catalog')).body,up=cat.bf_upcoming||[];
+ const bell=up.find(p=>p.id===9100);assert.ok(bell,'Bell Ringer Duo listed as upcoming');assert.deepEqual([bell.upcoming,bell.price,bell.regular_price],[true,4300,7199]);
+ assert.ok(!up.some(p=>p.id===9101),'minis are never listed');assert.ok(!cat.products.some(p=>p.id===9100),'not in the shop yet');
+ const s0=await transaction(async s=>{const st=await s.get('settings','main');return st});
+ assert.equal(bf.giftable(await P(9100),s0),true);assert.equal(bf.giftable(await P(9101),s0),false);
+ assert.equal(bf.giftable(await P(9100),{black_friday:{}}),false,'no sale scheduled: not giftable');
+ await assert.rejects(call('/quote',{items:[{id:9100,quantity:1}]}),/unavailable/i,'cannot be bought before the sale');
+ await transaction(async s=>{const st=await s.get('settings','main');st.black_friday={on:false};await s.put('settings','main',st)});
+ assert.equal(((await call('/catalog')).body.bf_upcoming||[]).length,0,'nothing upcoming once no sale is scheduled')});

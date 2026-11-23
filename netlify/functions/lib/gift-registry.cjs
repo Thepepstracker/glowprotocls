@@ -14,16 +14,20 @@ const bad=(m,status=400)=>{throw Object.assign(new Error(m),{status})};
 const clean=(v,max)=>String(v??'').replace(/[\u0000-\u001f\u007f]+/g,' ').replace(/\s+/g,' ').trim().slice(0,max);
 const OCCASIONS={christmas:'Christmas',holidays:'The holidays',birthday:'Birthday',other:'Just because'};
 const STATES=/^(AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|AS|GU|MP|PR|VI|AA|AE|AP)$/;
+// Full state names are accepted too (browser autofill often fills "Georgia"; Jonah, 23 Nov 2026: saving problems).
+const STATE_NAMES={alabama:'AL',alaska:'AK',arizona:'AZ',arkansas:'AR',california:'CA',colorado:'CO',connecticut:'CT',delaware:'DE','district of columbia':'DC',florida:'FL',georgia:'GA',hawaii:'HI',idaho:'ID',illinois:'IL',indiana:'IN',iowa:'IA',kansas:'KS',kentucky:'KY',louisiana:'LA',maine:'ME',maryland:'MD',massachusetts:'MA',michigan:'MI',minnesota:'MN',mississippi:'MS',missouri:'MO',montana:'MT',nebraska:'NE',nevada:'NV','new hampshire':'NH','new jersey':'NJ','new mexico':'NM','new york':'NY','north carolina':'NC','north dakota':'ND',ohio:'OH',oklahoma:'OK',oregon:'OR',pennsylvania:'PA','rhode island':'RI','south carolina':'SC','south dakota':'SD',tennessee:'TN',texas:'TX',utah:'UT',vermont:'VT',virginia:'VA',washington:'WA','west virginia':'WV',wisconsin:'WI',wyoming:'WY','puerto rico':'PR'};
+const stateCode=v=>{const t=clean(v,40).replace(/\./g,'').trim();return STATE_NAMES[t.toLowerCase()]||t.toUpperCase()};
+const zipCode=v=>{const t=clean(v,12).replace(/\s+/g,'');return /^\d{9}$/.test(t)?t.slice(0,5)+'-'+t.slice(5):t};
 const MAX_LISTS=5,MAX_ITEMS=40,MESSAGE_MAX=300;
 // Orders that count against a list: still open or paid. Cancelled, expired and refunded ones free the item again.
 const COUNTS=['order_received','awaiting_payment','payment_submitted','paid','shipped'];
 const firstOf=n=>{const f=clean(n,100).split(' ')[0]||'';return f?f.charAt(0).toUpperCase()+f.slice(1):'Your friend'};
 const slugOk=v=>/^[a-z0-9]{10}$/.test(String(v||''));
 
-function shipTo(b){const a=b&&typeof b==='object'?b:{},t={name:clean(a.name,100),address:clean(a.address,200),city:clean(a.city,80),state:clean(a.state,2).toUpperCase(),zip:clean(a.zip,10)};
+function shipTo(b){const a=b&&typeof b==='object'?b:{},t={name:clean(a.name,100),address:clean(a.address,200),city:clean(a.city,80),state:stateCode(a.state),zip:zipCode(a.zip)};
  if(!t.name||!t.address||!t.city)bad('Add the name, street and city the gifts ship to.');if(!STATES.test(t.state))bad('Enter a two-letter state code.');if(!/^\d{5}(-\d{4})?$/.test(t.zip))bad('Enter a five-digit ZIP code.');return t}
-function itemsIn(list,products){if(!Array.isArray(list))return [];const seen=new Set(),out=[];for(const x of list.slice(0,MAX_ITEMS)){const id=Number(x?.id),want=Math.max(1,Math.min(20,Math.floor(Number(x?.want)||1)));
- if(!Number.isSafeInteger(id)||seen.has(id))continue;const p=products.get(id);if(!p||!p.active)continue;seen.add(id);out.push({id,want})}return out}
+function itemsIn(list,products,settings){if(!Array.isArray(list))return [];const seen=new Set(),out=[];for(const x of list.slice(0,MAX_ITEMS)){const id=Number(x?.id),want=Math.max(1,Math.min(20,Math.floor(Number(x?.want)||1)));
+ if(!Number.isSafeInteger(id)||seen.has(id))continue;const p=products.get(id);if(!require('./black-friday.cjs').giftable(p,settings))continue;seen.add(id);out.push({id,want})}return out}
 async function productMap(s){const m=new Map();for(const p of await s.list('products'))m.set(p.id,p);return m}
 async function giftedCounts(s,regId){const n=new Map();for(const o of await s.list('orders')){if(o.gift?.registry_id!==regId||!COUNTS.includes(o.status))continue;for(const i of o.items||[])n.set(i.id,(n.get(i.id)||0)+Number(i.quantity||0))}return n}
 async function owned(s,a,id){const r=await s.get('registries',String(id||''));if(!r||r.owner_id!==a.id)bad('Gift list not found.',404);return r}
@@ -33,8 +37,9 @@ async function ownerView(s,r){const n=await giftedCounts(s,r.id);return{id:r.id,
 async function publicView(s,r){const n=await giftedCounts(s,r.id);return{id:r.id,title:r.title,occasion:r.occasion,occasion_name:OCCASIONS[r.occasion]||'',note:r.note,closed:!!r.closed,owner_first:firstOf(r.ship_to?.name||r.owner_name),city:r.ship_to?.city||'',state:r.ship_to?.state||'',items:r.items.map(i=>({id:i.id,want:i.want,gifted:n.get(i.id)||0}))}}
 
 async function save(s,a,b){if(!a.verified)bad('Confirm your email first, then make a gift list.',403);const products=await productMap(s);
- const title=clean(b.title,80)||'My holiday list',occasion=OCCASIONS[b.occasion]?b.occasion:'christmas',note=clean(b.note,400),items=itemsIn(b.items,products),ship=shipTo(b.ship_to);
+ const title=clean(b.title,80)||'My holiday list',occasion=OCCASIONS[b.occasion]?b.occasion:'christmas',note=clean(b.note,400),items=itemsIn(b.items,products,await s.get('settings','main')),ship=shipTo(b.ship_to);
  let r=b.id?await owned(s,a,b.id):null;
+ if(!items.length&&b.closed!==true)bad(Array.isArray(b.items)&&b.items.length?'The products on this list aren’t in the store right now. Add something from the store, then save.':'Add at least one product to your list.');
  if(!r){const mine=(await s.list('registries')).filter(x=>x.owner_id===a.id&&!x.closed);if(mine.length>=MAX_LISTS)bad('You can have '+MAX_LISTS+' open gift lists. Close one first.');
   let id;do{id=crypto.randomBytes(8).toString('base64url').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,10)}while(id.length<10||await s.get('registries',id));
   r={id,owner_id:a.id,owner_name:clean(a.name,100),created:now(),thanks_points:0}}
@@ -46,7 +51,8 @@ async function prepare(s,body,items){const slug=String(body.registry||'');if(!sl
  const r=await s.get('registries',slug);if(!r||r.closed)bad('This gift list is closed. Ask your friend for a new link.',404);
  const on=new Set(r.items.map(i=>i.id));for(const it of items||[])if(!on.has(Number(it.id)))bad('A gift order can only hold things from this gift list. Take the other items out first.');
  const c=body.customer&&typeof body.customer==='object'?body.customer:{};body.customer={...c,address:r.ship_to.address,city:r.ship_to.city,state:r.ship_to.state,zip:r.ship_to.zip};
- return{registry_id:r.id,owner_id:r.owner_id,to_name:r.ship_to.name,to_first:firstOf(r.ship_to.name),city:r.ship_to.city,state:r.ship_to.state,title:r.title,message:clean(body.gift_message,MESSAGE_MAX)}}
+ const message=clean(body.gift_message,MESSAGE_MAX);if(message&&require('./clean-note.cjs').isVulgar(message))bad('Please keep the gift note friendly. It’s printed on a card in the box. Change the wording and try again.');
+ return{registry_id:r.id,owner_id:r.owner_id,to_name:r.ship_to.name,to_first:firstOf(r.ship_to.name),city:r.ship_to.city,state:r.ship_to.state,title:r.title,occasion:r.occasion||'christmas',message}}
 // A buyer editing a gift order: its lines must still be on the list (open or closed).
 async function checkItems(s,regId,items){const r=await s.get('registries',String(regId||''));if(!r)return;const on=new Set(r.items.map(i=>i.id));for(const it of items||[])if(!on.has(Number(it.id)))bad('A gift order can only hold things from this gift list.')}
 function stamp(o,gift){o.gift={...gift,from_name:clean(o.customer?.name,100)}}

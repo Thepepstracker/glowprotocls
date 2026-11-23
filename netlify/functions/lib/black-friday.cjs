@@ -78,4 +78,11 @@ async function route(path,body,h,method,{session}){
   if(body.on===false){if(body.confirm!=='END BLACK FRIDAY')bad('Type END BLACK FRIDAY to confirm.');return turnOff(s,'owner')}
   bad('Choose on or off.')}));
  return null}
-module.exports={tick,schedule,FIXED,fixedFor,plan,preview,turnOn,turnOff,on,route,pct30,isCatalogOnly,isPart};
+// Before the sale starts, the catalog's own products (gift boxes, stocking stuffers, boutique) can already go on gift
+// lists (Jonah, 22 Nov 2026: "add the christmas catalogue to the gift registrey"). They are shown with their catalog
+// price and marked upcoming; nobody can buy them until the sale switches them on.
+function upcoming(settings,t=now()){const b=settings?.black_friday||{};return !b.on&&!!b.start_at&&!(b.end_at&&b.end_at<=t)}
+const giftable=(p,settings)=>!!p&&(!!p.active||(upcoming(settings)&&glow(p)&&isCatalogOnly(p)&&!isPart(p)));
+async function upcomingProducts(s,settings){if(!upcoming(settings))return [];const out=[];
+ for(const p of await s.list('products')){if(p.active||!glow(p)||!isCatalogOnly(p)||isPart(p))continue;const n=plan(p);if(!n)continue;out.push({...p,...n,active:0,upcoming:true})}return out}
+module.exports={upcoming,giftable,upcomingProducts,tick,schedule,FIXED,fixedFor,plan,preview,turnOn,turnOff,on,route,pct30,isCatalogOnly,isPart};

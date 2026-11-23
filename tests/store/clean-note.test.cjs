@@ -1,0 +1,5 @@
+'use strict';
+// Gift notes printed on the packing slip card must be non-vulgar (Jonah, 23 Nov 2026), without blocking ordinary words.
+const {test}=require('node:test'),assert=require('node:assert/strict'),{isVulgar}=require('../../netlify/functions/lib/clean-note.cjs');
+test('swear words and slurs are caught, also disguised',()=>{for(const t of ['fuck you','Merry F*cking Christmas','sh!t happens','$hit','fuuuuck','f u c k this','f.u.c.k','you little b1tch','asshole','dumb ass','motherfucker','Bullshit','unfuckingbelievable','pussy','dickhead','STFU'])assert.equal(isVulgar(t),true,t)});
+test('ordinary notes and names pass',()=>{for(const t of ['Merry Christmas! Love, Kim','Happy holidays from Uncle Dick','Read some Dickens','Love, Cassidy','Class of 2026','Peacock blue','Cocktail night soon','Shiitake soup','Scunthorpe United','Assistant manager','Niger and Nigeria trip','Hope this makes you glow!! 🎄','Cumberland trip','Sussex','Essex girl','Assessment done','Shift work','Analysis','Grape cocktails','Hell yeah, enjoy',''])assert.equal(isVulgar(t),false,t)});
