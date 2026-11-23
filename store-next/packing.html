@@ -1070,12 +1070,12 @@ function buyBox(o){var def=svcChoice[o.id]||defaultService(o),due=o.balance_due_
   return '<div class="ship buy"><select class="svc" data-svc="'+esc(o.id)+'" aria-label="Shipping service">'+opts+'</select>'
    +'<button class="mini buybtn" data-buy="'+esc(o.id)+'"'+(due?' disabled title="Balance or refund due: settle it first"':ssr?' disabled title="Order changed after it went to ShipStation: confirm the ShipStation review in Management first"':'')+'>🏷️ Buy label</button>'
    +(due?'<span class="buywarn">Balance due, settle it first</span>':ssr?'<span class="buywarn">⚠️ Changed after it was sent to ShipStation, so the label is locked. <a href="/store-next/admin?order='+encodeURIComponent(o.id)+'" target="_blank" rel="noopener">Confirm the ShipStation review in Management</a>, then Refresh orders.</span>':blk.length?'<span class="buywarn">⏳ Waiting on '+esc(blk.map(function(i){return i.name}).join(', '))+'</span>':'')
-   +(priceStops[o.id]||o.shippo_status==='price_check'?'<span class="buywarn price">💲 '+(priceStops[o.id]?esc(priceStops[o.id].text):'Over the $15 price check')+'</span><button class="mini overbtn" data-override="'+esc(o.id)+'" title="Owner sign-in only">Admin override: buy anyway</button>'
+   +(priceStops[o.id]||o.shippo_status==='price_check'?'<span class="buywarn price">💲 '+(priceStops[o.id]?esc(priceStops[o.id].text):'Over the $15.99 price check')+'</span><button class="mini overbtn" data-override="'+esc(o.id)+'" title="Owner sign-in only">Admin override: buy anyway</button>'
      :o.shippo_message?'<span class="buywarn">Last try: '+esc(String(o.shippo_message).slice(0,140))+'</span>':'')+'</div>'}
 var priceStops={}; // order id → {text} after the $15 price check stopped a buy (Jonah, 24 Oct 2026)
 function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id});if(!o)return;var sel=document.querySelector('select[data-svc="'+id+'"]'),svc=override&&priceStops[id]&&priceStops[id].svc?priceStops[id].svc:(sel?sel.value:defaultService(o));
   var name=(BUY_SERVICES.find(function(x){return x[0]===svc})||[svc,svc])[1],blk=blockedItems(o),c=o.customer||{};
-  if(override){var ps=priceStops[id];if(!confirm('ADMIN OVERRIDE\n\n'+(ps?ps.text:'This label is over the $15 price check.')+'\n\nBuy the '+name+' label for '+(c.name||id)+' anyway?'))return}
+  if(override){var ps=priceStops[id];if(!confirm('ADMIN OVERRIDE\n\n'+(ps?ps.text:'This label is over the $15.99 price check.')+'\n\nBuy the '+name+' label for '+(c.name||id)+' anyway?'))return}
   else if(!confirm('Buy a '+name+' label for '+(c.name||id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+')?'+(blk.length?'\n\n⚠️ Still waiting on: '+blk.map(function(i){return i.name}).join(', '):'')+'\n\nThe label and packing slip print right after.'))return;
   b.disabled=true;b.textContent='Buying…';var t0=Date.now(),early=sendSlipWait(id,name);
   fetch('/api'+(o.shippo_needs_review||o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(override?{id:id,servicelevel:svc,override:true}:{id:id,servicelevel:svc})})
@@ -1087,15 +1087,14 @@ function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id}
 }
 // ---- Buy all labels in one click (Jonah, 23 Nov 2026: "lets do buy all in one click. ones that need other assistance get brought up") ----
 // Every paid order with no label is checked. The clear ones get their label bought one after another, each label + slip
-// printing as it lands, like Buy label. Price rule (Jonah, 23 Nov 2026: "if its over 15 it comes up and says how much it is.
-// if its above 16$ then go to ups ground. if that dosnt work then go to usps priority"):
-//   first service (the shipping rule, or the one picked on the card) at $15 or less → bought;
-//   over $15 up to $16 → not bought, listed with the price for the owner's OK (Admin override on the card);
-//   over $16 → UPS Ground; if Ground has no rate or is over $15 → USPS Priority; if that fails too → listed with every price.
-// The server still checks every label: the $15 price check, the daily limit and never two labels for one order.
+// printing as it lands, like Buy label. Price rule (Jonah, 23 Nov 2026: "if its anything over 16 dollars, go to ups groud. if
+// that still dosnt work go to usps priority" and "anything to 15.99 can be bought"):
+//   first service (the shipping rule, or the one picked on the card) at $15.99 or less → bought;
+//   $16.00 or more → UPS Ground; if Ground has no rate or is $16 or more → USPS Priority; if that fails too → listed with every price.
+// The server still checks every label: the $15.99 price check, the daily limit and never two labels for one order.
 // Anything else that needs a person (balance due, ShipStation review, a label that may already be in Shippo, on hold or
 // waiting on stock, a buy that fails for another reason) is not bought and is listed at the top with the reason.
-var buyAllRun=null,buyAllLast=null,BA_SOFT=1500,BA_HARD=1600;
+var buyAllRun=null,buyAllLast=null,BA_CAP=1599;
 var BA_NEXT={ups_second_day_air:'ups_ground',ups_3_day_select:'ups_ground',ups_next_day_air_saver:'ups_ground',ups_ground:'usps_priority',ups_ground_saver:'usps_priority',usps_ground_advantage:'usps_priority'};
 function svcName(v){return (BUY_SERVICES.find(function(x){return x[0]===v})||[v,v])[1]}
 function svcToken(name){var n=String(name||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();var hit=BUY_SERVICES.find(function(x){var k=x[1].toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();return n===k||n.endsWith(k.replace(/^(ups|usps) /,''))&&n.indexOf(k.split(' ')[0])===0});return hit?hit[0]:''}
@@ -1104,7 +1103,7 @@ function dollars(c){return '$'+((c||0)/100).toFixed(2)}
 function baPrice(o){var ps=priceStops[o.id];if(ps&&ps.cents)return{cents:ps.cents,svc:ps.svc};
   if(o.shippo_status!=='price_check')return null;var m=String(o.shippo_message||'').match(/costs \$([0-9]+(?:\.[0-9]+)?) \(([^)]*)\)/);if(!m)return{cents:0,svc:''};
   return{cents:Math.round(Number(m[1])*100),svc:svcToken(m[2])||svcChoice[o.id]||defaultService(o)}}
-function baStart(o){var p=baPrice(o);if(p&&p.cents>BA_HARD&&BA_NEXT[p.svc])return BA_NEXT[p.svc];return svcChoice[o.id]||defaultService(o)}
+function baStart(o){var p=baPrice(o);if(p&&p.cents>BA_CAP&&BA_NEXT[p.svc])return BA_NEXT[p.svc];if(p&&p.svc)return p.svc;return svcChoice[o.id]||defaultService(o)}
 function buyAllNeeds(o){
   if(o.balance_due_cents>0||o.refund_due_cents>0)return 'Balance or refund due: settle it first';
   if(o.shipstation_needs_review)return 'Changed after it went to ShipStation: confirm the review in Management';
@@ -1112,9 +1111,7 @@ function buyAllNeeds(o){
   if(heldAll(o))return 'Everything in it is on hold';
   if(o.hold&&o.hold.lines&&o.hold.lines.length)return 'Part of it is on hold';
   var blk=blockedItems(o);if(blk.length)return 'Waiting on '+blk.map(function(i){return i.name}).join(', ');
-  var p=baPrice(o);if(p){if(!p.cents)return 'Over the $15 price check (tap Buy label on its card to see the price)';
-    if(p.cents<=BA_HARD)return dollars(p.cents)+' '+(p.svc?svcName(p.svc):'')+' — over $15: needs your OK (Admin override on its card) or pick another service';
-    if(!BA_NEXT[p.svc])return dollars(p.cents)+' '+(p.svc?svcName(p.svc):'')+' — over $15 and nothing cheaper to try'}
+  var p=baPrice(o);if(p&&p.cents>BA_CAP&&!BA_NEXT[p.svc])return dollars(p.cents)+' '+(p.svc?svcName(p.svc):'')+' — $16 or more and nothing cheaper to try';
   return '';
 }
 function buyAllLists(){var ready=[],needs=[],failed=buyAllLast?buyAllLast.failed:[];
@@ -1142,9 +1139,8 @@ function baChain(o){var id=o.id,first=true,tried=[],useRetry=o.shippo_status==='
     return baPost(useRetry?'retry':'buy',{id:id,servicelevel:svc}).then(function(d){
       if(d.status==='synced'||d.status==='label_bought'){delete priceStops[id];return{bought:true,svc:svc,cents:Number(d.cents)||0,tried:tried}}
       if(d.status==='price_check'){var c=Number(d.cents)||0;tried.push(svcName(svc)+' '+dollars(c));
-        if(first&&c<=BA_HARD){svcChoice[id]=svc;priceStops[id]={svc:svc,cents:c,text:dollars(c)+' ('+(d.service||svcName(svc))+') is over the $15.00 price check. Nothing bought.'};return{why:dollars(c)+' '+svcName(svc)+' — over $15: needs your OK (Admin override on its card) or pick another service'}}
         first=false;var nx=BA_NEXT[svc];if(nx){svc=nx;useRetry=false;return step()}
-        priceStops[id]={svc:svc,cents:c,text:dollars(c)+' ('+svcName(svc)+') is over the $15.00 price check. Nothing bought.'};svcChoice[id]=svc;return{why:'Over $15 on every option: '+tried.join(' · ')}}
+        priceStops[id]={svc:svc,cents:c,text:dollars(c)+' ('+svcName(svc)+') is over the $15.99 price check. Nothing bought.'};svcChoice[id]=svc;return{why:'$16 or more on every option: '+tried.join(' · ')}}
       var msg=String(d.message||d.status||'unknown');
       // A definite "no rate" or "over the hard limit" means nothing was bought: move on to the next service.
       if(/^No .* rate|over the \$[0-9.]+ limit/i.test(msg)&&BA_NEXT[svc]){tried.push(svcName(svc)+': no rate');first=false;svc=BA_NEXT[svc];useRetry=true;return step()}
@@ -1152,7 +1148,7 @@ function baChain(o){var id=o.id,first=true,tried=[],useRetry=o.shippo_status==='
   return step()}
 function buyAll(){var L=buyAllLists();if(!L.ready.length||buyAllRun)return;
   var lines=L.ready.map(function(o){var c=o.customer||{},p=baPrice(o);return '• '+(c.name||o.id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+') — '+svcName(baStart(o))+(p&&p.cents?' ('+svcName(p.svc)+' was '+dollars(p.cents)+')':'')}).join('\n');
-  if(!confirm('Buy '+L.ready.length+' label'+(L.ready.length===1?'':'s')+'?\n\n'+lines+(L.needs.length?'\n\nNot included ('+L.needs.length+' need you): '+L.needs.map(function(n){return (n.o.customer||{}).name||n.o.id}).join(', '):'')+'\n\nPrice rule: $15 or less is bought. Over $15 up to $16 stops and shows you the price. Over $16 switches to UPS Ground, then USPS Priority. Each label and slip prints as it lands.'))return;
+  if(!confirm('Buy '+L.ready.length+' label'+(L.ready.length===1?'':'s')+'?\n\n'+lines+(L.needs.length?'\n\nNot included ('+L.needs.length+' need you): '+L.needs.map(function(n){return (n.o.customer||{}).name||n.o.id}).join(', '):'')+'\n\nPrice rule: up to $15.99 is bought. $16 or more switches to UPS Ground, then USPS Priority. Each label and slip prints as it lands.'))return;
   buyAllLast=null;buyAllRun={total:L.ready.length,done:0,now:''};var res={bought:0,cents:0,failed:[],switched:[]},queue=L.ready.slice();buyAllBox();
   function next(){var o=queue.shift();if(!o){buyAllRun=null;buyAllLast=res;toast('🏷️ Bought '+res.bought+' label'+(res.bought===1?'':'s')+(res.failed.length?' · '+res.failed.length+' need you':''));return fetchOrders(true).then(render,render)}
     var id=o.id,c=o.customer||{};

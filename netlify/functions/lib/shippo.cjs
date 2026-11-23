@@ -8,8 +8,8 @@
 const crypto=require('node:crypto'),{transaction}=require('./store-db.cjs'),emails=require('./store-email.cjs'),tracker=require('./order-tracking.cjs');
 const now=()=>Math.floor(Date.now()/1000),fail=(m,extra={})=>{throw Object.assign(new Error(m),{status:502},extra)}; // status: show the reason to staff instead of a generic error
 const API='https://api.goshippo.com';
-// soft_cap_cents: Jonah's $15 price check (24 Oct 2026). A label over it is never bought unless the owner signs off (override).
-const DEFAULTS={servicelevel:'ups_second_day_air',parcel:{length:8,width:6,height:4,weight_lb:1},max_label_cents:6000,daily_limit:60,soft_cap_cents:1500};
+// soft_cap_cents: Jonah's price check (24 Oct 2026: $15; 23 Nov 2026: "anything to 15.99 can be bought", so $15.99). A label over it is never bought unless the owner signs off (override).
+const DEFAULTS={servicelevel:'ups_second_day_air',parcel:{length:8,width:6,height:4,weight_lb:1},max_label_cents:6000,daily_limit:60,soft_cap_cents:1599};
 // The saved value may have extra text pasted around the token; use only the token itself.
 const token=()=>{const v=process.env.SHIPPO_API_TOKEN||'';const m=v.match(/shippo_(?:live|test)_[A-Za-z0-9]{20,}/);if(m)return m[0];const t=v.trim();return /^[\x21-\x7e]{8,300}$/.test(t)?t:''};
 const tokenProblem=()=>{const v=process.env.SHIPPO_API_TOKEN||'';if(!v)return '';if(token())return '';return 'SHIPPO_API_TOKEN in Netlify does not hold a Shippo token (it is '+v.length+' characters and has no shippo_live_ key in it). Replace its value with only the API token from Shippo > Settings > API.'};

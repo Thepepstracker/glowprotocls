@@ -102,7 +102,7 @@ test('sender email falls back to the store reply-to address when SHIPPO_FROM_EMA
  finally{for(const[k,v]of[['SHIPPO_FROM_EMAIL',keep.a],['STORE_EMAIL_REPLY_TO',keep.b],['STORE_EMAIL_FROM',keep.c]]){if(v===undefined)delete process.env[k];else process.env[k]=v}}});
 
 test('$15 price check: a staff click on a $17.27 label buys nothing and says the price; override buys it',async()=>{const pricey={...rate,object_id:'rate_pricey',amount:'17.27'};
- let st=fakeShippo({rates:[pricey]});const o=await fixture();const r=await shippo.buy(o.id,{manual:true});assert.equal(r.status,'price_check');assert.equal(r.cents,1727);assert.equal(r.limit_cents,1500);assert.match(r.message,/\$17\.27/);assert.equal(st.buys,0);
+ let st=fakeShippo({rates:[pricey]});const o=await fixture();const r=await shippo.buy(o.id,{manual:true});assert.equal(r.status,'price_check');assert.equal(r.cents,1727);assert.equal(r.limit_cents,1599);assert.match(r.message,/\$17\.27/);assert.equal(st.buys,0);
  const s=await order(o.id);assert.equal(s.status,'paid');assert.notEqual(s.shippo_needs_review,true,'a price check does not lock the order');
  st=fakeShippo({rates:[pricey]});const r2=await shippo.buy(o.id,{manual:true,override:true});assert.equal(r2.status,'synced');assert.equal(st.buys,1);assert.equal(st.lastBuy.rate,'rate_pricey')});
 
@@ -113,3 +113,6 @@ test('$15 price check: exactly $15.00 is allowed',async()=>{const st=fakeShippo(
 test('$15 price check: replacement labels too, unless overridden',async()=>{const o=await fixture();await transaction(async s=>{const x=await s.get('orders',o.id);x.status='shipped';await s.put('orders',o.id,x)});
  let st=fakeShippo({rates:[{...rate,amount:'27.90'}]});await assert.rejects(shippo.replacement(o.id,{note:'1 BAC missing',key:'pricecheck01'}),/Price check/);assert.equal(st.buys,0);
  st=fakeShippo({rates:[{...rate,amount:'27.90'}]});const r=await shippo.replacement(o.id,{note:'1 BAC missing',key:'pricecheck02',override:true});assert.equal(r.status,'label_bought');assert.equal(st.buys,1)});
+
+test('$15.99 price check (23 Nov 2026): $15.99 is bought, $16.00 is stopped',async()=>{let st=fakeShippo({rates:[{...rate,amount:'15.99'}]});let o=await fixture();let r=await shippo.buy(o.id,{manual:true});assert.equal(r.status,'synced');st.restore&&st.restore();
+ st=fakeShippo({rates:[{...rate,object_id:'rate_16',amount:'16.00'}]});o=await fixture();r=await shippo.buy(o.id,{manual:true});assert.equal(r.status,'price_check');assert.equal(r.cents,1600);st.restore&&st.restore()});
