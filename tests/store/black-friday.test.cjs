@@ -62,11 +62,14 @@ test('sale prices: a bigger size never costs less than a smaller one (GLP-2T 30 
  assert.equal(bf.plan({id:104,brand:'glow',sku:'reta-5',price:3799}).price,2400,'GLP-3R 5 mg under the catalog 10 mg ($27)');
  assert.equal(bf.plan({id:131,brand:'glow',sku:'glow-70-mg',price:10299}).price,7200,'others unchanged');
 });
-test('The Wonderful Seven: $199 during the sale, switched off after Friday 11:59 PM ET',async()=>{
- const n=bf.plan({id:346,brand:'glow',sku:'bf-wonderful-seven',price:28797,active:0});assert.deepEqual([n.price,n.regular_price,n.intro_active,n.active,n.black_friday],[19900,28797,true,1,'fixed']);
- assert.equal(bf.LIMITED[346],1795841999,'Fri 27 Nov 2026 11:59:59 PM ET');assert.equal(new Date(1795841999*1000).toLocaleString('en-US',{timeZone:'America/New_York'}),'11/27/2026, 11:59:59 PM');
- await transaction(async s=>{await s.put('products',346,{id:346,brand:'glow',sku:'bf-wonderful-seven',name:'The Wonderful Seven',price:19900,active:1,stock:3});const st=await s.get('settings','main');st.black_friday={on:true};await s.put('settings','main',st)});
- await transaction(async s=>bf.tick(s,{black_friday:{on:true}},1795841999));assert.equal((await P(346)).active,1,'still on at the last second');
- await transaction(async s=>bf.tick(s,{black_friday:{on:true}},1795842000));assert.equal((await P(346)).active,0,'off after Friday');
- await transaction(async s=>{const st=await s.get('settings','main');st.black_friday={on:false};await s.put('settings','main',st)});
+test('5 days only: each listed Kit of 10 is $199 (or less if 30% off is lower) until Friday, then back to 30% off',async()=>{
+ const deal=bf.plan({id:232,brand:'glow',sku:'tirz-10-15-mg-kit',price:59899},bf.KIT_DEAL_UNTIL);assert.deepEqual([deal.price,deal.regular_price,deal.black_friday,deal.promo_excluded,deal.bf_deal],[19900,59899,'fixed',true,'kit5']);
+ assert.equal(bf.plan({id:229,brand:'glow',sku:'nad-500-mg-kit',price:23699},bf.KIT_DEAL_UNTIL).price,16600,'NAD+ kit keeps its lower 30%-off price');
+ assert.equal(new Date(bf.KIT_DEAL_UNTIL*1000).toLocaleString('en-US',{timeZone:'America/New_York'}),'11/27/2026, 11:59:59 PM');
+ await transaction(async s=>{await s.put('products',232,{id:232,brand:'glow',sku:'tirz-10-15-mg-kit',name:'GLP-2T · 15 mg · Kit of 10',active:1,stock:40,...deal});
+  await s.put('integrations','black-friday',{id:'black-friday',on:true,snapshot:{232:{price:59899,regular_price:59899,intro_price:null,intro_active:false,promo_excluded:null,active:1,black_friday:null,bf_deal:null}}})});
+ await transaction(async s=>bf.tick(s,{black_friday:{on:true}},bf.KIT_DEAL_UNTIL));assert.equal((await P(232)).price,19900,'still $199 at the last second');
+ await transaction(async s=>bf.tick(s,{black_friday:{on:true}},bf.KIT_DEAL_UNTIL+1));const after=await P(232);
+ assert.deepEqual([after.price,after.black_friday,after.bf_deal,after.promo_excluded],[41900,'pct',undefined,undefined],'30% off again, codes rule as before');
+ await transaction(async s=>{await s.put('integrations','black-friday',{id:'black-friday',on:false,snapshot:{}});await s.remove('products',232)});
 });
