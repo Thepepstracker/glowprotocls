@@ -92,6 +92,7 @@ button:disabled{opacity:.45;cursor:default}
 .state.ok{color:var(--ok)}
 .note{background:#fff8e6;border:1px solid #f0d58c;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
 .ship{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-top:4px}
+.buyall{background:#fff8e6;border:2px solid #b88a2e;border-radius:12px;padding:10px 12px;margin:10px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}.buyall .primary{font-size:16px}.buyall.run{background:#eef6ff;border-color:#4a7bd0}.ba-res{width:100%;font-weight:600}.ba-needs{width:100%;margin-top:4px}.ba-needs ul{margin:6px 0 0;padding-left:18px}.ba-needs li{margin:3px 0}
 .ship.buy{background:#fff8e6;border:1px dashed #b88a2e;border-radius:10px;padding:8px 10px}.ship.buy select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink)}.ship.buy .buybtn{font-weight:800;background:var(--ink);color:#fff;border-color:var(--ink)}.ship.buy .buybtn[disabled]{opacity:.5}.buywarn{font-size:13px;color:#8a5a00}.buywarn.price{color:#a3001b;font-weight:800}.ship.buy .overbtn{font-weight:800;background:#fff;color:#a3001b;border-color:#a3001b}
 .pst{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}.pst span{font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}.pst .ok{background:#e7f4ea;color:#1f7a3a}.pst .no{background:#fff1d6;color:#8a5a00}
 .ship a.lbtn{font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--ink);border-radius:8px;padding:4px 10px;text-decoration:none}
@@ -254,6 +255,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
     <button id="printLabels" title="Opens every label for orders you have not checked yet">Open all labels</button><button id="printSlips" title="Packing slips for every order not checked yet (4×6, same as labels)">🧾 Print slips</button><button id="bigscreen" class="mini" aria-pressed="false" title="Huge text for the packing table (B)">🖥️ Big screen</button>
     <button id="sound" class="mini" aria-pressed="true" title="Sounds for new orders and finished boxes">🔔 Sound on</button> <button id="autoprint" class="mini" aria-pressed="false" title="Turn on only on the computer next to the label printer">🖨️ Auto-print off</button><button id="notify" class="mini" title="Pop-up on this computer when a new order comes in, even when this tab is in the background">🛎️ Turn on order pop-ups</button><button id="testPing" class="mini" title="Show what a new-order alert looks like">Test alert</button>
   </div>
+  <div id="buyAll"></div>
   <div class="tools tabs">
     <button data-view="todo" aria-pressed="true">To check<span class="n" id="nTodo">0</span></button>
     <button data-view="done" aria-pressed="false">Checked<span class="n" id="nDone">0</span></button>
@@ -453,7 +455,7 @@ function render(){setTimeout(fitNowBar,0);
   var rs=restockRows().filter(function(x){return x.status==='out'||x.status==='now'}).length,nr=document.getElementById('nRestock');nr.textContent=rs;nr.className='n'+(rs?' red':'');
   document.getElementById('chips').style.display=(view==='pick'||view==='restock'||view==='stats'||view==='calls'||view==='ship')?'none':'';document.getElementById('shipPanel').hidden=view!=='ship';
   weekBanner();var nc=callList().filter(function(c){return !callDone(c)}).length,ncb=document.getElementById('nCalls');ncb.textContent=nc;
-  alerts();
+  alerts();buyAllBox();
   var out=document.getElementById('out');
   if(view==='ship'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=shipList();return}
   if(view==='pick'||view==='restock'||view==='stats'||view==='calls'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=view==='pick'?pickList():view==='stats'?statsView():view==='calls'?callsView():restock();return}
@@ -1083,6 +1085,58 @@ function buyLabel(id,b,override){var o=orders.find(function(x){return x.id===id}
     toast('Not bought: '+(d.message||d.status||'unknown'));b.disabled=false;b.textContent='🏷️ Buy label';return fetchOrders(true)})
   .catch(function(e){toast((e&&e.message)||'Could not buy the label');b.disabled=false;b.textContent='🏷️ Buy label'});
 }
+// ---- Buy all labels in one click (Jonah, 23 Nov 2026: "lets do buy all in one click. ones that need other assistance get brought up") ----
+// Every paid order with no label is checked. The ones that are clear get their label bought one after another with the
+// service in their menu (the shipping rule by default), each label + slip printing as it lands, like Buy label. Anything that
+// needs a person (balance due, ShipStation review, a label that may already be in Shippo, waiting on stock or on hold, over the
+// $15 price check, or a buy that fails) is not bought and is listed at the top with the reason. The server's checks still run
+// on every label: the $15 price check, the daily limit and never two labels for one order.
+var buyAllRun=null,buyAllLast=null;
+function buyAllNeeds(o){
+  if(o.balance_due_cents>0||o.refund_due_cents>0)return 'Balance or refund due: settle it first';
+  if(o.shipstation_needs_review)return 'Changed after it went to ShipStation: confirm the review in Management';
+  if(o.shippo_needs_review||o.shippo_status==='needs_review')return 'A label may already be in Shippo: check Shippo, then use its Buy label';
+  if(heldAll(o))return 'Everything in it is on hold';
+  if(o.hold&&o.hold.lines&&o.hold.lines.length)return 'Part of it is on hold';
+  var blk=blockedItems(o);if(blk.length)return 'Waiting on '+blk.map(function(i){return i.name}).join(', ');
+  if(priceStops[o.id])return priceStops[o.id].text.replace(' Nothing bought.','');
+  if(o.shippo_status==='price_check')return 'Over the $15 price check';
+  return '';
+}
+function buyAllLists(){var ready=[],needs=[];
+  orders.forEach(function(o){if(o.manual||!canBuy(o)||hasLabel(o)||isSkipped(o))return;var why=buyAllNeeds(o);if(why)needs.push({o:o,why:why});else ready.push(o)});
+  if(buyAllLast)buyAllLast.failed.forEach(function(f){if(!needs.some(function(n){return n.o.id===f.id})){var o=orders.find(function(x){return x.id===f.id});if(o&&!hasLabel(o)){needs.push({o:o,why:f.why});ready=ready.filter(function(r){return r.id!==f.id})}}});
+  return{ready:ready,needs:needs}}
+function svcName(v){return (BUY_SERVICES.find(function(x){return x[0]===v})||[v,v])[1]}
+function buyAllBox(){var el=document.getElementById('buyAll');if(!el)return;
+  if(view!=='todo'&&view!=='all'){el.innerHTML='';return}
+  var L=buyAllLists(),h='';
+  if(buyAllRun){h='<div class="buyall run"><b>🏷️ Buying labels… '+buyAllRun.done+' of '+buyAllRun.total+'</b>'+(buyAllRun.now?' <span class="small">now: '+esc(buyAllRun.now)+'</span>':'')+'</div>';el.innerHTML=h;return}
+  if(!L.ready.length&&!L.needs.length&&!buyAllLast){el.innerHTML='';return}
+  h='<div class="buyall">';
+  if(buyAllLast)h+='<div class="ba-res">✅ Bought '+buyAllLast.bought+' label'+(buyAllLast.bought===1?'':'s')+(buyAllLast.cents?' · '+money(buyAllLast.cents):'')+(buyAllLast.failed.length?' · '+buyAllLast.failed.length+' need you (below)':'')+' <button class="mini" data-buyalldismiss="1">OK</button></div>';
+  if(L.ready.length){var by={};L.ready.forEach(function(o){var v=svcChoice[o.id]||defaultService(o);by[v]=(by[v]||0)+1});
+    h+='<button class="primary" data-buyall="1">🏷️ Buy all '+L.ready.length+' label'+(L.ready.length===1?'':'s')+'</button> <span class="small">'+esc(Object.keys(by).map(function(v){return by[v]+' × '+svcName(v)}).join(' · '))+' · labels + slips print as they land</span>'}
+  else if(!buyAllLast)h+='<span class="small">Every order that can get a label already has one.</span>';
+  if(L.needs.length)h+='<div class="ba-needs"><b>⚠️ '+L.needs.length+' need you before a label:</b><ul>'+L.needs.map(function(n){var c=n.o.customer||{};return '<li><a href="#" data-bafind="'+esc(n.o.id)+'">'+esc(c.name||n.o.id)+'</a> <span class="small">'+esc(n.o.id)+(c.state?' · '+esc(c.state):'')+'</span> — '+esc(n.why)+'</li>'}).join('')+'</ul></div>';
+  el.innerHTML=h+'</div>'}
+function buyAll(){var L=buyAllLists();if(!L.ready.length||buyAllRun)return;
+  var lines=L.ready.map(function(o){var c=o.customer||{};return '• '+(c.name||o.id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+') — '+svcName(svcChoice[o.id]||defaultService(o))}).join('\n');
+  if(!confirm('Buy '+L.ready.length+' label'+(L.ready.length===1?'':'s')+'?\n\n'+lines+(L.needs.length?'\n\nNot included ('+L.needs.length+' need you): '+L.needs.map(function(n){return (n.o.customer||{}).name||n.o.id}).join(', '):'')+'\n\nAnything over the $15 price check is NOT bought and is listed for you. Each label and slip prints as it lands.'))return;
+  buyAllLast=null;buyAllRun={total:L.ready.length,done:0,now:''};var res={bought:0,cents:0,failed:[]},queue=L.ready.slice();buyAllBox();
+  function next(){var o=queue.shift();if(!o){buyAllRun=null;buyAllLast=res;toast('🏷️ Bought '+res.bought+' label'+(res.bought===1?'':'s')+(res.failed.length?' · '+res.failed.length+' need you':''));return fetchOrders(true).then(render,render)}
+    var id=o.id,c=o.customer||{},svc=svcChoice[id]||defaultService(o),name=svcName(svc);buyAllRun.now=(c.name||id)+' · '+name;buyAllBox();
+    var early=sendSlipWait(id,name);
+    return fetch('/api'+(o.shippo_status==='needs_review'?'/admin/shippo/retry':'/admin/shippo/buy'),{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({id:id,servicelevel:svc})})
+    .then(function(x){return x.json().catch(function(){return{}}).then(function(d){if(!x.ok)throw new Error(d.error||d.message||('The store answered '+x.status));return d})})
+    .then(function(d){
+      if(d.status==='synced'||d.status==='label_bought'){delete priceStops[id];markPrinted(id);res.bought++;res.cents+=Number(d.cents)||0;
+        return fetchOrders(true).then(function(){return sendToPrinter(id,null,{slip:!early,slipHeld:early})}).catch(function(){res.failed.push({id:id,why:'Label bought, but it did not print: use Print label on its card'})})}
+      if(d.status==='price_check'){svcChoice[id]=svc;priceStops[id]={svc:svc,text:'$'+((d.cents||0)/100).toFixed(2)+' ('+(d.service||name)+') is over the $'+((d.limit_cents||1500)/100).toFixed(2)+' price check. Nothing bought.'};res.failed.push({id:id,why:'$'+((d.cents||0)/100).toFixed(2)+' '+(d.service||name)+' is over the $15 price check: pick another service or use Admin override'});return}
+      res.failed.push({id:id,why:'Not bought: '+String(d.message||d.status||'unknown').slice(0,160)})})
+    .catch(function(e){res.failed.push({id:id,why:'Not bought: '+String((e&&e.message)||'error').slice(0,160)})})
+    .then(function(){buyAllRun.done++;return new Promise(function(r){setTimeout(r,1200)})}).then(next)}
+  next()}
 function saveFile(name,blob){var u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},30000)}
 // The 4x6 packing slip as glow-slip-<order>.html; the Mac helper turns it into a PDF and prints it right after the label.
 function sendSlip(id){var o=orders.find(function(x){return x.id===id});if(!o||o.replacement)return false;saveFile('glow-slip-'+String(o.id).replace(/[^A-Za-z0-9-]/g,'')+'.html',new Blob([slipHTML([o])],{type:'text/html'}));return true}
@@ -1122,6 +1176,8 @@ document.addEventListener('change',function(e){var t=e.target;if(t&&t.matches&&t
 document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;lastKey=Date.now();
   if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';var was=isDone(o);setTick(o,b.dataset.k,on);if(on)history.push({id:o.id,k:b.dataset.k});if(isDone(o)){justDone[o.id]=1;if(!was)celebrate(o)}b.blur();buildPools();render();return}
+  if(b.dataset.buyall){buyAll();return}
+  if(b.dataset.buyalldismiss){buyAllLast=null;render();return}
   if(b.dataset.buy){buyLabel(b.dataset.buy,b);return}
   if(b.dataset.override){buyLabel(b.dataset.override,b,true);return}
   if(b.dataset.dl){sendToPrinter(b.dataset.dl,b).catch(function(){});return}
@@ -1173,6 +1229,7 @@ document.addEventListener('keydown',function(e){
   var tabs=['todo','done','skipped','all','pick','restock','stats','calls','ship'];if(/^[1-9]$/.test(e.key)){setView(tabs[Number(e.key)-1])}
 });
 document.getElementById('search').addEventListener('input',function(e){query=e.target.value.trim();render()});
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[data-bafind]');if(!a)return;e.preventDefault();var id=a.dataset.bafind,sb=document.getElementById('search');if(sb)sb.value=id;query=id;if(view!=='todo'&&view!=='all')setView('todo');else render();window.scrollTo({top:0})});
 document.getElementById('autoprint').addEventListener('click',function(){if(!autoPrint){if(!confirm('Turn on auto-print on THIS computer?\n\nEvery new shipping label prints here with its packing slip. Labels that already exist are skipped. Turn it on only on the computer next to the label printer.'))return;all.forEach(function(o){if(hasLabel(o))printedIds[o.id]=Date.now()});lsSet(APD,printedIds)}autoPrint=!autoPrint;lsSet(APK,autoPrint);syncAutoPrint();toast(autoPrint?'Auto-print is ON here. New labels print by themselves.':'Auto-print is off.')});
 syncAutoPrint();
 syncNotifyBtn();
