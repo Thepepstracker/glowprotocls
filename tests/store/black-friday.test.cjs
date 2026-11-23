@@ -57,3 +57,16 @@ test('gift lists: before the sale, catalog items can go on a list (catalog price
  await assert.rejects(call('/quote',{items:[{id:9100,quantity:1}]}),/unavailable/i,'cannot be bought before the sale');
  await transaction(async s=>{const st=await s.get('settings','main');st.black_friday={on:false};await s.put('settings','main',st)});
  assert.equal(((await call('/catalog')).body.bf_upcoming||[]).length,0,'nothing upcoming once no sale is scheduled')});
+test('sale prices: a bigger size never costs less than a smaller one (GLP-2T 30 mg, GLP-3R 5 mg)',()=>{
+ assert.equal(bf.plan({id:12,brand:'glow',sku:'tirz-30',price:9900}).price,4900,'GLP-2T 30 mg under the catalog 40 mg ($50)');
+ assert.equal(bf.plan({id:104,brand:'glow',sku:'reta-5',price:3799}).price,2400,'GLP-3R 5 mg under the catalog 10 mg ($27)');
+ assert.equal(bf.plan({id:131,brand:'glow',sku:'glow-70-mg',price:10299}).price,7200,'others unchanged');
+});
+test('The Wonderful Seven: $199 during the sale, switched off after Friday 11:59 PM ET',async()=>{
+ const n=bf.plan({id:346,brand:'glow',sku:'bf-wonderful-seven',price:28797,active:0});assert.deepEqual([n.price,n.regular_price,n.intro_active,n.active,n.black_friday],[19900,28797,true,1,'fixed']);
+ assert.equal(bf.LIMITED[346],1795841999,'Fri 27 Nov 2026 11:59:59 PM ET');assert.equal(new Date(1795841999*1000).toLocaleString('en-US',{timeZone:'America/New_York'}),'11/27/2026, 11:59:59 PM');
+ await transaction(async s=>{await s.put('products',346,{id:346,brand:'glow',sku:'bf-wonderful-seven',name:'The Wonderful Seven',price:19900,active:1,stock:3});const st=await s.get('settings','main');st.black_friday={on:true};await s.put('settings','main',st)});
+ await transaction(async s=>bf.tick(s,{black_friday:{on:true}},1795841999));assert.equal((await P(346)).active,1,'still on at the last second');
+ await transaction(async s=>bf.tick(s,{black_friday:{on:true}},1795842000));assert.equal((await P(346)).active,0,'off after Friday');
+ await transaction(async s=>{const st=await s.get('settings','main');st.black_friday={on:false};await s.put('settings','main',st)});
+});
