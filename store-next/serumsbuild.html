@@ -6,33 +6,71 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Serum Station · Glow Lab</title>
 <style>
-/* Serum Station (Jonah, 24 Nov 2026). Packing Check's look, one step at a time: what to weigh, how long it takes, Done.
-   Timed steps from the recipe lock Done until the timer runs out, so every batch gets the same mixing time. */
-:root{--bg:#f7f4ee;--card:#fff;--ink:#1b1b1b;--muted:#6b6459;--line:#e4dccd;--gold:#b88a2e;--gold2:#f3d58b;--ok:#1f7a3a;--okbg:#e7f4ea;--warn:#a23b1d;--warnbg:#fbeae5;--amberbg:#fff4d6}
+/* Serum Station (Jonah, 24 Nov 2026). 8 stir plates in a row, beaker 1 on the right. Each beaker runs its own serum:
+   you see it spin, what it needs next and how long is left. Tap a beaker to work its step. Recipe mixing times lock
+   Done until the timer ends, so every batch gets the same mixing. */
+:root{--bg:#f7f4ee;--card:#fff;--ink:#1b1b1b;--muted:#6b6459;--line:#e4dccd;--gold:#b88a2e;--gold2:#f3d58b;--ok:#1f7a3a;--okbg:#e7f4ea;--warn:#a23b1d;--warnbg:#fbeae5;--amberbg:#fff4d6;--blue:#2f6fd0}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;font-variant-numeric:tabular-nums}
 a{color:inherit}
 button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--ink);background:#fff;color:var(--ink);padding:10px 14px}
 button:disabled{opacity:.4;cursor:default}
 header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;padding:12px 16px}
-header .row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;max-width:880px;margin:0 auto}
+header .row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;max-width:1120px;margin:0 auto}
 h1{font-size:20px;margin:0;letter-spacing:.02em}
 .hs{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:15px}
 .hs .pill{background:#333;border-radius:20px;padding:3px 10px}
-.hs a{text-decoration:none;border:1px solid #555;border-radius:20px;padding:3px 10px}
-.bar{height:8px;background:#444;border-radius:4px;overflow:hidden;max-width:880px;margin:10px auto 0}
-.bar i{display:block;height:100%;background:#5fc27e;width:0;transition:width .3s}
-main{max-width:880px;margin:0 auto;padding:16px}
-.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tabs button{flex:0 0 auto;padding:8px 13px;font-size:15px;border-radius:20px;white-space:nowrap}
-.tabs button[aria-pressed=true]{background:var(--ink);color:#fff}
-.tabs .n{display:inline-block;min-width:20px;font-size:12px;font-weight:800;background:var(--warn);color:#fff;border-radius:20px;padding:0 6px;margin-left:6px}
-.tabs .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-left:6px;vertical-align:middle}
-.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px}
+.hs a,.hs button{text-decoration:none;border:1px solid #555;border-radius:20px;padding:3px 10px;background:none;color:#fff;font-size:15px}
+.hs .pill.hot{background:var(--gold2);color:#111;font-weight:800}
+main{max-width:1120px;margin:0 auto;padding:14px 16px 60px}
+/* ---- the bench: 8 stir plates ---- */
+.benchwrap{background:#151515;border-radius:22px;padding:16px 10px 12px;overflow-x:auto;scrollbar-width:thin}
+.bench{display:flex;flex-direction:row-reverse;gap:8px;min-width:max-content;justify-content:center;margin:0 auto}
+.bk{width:126px;flex:0 0 126px;border:0;background:none;padding:6px 4px 8px;border-radius:16px;color:#fff;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bk:hover{background:#1f1f1f}
+.bk.sel{background:#262626;box-shadow:0 0 0 2px var(--gold2) inset}
+.bk .no{font-size:11px;font-weight:900;letter-spacing:.16em;color:#8f887a}
+.bk svg{width:96px;height:118px;overflow:visible}
+.bk .nm{font-size:14px;font-weight:800;line-height:1.15;min-height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:118px}
+.bk .stp{font-size:11.5px;color:#a9a295;line-height:1.2;min-height:28px;max-width:118px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.bk .big{font:800 20px/1 ui-monospace,Menlo,monospace;color:#fff;min-height:22px}
+.bk .tag{font-size:11.5px;font-weight:800;border-radius:20px;padding:3px 8px;background:#2b2b2b;color:#cfc8ba;max-width:118px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk.need .tag{background:var(--gold2);color:#111;animation:pulse 1.2s ease-in-out infinite}
+.bk.mix .tag{background:#1e3a66;color:#cfe0ff}
+.bk.up .tag{background:#5fc27e;color:#111;animation:pulse 1.2s ease-in-out infinite}
+.bk.done .tag{background:#173a22;color:#8fd6a4}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(243,213,139,.18)}}
+/* svg parts */
+.glass{fill:rgba(255,255,255,.06);stroke:#d9d9d9;stroke-width:2}
+.tick{stroke:#bdbdbd;stroke-width:1.2}
+.plate{fill:#2c2c2c;stroke:#3a3a3a}
+.led{fill:#444}
+.led.on{fill:#5fc27e;filter:drop-shadow(0 0 3px #5fc27e)}
+.led.hot{fill:#ff7a3d;filter:drop-shadow(0 0 4px #ff7a3d)}
+.liq{transition:y .6s ease,height .6s ease}
+.bar{fill:#f2f2f2}
+.spin .bar{animation:stir .35s linear infinite;transform-box:fill-box;transform-origin:center}
+@keyframes stir{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}100%{transform:scaleX(1)}}
+.vortex{opacity:0}
+.spin .vortex{opacity:.55;animation:swirl 1.1s linear infinite;transform-box:fill-box;transform-origin:center}
+@keyframes swirl{0%{transform:scaleX(1)}50%{transform:scaleX(.55)}100%{transform:scaleX(1)}}
+.bub{fill:rgba(255,255,255,.55);opacity:0}
+.spin .bub{animation:rise 1.8s ease-in infinite}
+.spin .bub.b2{animation-delay:.6s}.spin .bub.b3{animation-delay:1.2s}
+@keyframes rise{0%{opacity:0;transform:translateY(0)}15%{opacity:.8}100%{opacity:0;transform:translateY(-46px)}}
+.ring{fill:none;stroke:#333;stroke-width:4}
+.ringp{fill:none;stroke:var(--gold2);stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .5s linear}
+.bk.up .ringp{stroke:#5fc27e}
+.hint{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 0;align-items:center}
+.hint b{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hint button{padding:6px 11px;font-size:14px;border-radius:20px;background:var(--gold2);border-color:var(--gold2);font-weight:700}
+.legend{display:flex;justify-content:space-between;color:#7d776b;font-size:12px;font-weight:700;letter-spacing:.1em;margin:6px 8px 0}
+/* ---- detail ---- */
+.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px;margin-top:14px}
 .top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .top .nm{font-size:24px;font-weight:800;flex:1;min-width:150px}
 .top .nm small{display:block;font-size:14px;font-weight:500;color:var(--muted)}
+.top .bno{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--gold);display:block}
 .facts{display:flex;gap:8px;flex-wrap:wrap}
 .fact{background:#f3efe6;border-radius:10px;padding:6px 10px;text-align:center;min-width:76px}
 .fact b{display:block;font-size:19px}
@@ -87,20 +125,23 @@ main{max-width:880px;margin:0 auto;padding:16px}
 .src{font-size:12.5px;color:var(--muted);margin-top:12px}
 .small{font-size:14px;color:var(--muted)}
 .msg{padding:16px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
-.pick{text-align:left;border:2px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:12px}
+.pick{text-align:left;border:2px solid var(--line);border-radius:14px;padding:14px;background:#fff;display:flex;gap:10px;align-items:flex-start}
+.pick i{flex:0 0 14px;height:14px;border-radius:50%;margin-top:6px}
 .pick b{display:block;font-size:19px}
 .pick span{display:block;font-size:13.5px;color:var(--muted);margin-top:2px}
 .pick .w8{display:inline;color:var(--warn);font-weight:800}
+.clear,.dots .clear{background:none;border:1px solid var(--line);color:var(--muted);font-size:14px;padding:6px 10px;width:auto;height:auto;border-radius:10px;font-weight:600}
 table{width:100%;border-collapse:collapse;background:var(--card);min-width:600px}
 td,th{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:15px}
 th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 td.b{font-weight:800;white-space:nowrap}
 tr.void td{opacity:.5;text-decoration:line-through}tr.void td.act{opacity:1;text-decoration:none}
-.tscroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+.tscroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line);margin-top:14px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 32px)}
 .toast.show{opacity:1}
-@media (max-width:600px){.step h2{font-size:24px}.w .amt{font-size:22px;min-width:96px}.clock .t{font-size:28px;min-width:90px}.top .nm{font-size:21px}.hide-sm{display:none}}
+@media (max-width:600px){.bk{width:104px;flex-basis:104px}.bk svg{width:80px;height:98px}.bk .nm,.bk .stp,.bk .tag{max-width:98px}.step h2{font-size:24px}.w .amt{font-size:22px;min-width:96px}.clock .t{font-size:28px;min-width:90px}.top .nm{font-size:21px}.hide-sm{display:none}.bench{justify-content:flex-start}}
+@media (prefers-reduced-motion:reduce){.spin .bar,.spin .vortex,.spin .bub,.bk.need .tag,.bk.up .tag{animation:none}}
 button:focus-visible,input:focus-visible{outline:3px solid rgba(184,138,46,.6);outline-offset:2px}
 </style>
 </head>
@@ -108,14 +149,14 @@ button:focus-visible,input:focus-visible{outline:3px solid rgba(184,138,46,.6);o
 <header>
   <div class="row">
     <h1>Serum Station</h1>
-    <div class="hs"><span id="count">Pick a serum</span><span class="pill hide-sm" id="today"></span><a href="/store-next/packing.html">Packing Check</a></div>
+    <div class="hs"><span id="count"></span><span class="pill hide-sm" id="today"></span><button type="button" data-log="1">Batch log</button><a href="/store-next/packing.html">Packing Check</a></div>
   </div>
-  <div class="bar"><i id="bar"></i></div>
 </header>
 <main>
   <div id="signin"></div>
-  <div class="tabs" id="tabs"></div>
-  <div id="out"><div class="msg">Loading…</div></div>
+  <div class="benchwrap"><div class="bench" id="bench"></div><div class="legend"><span>← 8</span><span>Beaker 1 →</span></div></div>
+  <div class="hint" id="hint"></div>
+  <div id="out"></div>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
@@ -209,14 +250,16 @@ var RECIPES=[
    {t:'Let it hydrate',d:'Keep stirring low until it’s a smooth, clear gel.',min:30},
    {t:'Cover + date it',d:'Label it with today’s date. Protocol 01/02 use about 201.5 g per 15 bottles; Cu-Hair 90 g per 15.',min:1,est:true}],
   src:'ChatGPT › Glow Protocols: “247.5 g distilled water + 2.5 g HA powder = 250 g” (1%). Hydrate 30–60 min (Cu-Hair chat).'}];
+// Liquid colour in the beaker (GHK-Cu turns blue, AHK-Cu deeper teal, rose pink, HA clear).
+var COLOR={'protocol-01':'#2f6fd0','protocol-02':'#4f8fe0','cu-hair-01':'#3d9bd6','cu-hair-02':'#1f8f8a','glow-eyes':'#5b7fe0','glow-eyes-luxe':'#6a5fd6','rose-mist':'#e58aa3','ha-base':'#cfe3ee'};
 // -----------------------------------------------------------------------------------------------------------------
-var STATE_K='glp_serum_v3',WHO_K='glp_serum_who_v1';
-var products=[],bySku={},byId={},orders=[],batches=[],need={},st=null,view=null,authed=true,voidArm=null,tick=null,actx=null;
+var N=8,STATE_K='glp_serum_bench8_v1',OLD_K='glp_serum_v3',WHO_K='glp_serum_who_v1';
+var products=[],bySku={},byId={},orders=[],batches=[],need={},bench=null,st=null,view='bench',authed=true,voidArm=null,tick=null,actx=null;
 function ls(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function $(id){return document.getElementById(id)}
-function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show')},2800)}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show')},3200)}
 function rec(k){for(var i=0;i<RECIPES.length;i++)if(RECIPES[i].key===k)return RECIPES[i];return null}
 function api(path,body){return fetch('/api/admin/'+path,{method:body?'POST':'GET',headers:Object.assign({'X-Store-Request':'1'},body?{'Content-Type':'application/json'}:{}),body:body?JSON.stringify(body):undefined,cache:'no-store',credentials:'same-origin'})
  .then(function(r){if(r.status===401){authed=false;$('signin').innerHTML='<div class="msg" style="margin-bottom:12px"><b>Sign in first.</b> Open <a href="/store-next/admin" target="_blank" rel="noopener">Management</a>, sign in, then refresh. Recipes work without it; finishing a batch needs it.</div>';throw new Error('Sign in first.')}
@@ -231,37 +274,66 @@ function stepsOf(r){return r.steps.filter(function(x){return !x.only||r.ing.some
 function mins(r){var a=0,b=0;stepsOf(r).forEach(function(x){if(x.min)a+=x.min;else b++});return {m:a,open:b}}
 function hm(m){m=Math.round(m);return m>=60?Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':''):m+' min'}
 function mmss(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+function isHot(x){return /40–45|45 °C max/.test(x.d)}
 // ---- waiting = in paid orders not shipped yet (bundles counted through what's inside) ---------------------------------
 function buildNeed(){need={};orders.forEach(function(o){if(o.is_test!==false||o.status!=='paid')return;(o.items||[]).forEach(function(i){var p=byId[i.id];if(!p)return;
  if(p.components&&p.components.length)p.components.forEach(function(c){need[c.id]=(need[c.id]||0)+i.quantity*(c.qty||1)});else need[p.id]=(need[p.id]||0)+i.quantity*(Number(p.units)||1)})})}
 function waiting(r){var n=0;r.yields.forEach(function(y){var p=bySku[y.sku];if(p)n+=need[p.id]||0});return n}
-// ---- state ------------------------------------------------------------------------------------------------------
+// ---- state: 8 beakers ---------------------------------------------------------------------------------------------
 function fresh(r){return {recipe:r.key,counts:r.yields.map(function(y){return y.def}),grams:r.def_g||0,cur:0,done:{},got:{},timer:{},key:'sb-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}}
-function save(){lsSet(STATE_K,st)}
-function started(){return st&&!st.result&&(Object.keys(st.done).length||Object.keys(st.got).length)}
-function open(k){if(k==='log'){view='log';render();return}var r=rec(k);
- if(!st||st.recipe!==k){if(started()&&open._ok!==k){open._ok=k;toast('A '+rec(st.recipe).name+' batch is going. Tap '+r.name+' again to start a new one.');setTimeout(function(){open._ok=null},4000);return}
-  open._ok=null;st=fresh(r);save()}view=k;render();window.scrollTo(0,0)}
-// ---- render -----------------------------------------------------------------------------------------------------
-function render(){renderTabs();renderHead();$('out').innerHTML=view==='log'?logHtml():(st&&view===st.recipe)?batchHtml():pickHtml();ensureTick()}
-function renderTabs(){$('tabs').innerHTML=RECIPES.map(function(r){var w=waiting(r);return '<button data-open="'+r.key+'" aria-pressed="'+(view===r.key)+'">'+esc(r.name)+(w?'<span class="n">'+w+'</span>':'')+(st&&st.recipe===r.key&&started()?'<span class="dot"></span>':'')+'</button>'}).join('')+'<button data-open="log" aria-pressed="'+(view==='log')+'">Batch log</button>'}
+function save(){if(st!=null&&bench.sel!=null)bench.slots[bench.sel]=st;lsSet(STATE_K,bench)}
+function load(){bench=ls(STATE_K,null);if(!bench||!Array.isArray(bench.slots)){bench={slots:[],sel:0};var old=ls(OLD_K,null);if(old&&rec(old.recipe))bench.slots[0]=old}
+ for(var i=0;i<N;i++){var s=bench.slots[i];if(!s||!rec(s.recipe))bench.slots[i]=null}bench.slots.length=N;if(!(bench.sel>=0&&bench.sel<N))bench.sel=0;st=bench.slots[bench.sel]}
+function select(i){save();bench.sel=i;st=bench.slots[i];view='bench';save();render();var o=$('out');if(o&&window.innerWidth<900)o.scrollIntoView({behavior:'smooth',block:'start'})}
+// What a beaker is doing right now (drives the picture and the label under it).
+function status(s){if(!s)return {k:'empty',tag:'Empty',big:'',stp:'Tap to start'};var r=rec(s.recipe),steps=stepsOf(r);
+ if(s.result)return {k:'done',tag:'✓ '+s.result.lot,big:'',stp:'Done. Tap to clear'};
+ if(s.cur>=steps.length)return {k:'need',tag:'Finish + count',big:'',stp:'Enter bottles filled'};
+ var x=steps[s.cur],tm=s.timer[s.cur],o={x:x,stp:(s.cur+1)+'/'+steps.length+' · '+x.t,hot:isHot(x)};
+ var miss=(x.uses||[]).filter(function(id){return !s.got[id]});
+ if(miss.length){var i=r.ing.filter(function(z){return z.id===miss[0]})[0];o.k='need';o.tag='Add '+fmt(amt(r,s,i),i.u||'g');o.big='';o.what=i.n;return o}
+ if(x.min){if(tm){var left=(tm.end-Date.now())/1000;if(left>0){o.k='mix';o.tag='Mixing';o.big=mmss(left);o.left=left;o.tot=x.min*60;o.spin=true;return o}o.k='up';o.tag='Time’s up · Done';o.big='0:00';o.left=0;o.tot=x.min*60;return o}
+  if(!x.est){o.k='need';o.tag='Start '+x.min+':00';o.big=x.min+':00';return o}o.k='need';o.tag='≈ '+x.min+' min · Done';o.big='';return o}
+ if(x.until){o.k='mix';o.tag='Until '+x.until.toLowerCase();o.big='';o.spin=true;return o}
+ o.k='need';o.tag='Tap Done';return o}
+// ---- picture of one beaker on its stir plate --------------------------------------------------------------------
+function beakerSvg(s,o,i){var r=s&&rec(s.recipe),c=r?COLOR[r.key]:'#000',steps=r?stepsOf(r):[],p=!s?0:s.result?1:Math.min(1,(Object.keys(s.done).length+.35)/(steps.length+1));
+ var level=s?18+Math.round(p*58):0,top=96-level,spin=o.spin,uid='c'+i,ring='';
+ if(o.tot){var C=2*Math.PI*44,frac=Math.max(0,Math.min(1,o.left/o.tot));ring='<circle class="ring" cx="50" cy="56" r="44"/><circle class="ringp" cx="50" cy="56" r="44" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+(C*(1-frac)).toFixed(1)+'" transform="rotate(-90 50 56)"/>'}
+ return '<svg viewBox="0 0 100 120" class="'+(spin?'spin':'')+'" aria-hidden="true"><defs><clipPath id="'+uid+'"><path d="M22 14 H78 V92 a6 6 0 0 1 -6 6 H28 a6 6 0 0 1 -6 -6 Z"/></clipPath></defs>'+ring+
+  '<g clip-path="url(#'+uid+')">'+(s?'<rect class="liq" x="18" y="'+top+'" width="64" height="'+(level+4)+'" fill="'+c+'" opacity=".85"/><ellipse class="vortex" cx="50" cy="'+(top+2)+'" rx="22" ry="4" fill="#fff"/><circle class="bub" cx="40" cy="90" r="1.8"/><circle class="bub b2" cx="58" cy="92" r="1.4"/><circle class="bub b3" cx="50" cy="91" r="2"/><rect class="bar" x="40" y="91" width="20" height="4" rx="2"/>':'')+'</g>'+
+  '<path class="glass" d="M18 10 H82 M22 10 V92 a6 6 0 0 0 6 6 H72 a6 6 0 0 0 6 -6 V10"/>'+
+  '<line class="tick" x1="22" y1="40" x2="30" y2="40"/><line class="tick" x1="22" y1="58" x2="30" y2="58"/><line class="tick" x1="22" y1="76" x2="30" y2="76"/>'+
+  '<rect class="plate" x="10" y="100" width="80" height="16" rx="4"/><circle class="led'+(o.hot?' hot':spin?' on':'')+'" cx="78" cy="108" r="3"/><circle cx="24" cy="108" r="4" fill="#555"/></svg>'}
+// ---- render ------------------------------------------------------------------------------------------------------
+function render(){save();renderBench();renderHead();var o=$('out');o.innerHTML=view==='log'?logHtml():st?batchHtml():pickHtml();ensureTick()}
+function renderBench(){var h='',needs=[];for(var i=0;i<N;i++){var s=bench.slots[i],o=status(s),r=s&&rec(s.recipe);
+  if(s&&(o.k==='need'||o.k==='up'))needs.push(i);
+  h+='<button type="button" class="bk '+o.k+(i===bench.sel&&view!=='log'?' sel':'')+'" data-bk="'+i+'" id="bk'+i+'"><span class="no">BEAKER '+(i+1)+'</span>'+beakerSvg(s,o,i)+'<span class="nm">'+(r?esc(r.name):'—')+'</span><span class="big">'+esc(o.big||'')+'</span><span class="stp">'+esc(o.stp||'')+'</span><span class="tag">'+esc(o.tag)+'</span></button>'}
+ $('bench').innerHTML=h;
+ $('hint').innerHTML=needs.length?'<b>Needs you</b>'+needs.map(function(i){var o=status(bench.slots[i]);return '<button type="button" data-bk="'+i+'">'+(i+1)+' · '+esc(o.tag+(o.what?' '+o.what:''))+'</button>'}).join(''):''}
 function renderHead(){var day=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).replace(/-/g,''),t=batches.filter(function(b){return b.day===day&&!b.voided_at}),made=0;
  t.forEach(function(b){(b.yields||[]).forEach(function(y){made+=y.quantity||0})});$('today').textContent='Today: '+made+' made';
- if(st&&view===st.recipe){var r=rec(st.recipe),n=stepsOf(r).length,d=Object.keys(st.done).length;$('count').innerHTML=st.result?'Done · <b>'+esc(st.result.lot)+'</b>':st.cur>=n?'<b>Finish</b> · '+esc(r.name):'Step <b>'+(st.cur+1)+'</b> of '+n+' · '+esc(r.name);$('bar').style.width=(st.result?100:Math.round(d/n*100))+'%'}
- else{$('count').textContent=view==='log'?'Batch log':'Pick a serum';$('bar').style.width='0'}}
-function pickHtml(){return '<div class="grid">'+RECIPES.map(function(r){var w=waiting(r),m=mins(r);return '<button class="pick" data-open="'+r.key+'"><b>'+esc(r.name)+'</b><span>'+esc(r.sub)+'</span><span>≈ '+hm(m.m)+(m.open?' + mixing':'')+(w?' · <span class="w8">'+w+' waiting</span>':'')+'</span></button>'}).join('')+'</div>'}
+ var run=bench.slots.filter(function(s){return s&&!s.result}).length,mix=bench.slots.filter(function(s){return status(s).k==='mix'}).length;
+ $('count').innerHTML='<b>'+run+'</b> of 8 going'+(mix?' · '+mix+' mixing':'')}
+function updateLive(){for(var i=0;i<N;i++){var s=bench.slots[i];if(!s||s.result)continue;var o=status(s),el=$('bk'+i);if(!el)continue;
+  if(el.className.indexOf(o.k)<0){renderBench();return}var b=el.querySelector('.big');if(b&&o.big)b.textContent=o.big;
+  var rp=el.querySelector('.ringp');if(rp&&o.tot){var C=2*Math.PI*44;rp.setAttribute('stroke-dashoffset',(C*(1-Math.max(0,o.left/o.tot))).toFixed(1))}}
+ if(st&&!st.result){var tm=st.timer[st.cur],el2=$('clockT');if(tm&&el2&&!tm.rang)el2.textContent=mmss((tm.end-Date.now())/1000)}}
+function pickHtml(){return '<div class="card"><div class="top"><div class="nm"><span class="bno">BEAKER '+(bench.sel+1)+'</span>What’s going in this beaker?</div></div><div class="grid">'+RECIPES.map(function(r){var w=waiting(r),m=mins(r);
+ return '<button class="pick" data-start="'+r.key+'"><i style="background:'+COLOR[r.key]+'"></i><div><b>'+esc(r.name)+'</b><span>'+esc(r.sub)+'</span><span>≈ '+hm(m.m)+(m.open?' + mixing':'')+(w?' · <span class="w8">'+w+' waiting</span>':'')+'</span></div></button>'}).join('')+'</div></div>'}
 function numFld(id,val,label,stp){return '<label class="fld"><span>'+esc(label)+'</span><span class="num"><button type="button" data-nudge="'+id+'" data-d="-'+(stp||1)+'" aria-label="Less">−</button><input id="'+id+'" inputmode="numeric" value="'+esc(val)+'"><button type="button" data-nudge="'+id+'" data-d="'+(stp||1)+'" aria-label="More">+</button></span></label>'}
 function fillText(r){var p=[];r.yields.forEach(function(y,i){var n=Number(st.counts[i])||0;if(n)p.push('<b>'+n+' × '+esc(y.label)+'</b>')});return p.join(' + ')||'the bottles'}
 function batchHtml(){var r=rec(st.recipe);if(st.result)return doneHtml(r);var steps=stepsOf(r),m=mins(r),w=waiting(r),tot=total(r,st);
  var plan=r.prep?numFld('n-g',st.grams,'Grams to make',50):r.yields.map(function(y,i){var p=bySku[y.sku];return numFld('n-'+i,st.counts[i],y.label+(p?' · '+Number(p.stock||0)+' on site':''))}).join('');
  var fresh0=st.cur===0&&!Object.keys(st.done).length;
- var head='<div class="card"><div class="top"><div class="nm">'+esc(r.name)+'<small>'+esc(r.sub)+'</small></div><div class="facts"><div class="fact"><b>'+(r.prep?fmt(tot,'g'):bottles(r,st))+'</b><span>'+(r.prep?'Batch':'Bottles')+'</span></div><div class="fact"><b>≈ '+hm(m.m)+'</b><span>Time</span></div>'+(w?'<div class="fact red"><b>'+w+'</b><span>Waiting</span></div>':'')+'</div></div>'+
+ var head='<div class="card"><div class="top"><div class="nm"><span class="bno">BEAKER '+(bench.sel+1)+'</span>'+esc(r.name)+'<small>'+esc(r.sub)+'</small></div><div class="facts"><div class="fact"><b>'+(r.prep?fmt(tot,'g'):bottles(r,st))+'</b><span>'+(r.prep?'Batch':'Bottles')+'</span></div><div class="fact"><b>≈ '+hm(m.m)+'</b><span>Time</span></div>'+(w?'<div class="fact red"><b>'+w+'</b><span>Waiting</span></div>':'')+'</div></div>'+
   (fresh0?'<div class="plan">'+plan+'</div>':'<div class="small" style="margin-top:8px">'+(r.prep?'':fillText(r)+' · ')+'batch '+fmt(tot,'g')+'<button type="button" class="sm-btn" data-edit="1">Change</button></div>')+
-  (r.key.indexOf('glow-eyes')===0&&st.cur<2?'<div style="margin-top:10px"><button type="button" data-p01="'+Math.ceil(amt(r,st,r.ing[0])/15)+'">Make Protocol 01 first ('+Math.ceil(amt(r,st,r.ing[0]))+' mL)</button></div>':'')+
+  (r.key.indexOf('glow-eyes')===0&&st.cur<2?'<div style="margin-top:10px"><button type="button" data-p01="'+Math.ceil(amt(r,st,r.ing[0])/15)+'">Start Protocol 01 in an empty beaker ('+Math.ceil(amt(r,st,r.ing[0]))+' mL)</button></div>':'')+
   (r.note?'<div class="note">⚠️ '+esc(r.note)+'</div>':'')+
-  '<div class="dots">'+steps.map(function(x,k){return '<button type="button" data-go="'+k+'" class="'+(st.done[k]?'ok':'')+(k===st.cur?' cur':'')+'" title="'+esc(x.t)+'">'+(st.done[k]?'✓':k+1)+'</button>'}).join('')+'<button type="button" data-go="'+steps.length+'" class="'+(st.cur>=steps.length?'cur':'')+'" title="Finish">★</button></div></div>';
+  '<div class="dots">'+steps.map(function(x,k){return '<button type="button" data-go="'+k+'" class="'+(st.done[k]?'ok':'')+(k===st.cur?' cur':'')+'" title="'+esc(x.t)+'">'+(st.done[k]?'✓':k+1)+'</button>'}).join('')+'<button type="button" data-go="'+steps.length+'" class="'+(st.cur>=steps.length?'cur':'')+'" title="Finish">★</button><button type="button" class="clear" data-clear="1" style="margin-left:auto">Empty this beaker</button></div></div>';
  if(st.cur>=steps.length)return head+finishHtml(r);
- var x=steps[st.cur],v={total:fmt(tot,'g'),fill:fillText(r),cut:r.ing[0].id==='p01'?fmt(amt(r,st,r.ing[0])*0.15,'mL'):'',perbottle:'<b>10 mg</b>'},d=x.d.replace(/\{(\w+)\}/g,function(a,b){return v[b]!=null?v[b]:a});
+ var x=steps[st.cur],v={total:fmt(tot,'g'),fill:fillText(r),cut:r.ing[0].id==='p01'?fmt(amt(r,st,r.ing[0])*0.15,'mL'):'',perbottle:'<b>10 mg</b>'},d=x.d.replace(/\{(\w+)\}/g,function(a,b){return v[b]!=null?v[b]:a}).replace('Tap <b>Make Protocol 01 first</b> up top.','Start one in an empty beaker.');
  var ws=(x.uses||[]).map(function(id){var i=r.ing.filter(function(z){return z.id===id})[0],a=amt(r,st,i),u=i.u||'g',on=!!st.got[id];
   return '<button type="button" class="w'+(on?' on':'')+'" data-got="'+id+'"><span class="amt">'+fmt(a,u)+'</span><span class="wn">'+esc(i.n)+'<small>'+esc([i.s,(u==='g'&&a<1&&a>0)?(Math.round(a*1000)/1000).toFixed(3)+' g on the scale':''].filter(Boolean).join(' · '))+'</small></span><span class="bx">'+(on?'✓':'')+'</span></button>'}).join('');
  var clock='',locked=false,tm=st.timer[st.cur];
@@ -269,56 +341,60 @@ function batchHtml(){var r=rec(st.recipe);if(st.result)return doneHtml(r);var st
   clock='<div class="clock'+(tm&&!up?' run':'')+(up?' up':'')+'"><span class="t" id="clockT">'+(up?'✓ done':mmss(left))+'</span><span class="l">'+(x.est?'About <b>'+x.min+' min</b>. Our usual time.':'Mix <b>'+x.min+' min</b>. Done unlocks when the timer ends.')+'</span>'+(up?'':tm?'<button type="button" data-timer="stop">Reset</button>':'<button type="button" data-timer="go">Start</button>')+'</div>'}
  else if(x.until)clock='<div class="clock"><span class="t" style="font-size:20px;min-width:0">Until</span><span class="l"><b>'+esc(x.until)+'</b>. No set time. Check it, then tap Done.</span></div>';
  var allGot=(x.uses||[]).every(function(id){return st.got[id]}),nx=steps[st.cur+1];
- return head+'<div class="step"><div class="k">Step '+(st.cur+1)+' of '+steps.length+'</div><h2>'+esc(x.t)+'</h2><div class="d">'+d+'</div>'+(ws?'<div class="weigh">'+ws+'</div>':'')+clock+(x.flag?'<div class="flag">'+esc(x.flag)+'</div>':'')+
+ return head+'<div class="step"><div class="k">Beaker '+(bench.sel+1)+' · Step '+(st.cur+1)+' of '+steps.length+'</div><h2>'+esc(x.t)+'</h2><div class="d">'+d+'</div>'+(ws?'<div class="weigh">'+ws+'</div>':'')+clock+(x.flag?'<div class="flag">'+esc(x.flag)+'</div>':'')+
   '<div class="nav">'+(st.cur>0?'<button type="button" class="back" data-go="'+(st.cur-1)+'">Back</button>':'')+'<button type="button" class="done" data-done="1"'+((locked||!allGot)?' disabled':'')+'>'+(!allGot?'Tap what you weighed':locked?'Wait for the timer':'Done ✓')+'</button></div></div>'+
   '<div class="next">'+(nx?'Next: <b>'+esc(nx.t)+'</b>'+(nx.min?' · '+(nx.est?'≈ ':'')+nx.min+' min':nx.until?' · until '+esc(nx.until.toLowerCase()):''):'Next: <b>Finish</b> and add the bottles to stock')+'</div>'+
   '<div class="src">Recipe: '+esc(r.src)+' Times with ≈ are our usual time, not from the recipe.</div>'}
 function finishHtml(r){var who=st.who!=null?st.who:ls(WHO_K,''),miss=r.yields.filter(function(y){return !bySku[y.sku]}).map(function(y){return y.label});
  var fills=r.prep?'':r.yields.map(function(y,i){return numFld('f-'+i,st.filled&&st.filled[i]!=null?st.filled[i]:st.counts[i],'Filled · '+y.label)}).join('');
- return '<div class="card" style="margin-top:12px"><div class="top"><div class="nm">Finish<small>Enter what you actually filled</small></div></div>'+(miss.length?'<div class="note">Not on the site, so not added to stock: '+esc(miss.join(', '))+'</div>':'')+
+ return '<div class="card"><div class="top"><div class="nm">Finish<small>Enter what you actually filled</small></div></div>'+(miss.length?'<div class="note">Not on the site, so not added to stock: '+esc(miss.join(', '))+'</div>':'')+
   '<div class="row" style="margin-top:12px">'+fills+'<label class="fld"><span>pH</span><input class="txt" id="ph" style="width:86px" inputmode="decimal" placeholder="5.4" value="'+esc(st.ph||'')+'"></label><label class="fld" style="flex:1;min-width:150px"><span>Made by</span><input class="txt" id="who" placeholder="Your name" value="'+esc(who)+'"></label></div>'+
   '<div class="row"><label class="fld" style="flex:1"><span>Notes</span><input class="txt" id="notes" placeholder="Anything unusual" value="'+esc(st.notes||'')+'"></label></div>'+
   '<div class="row" style="justify-content:space-between;margin-top:14px">'+(r.prep?'<span class="small">HA base isn’t sold, so it only goes in the log.</span>':'<label class="chk"><input type="checkbox" id="addstock" '+(st.addStock===false?'':'checked')+'> Add to the site’s stock</label>')+'<button type="button" class="go" data-finish="1"'+(authed?'':' disabled')+'>'+finishLabel(r)+'</button></div></div>'}
 function finishLabel(r){if(r.prep||st.addStock===false)return '✓ Log batch';var n=0;r.yields.forEach(function(y,i){var v=st.filled&&st.filled[i]!=null?st.filled[i]:st.counts[i];if(bySku[y.sku])n+=Number(v)||0});return '✓ Finish · add '+n+' to stock'}
 function doneHtml(r){var b=st.result,added=(b.yields||[]).filter(function(y){return y.added}).map(function(y){return '<div style="font-size:17px;margin:4px 0"><b>+'+y.added+'</b> '+esc(y.name)+' <span class="small">('+y.stock_before+' → '+y.stock_after+')</span></div>'}).join('');
- return '<div class="card" style="border-color:var(--ok);background:var(--okbg)"><div class="small">Write this on the bottles</div><div class="lot">'+esc(b.lot)+'</div>'+(added||'<div class="small">Logged. Stock not changed.</div>')+'<div style="margin-top:14px"><button type="button" class="go" data-again="1">Start another '+esc(r.name)+'</button></div></div>'}
-function logHtml(){if(!authed)return '<div class="msg">Sign in to see the batch log.</div>';if(!batches.length)return '<div class="msg">No batches yet.</div>';
+ return '<div class="card" style="border-color:var(--ok);background:var(--okbg)"><div class="small">Beaker '+(bench.sel+1)+' · write this on the bottles</div><div class="lot">'+esc(b.lot)+'</div>'+(added||'<div class="small">Logged. Stock not changed.</div>')+'<div class="row" style="margin-top:14px"><button type="button" class="go" data-again="1">Another '+esc(r.name)+' here</button><button type="button" data-clear="1">Empty this beaker</button></div></div>'}
+function logHtml(){if(!authed)return '<div class="msg" style="margin-top:14px">Sign in to see the batch log.</div>';if(!batches.length)return '<div class="msg" style="margin-top:14px">No batches yet.</div>';
  return '<div class="tscroll"><table><thead><tr><th>Lot</th><th>When</th><th>Made</th><th>pH</th><th>By</th><th></th></tr></thead><tbody>'+batches.map(function(b){
   var made=(b.yields||[]).filter(function(y){return y.quantity}).map(function(y){return y.quantity+' × '+esc(y.name)}).join('<br>')||esc(b.name+(b.batch_g?' · '+b.batch_g+' g':''));
   return '<tr class="'+(b.voided_at?'void':'')+'"><td class="b">'+esc(b.lot)+'</td><td>'+esc(new Date(b.created*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'</td><td>'+made+(b.added_to_stock?'':'<br><span class="small">not added to stock</span>')+(b.notes?'<br><span class="small">'+esc(b.notes)+'</span>':'')+'</td><td>'+esc(b.ph||'—')+'</td><td>'+esc(b.made_by)+'</td><td class="act">'+(b.voided_at?'<span class="small">undone</span>':'<button type="button" data-void="'+esc(b.id)+'" style="padding:5px 10px;font-size:14px">'+(voidArm===b.id?'Tap again':'Undo')+'</button>')+'</td></tr>'}).join('')+'</tbody></table></div><p class="small">Undo takes that batch’s bottles back off stock (not if they already sold).</p>'}
-// ---- timer -------------------------------------------------------------------------------------------------------
+// ---- clock: every beaker's countdown, chime when one ends ----------------------------------------------------------
 function chime(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();[0,.25,.5].forEach(function(d){var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,actx.currentTime+d);g.gain.exponentialRampToValueAtTime(.25,actx.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+d+.2);o.connect(g).connect(actx.destination);o.start(actx.currentTime+d);o.stop(actx.currentTime+d+.22)})}catch(e){}}
-function ensureTick(){if(tick)return;tick=setInterval(function(){if(!st||st.result||view!==st.recipe)return;var tm=st.timer[st.cur];if(!tm||tm.rang)return;var left=(tm.end-Date.now())/1000,el=$('clockT');
- if(left<=0){tm.rang=true;save();chime();toast('⏱ Time’s up. Tap Done.');render();return}if(el)el.textContent=mmss(left)},500)}
+function ensureTick(){if(tick)return;tick=setInterval(function(){var rang=false;for(var i=0;i<N;i++){var s=bench.slots[i];if(!s||s.result)continue;var tm=s.timer[s.cur];if(tm&&!tm.rang&&tm.end<=Date.now()){tm.rang=true;rang=true;var x=stepsOf(rec(s.recipe))[s.cur];toast('⏱ Beaker '+(i+1)+': '+(x?x.t:'step')+' is done');}}
+ if(rang){chime();if(st)bench.slots[bench.sel]=st;lsSet(STATE_K,bench);render();return}updateLive()},500)}
 // ---- events ------------------------------------------------------------------------------------------------------
 function readInputs(){if(!st||st.result)return;var r=rec(st.recipe);r.yields.forEach(function(y,i){var a=$('n-'+i);if(a)st.counts[i]=Math.max(0,parseInt(a.value,10)||0);var f=$('f-'+i);if(f){st.filled=st.filled||[];st.filled[i]=Math.max(0,parseInt(f.value,10)||0)}});
  var g=$('n-g');if(g)st.grams=Math.max(0,parseInt(g.value,10)||0);['ph','notes','who'].forEach(function(k){var x=$(k);if(x)st[k]=x.value});var a=$('addstock');if(a)st.addStock=a.checked}
 document.addEventListener('click',function(ev){var t=ev.target.closest('button');if(!t)return;var r=st&&rec(st.recipe);
- if(t.dataset.open){readInputs();save();open(t.dataset.open);return}
- if(t.dataset.nudge){readInputs();var inp=$(t.dataset.nudge);inp.value=Math.max(0,(parseFloat(inp.value)||0)+Number(t.dataset.d));readInputs();if(/^n-/.test(t.dataset.nudge))st.filled=null;save();render();return}
- if(t.dataset.edit){st.cur=0;st.done={};save();render();return}
- if(t.dataset.got){st.got[t.dataset.got]=!st.got[t.dataset.got];save();render();return}
- if(t.dataset.timer){if(t.dataset.timer==='go'){var x=stepsOf(r)[st.cur];st.timer[st.cur]={end:Date.now()+x.min*60000};try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}else delete st.timer[st.cur];save();render();return}
- if(t.dataset.done){st.done[st.cur]=true;st.cur++;save();render();window.scrollTo({top:0,behavior:'smooth'});return}
- if(t.dataset.go!=null){readInputs();st.cur=Number(t.dataset.go);save();render();return}
- if(t.dataset.p01){var n=Number(t.dataset.p01);st=fresh(rec('protocol-01'));st.counts=[n,0,0];view='protocol-01';save();render();toast('Protocol 01 set to '+n+' × 15 mL. Make that first.');return}
- if(t.dataset.again){st=fresh(r);save();render();return}
+ if(t.dataset.bk!=null){readInputs();var i=Number(t.dataset.bk);if(i===bench.sel&&view==='bench'&&st&&st.result){bench.slots[i]=null;st=null}select(i);return}
+ if(t.dataset.log){readInputs();save();view=view==='log'?'bench':'log';render();return}
+ if(t.dataset.start){st=fresh(rec(t.dataset.start));view='bench';render();return}
+ if(t.dataset.clear){if(started()&&clearArm!==bench.sel){clearArm=bench.sel;toast('Tap “Empty this beaker” again to clear it. Its progress will be lost.');setTimeout(function(){clearArm=null},4000);return}clearArm=null;bench.slots[bench.sel]=null;st=null;render();return}
+ if(t.dataset.nudge){readInputs();var inp=$(t.dataset.nudge);inp.value=Math.max(0,(parseFloat(inp.value)||0)+Number(t.dataset.d));readInputs();if(/^n-/.test(t.dataset.nudge))st.filled=null;render();return}
+ if(t.dataset.edit){st.cur=0;st.done={};render();return}
+ if(t.dataset.got){st.got[t.dataset.got]=!st.got[t.dataset.got];render();return}
+ if(t.dataset.timer){if(t.dataset.timer==='go'){var x=stepsOf(r)[st.cur];st.timer[st.cur]={end:Date.now()+x.min*60000};try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}else delete st.timer[st.cur];render();return}
+ if(t.dataset.done){st.done[st.cur]=true;st.cur++;render();return}
+ if(t.dataset.go!=null){readInputs();st.cur=Number(t.dataset.go);render();return}
+ if(t.dataset.p01){var n=Number(t.dataset.p01),free=-1;for(var k=0;k<N;k++)if(!bench.slots[k]&&k!==bench.sel){free=k;break}if(free<0){toast('No empty beaker. Empty one first.');return}
+  save();var p=fresh(rec('protocol-01'));p.counts=[n,0,0];bench.slots[free]=p;select(free);toast('Protocol 01 ('+n+' × 15 mL) started in beaker '+(free+1)+'.');return}
+ if(t.dataset.again){st=fresh(r);render();return}
  if(t.dataset.finish){finish(t);return}
  if(t.dataset.void){var id=t.dataset.void;if(voidArm!==id){voidArm=id;render();setTimeout(function(){if(voidArm===id){voidArm=null;render()}},5000);return}
   voidArm=null;api('serums/batch/void',{id:id}).then(function(d){toast('Undone: '+d.batch.lot);return reload()}).catch(function(e){toast(e.message)})}});
-document.addEventListener('change',function(ev){if(!st)return;var id=ev.target.id;if(/^(n-|f-|addstock)/.test(id)){readInputs();if(/^n-/.test(id))st.filled=null;save();render()}});
+var clearArm=null;function started(){return st&&!st.result&&(Object.keys(st.done).length||Object.keys(st.got).length)}
+document.addEventListener('change',function(ev){if(!st)return;var id=ev.target.id;if(/^(n-|f-|addstock)/.test(id)){readInputs();if(/^n-/.test(id))st.filled=null;render()}});
 document.addEventListener('input',function(ev){if(st&&/^(ph|who|notes)$/.test(ev.target.id)){readInputs();save()}});
 function finish(btn){readInputs();var r=rec(st.recipe),who=(st.who||ls(WHO_K,'')||'').trim();if(!who){toast('Add who made it.');$('who').focus();return}lsSet(WHO_K,who);
  var yields=[];r.yields.forEach(function(y,i){var p=bySku[y.sku],q=st.filled&&st.filled[i]!=null?st.filled[i]:st.counts[i];if(p&&q>0)yields.push({id:p.id,quantity:Number(q)})});
- if(!r.prep&&!yields.length){toast('Enter how many you filled.');return}btn.disabled=true;btn.textContent='Saving…';
+ if(!r.prep&&!yields.length){toast('Enter how many you filled.');return}btn.disabled=true;btn.textContent='Saving…';var slot=bench.sel,mine=st;
  api('serums/batch',{key:st.key,recipe:r.key,code:r.code,name:r.name,made_by:who,ph:String(st.ph||'').trim(),notes:String(st.notes||'').trim(),batch_g:Math.round(total(r,st)*1000)/1000,
   ingredients:r.ing.map(function(i){return{name:i.n,amount:Math.round(amt(r,st,i)*1000)/1000,unit:i.u||'g'}}),yields:yields,add_stock:r.prep?false:st.addStock!==false})
- .then(function(d){st.result=d.batch;save();toast((d.already?'Already logged: ':'Logged ')+d.batch.lot);return reload()}).catch(function(e){btn.disabled=false;btn.textContent=finishLabel(r);toast(e.message)})}
+ .then(function(d){mine.result=d.batch;bench.slots[slot]=mine;lsSet(STATE_K,bench);toast((d.already?'Already logged: ':'Logged ')+d.batch.lot);return reload()}).catch(function(e){btn.disabled=false;btn.textContent=finishLabel(r);toast(e.message)})}
 // ---- load --------------------------------------------------------------------------------------------------------
 function reload(){return Promise.all([api('data').then(function(d){products=d.products||[];orders=d.orders||[];bySku={};byId={};products.forEach(function(p){byId[p.id]=p;if(p.brand!=='zader'||!bySku[p.sku])bySku[p.sku]=p});buildNeed()}),
  api('serums/batches').then(function(d){batches=d.batches||[]})]).then(function(){authed=true;$('signin').innerHTML=''}).catch(function(e){if(authed)toast(e.message)}).then(function(){var f=document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName);if(!f)render()})}
-st=ls(STATE_K,null);if(st&&!rec(st.recipe))st=null;view=st?st.recipe:null;
-render();reload();
+load();render();try{var bw=document.querySelector('.benchwrap');bw.scrollLeft=bw.scrollWidth}catch(e){}reload();
 document.addEventListener('visibilitychange',function(){if(!document.hidden)reload()});
 })();
 </script>
