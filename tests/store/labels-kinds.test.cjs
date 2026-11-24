@@ -44,7 +44,7 @@ test('box labels: the Glow Lab brand label prints on the proven vial-sheet posit
 });
 
 test('serum labels: Protocol 01 (15 and 50 mL), Protocol 02 and Glow Eyes Luxe on the OL875 sheet, same spots as BAC Water 30 mL',()=>{
- const L=lab.lib();assert.deepEqual(L.labels.filter(l=>l.kind==='serum').map(l=>l.id),['serum-protocol-01-15-ml','serum-protocol-01-50-ml','serum-protocol-02-15-ml','serum-glow-eyes-luxe-kpv']);
+ const L=lab.lib();assert.deepEqual(L.labels.filter(l=>l.kind==='serum').map(l=>l.id),['serum-protocol-01-15-ml','serum-protocol-01-50-ml','serum-protocol-02-15-ml','serum-protocol-02-30-ml','serum-glow-eyes-luxe-kpv'], 'Protocol 02 30 mL added 24 Nov 2026');
  assert.deepEqual(L.kinds.serum.cm,L.kinds.big.cm);assert.equal(L.kinds.serum.cols,3);assert.equal(L.kinds.serum.rows,10);
  const pages=lab.plan([{id:'serum-protocol-01-15-ml',count:12},{id:'serum-glow-eyes-luxe-kpv',count:12}],{kind:'serum'});assert.equal(pages.length,1);
  const pdf=lab.pdf(pages,'t','serum').toString('latin1');assert.equal((pdf.match(/ cm\n\/L\d+ Do/g)||[]).length,24);

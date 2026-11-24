@@ -3032,6 +3032,24 @@
    ]
   },
   {
+   "id": "serum-protocol-02-30-ml",
+   "name": "Protocol 02",
+   "strength": "30 mL \u00b7 1 fl oz",
+   "cs": "rgb",
+   "w": 1167,
+   "h": 450,
+   "img": [
+    "img-12.bin",
+    0,
+    59134
+   ],
+   "kind": "serum",
+   "thumb": [
+    2655178,
+    11841
+   ]
+  },
+  {
    "id": "serum-glow-eyes-luxe-kpv",
    "name": "Glow Eyes Luxe with KPV",
    "strength": "10 mL \u00b7 0.34 fl oz",
