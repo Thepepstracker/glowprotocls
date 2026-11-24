@@ -551,6 +551,8 @@ async function handle({path,method='GET',headers={},body={}}){
     emailJob=await emails.queueReminder(s,o,reminderToken(o),jobId);o.last_payment_reminder_at=clock();o.last_payment_reminder_job=jobId;await s.put('orders',o.id,o);await audit(s,'payment_reminder_requested',o.id);return{ok:true,job_id:jobId};
    }
    if(path==='/admin/customers'&&method==='GET')return accounts.adminData(s);
+   // Serum Station (Jonah, 24 Nov 2026): batch log + finished bottles added to stock (serum-batches.cjs).
+   if(path.startsWith('/admin/serums/')){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const r=await require('./serum-batches.cjs').route(s,path,method,body,actor,setStock);if(r){if(method==='POST'&&!r.already)await audit(s,path.endsWith('/void')?'serum_batch_voided':'serum_batch_recorded',r.batch.lot);return r}}
    // Giveaway winners (Jonah, 23 Nov 2026). Preview shows the email; Send adds the prize free to the order (unless it is
    // already there at $0), emails the winner, alerts their app and leaves a one-time "You won" pop-up in their account.
    if(['/admin/giveaway/preview','/admin/giveaway/send'].includes(path)&&method==='POST'){const gw=require('./giveaway.cjs');

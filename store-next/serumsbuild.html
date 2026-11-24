@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Serum Station · Glow Lab</title>
+<style>
+/* Serum Station (Jonah, 24 Nov 2026). Packing Check's look, one step at a time: what to weigh, how long it takes, Done.
+   Timed steps from the recipe lock Done until the timer runs out, so every batch gets the same mixing time. */
+:root{--bg:#f7f4ee;--card:#fff;--ink:#1b1b1b;--muted:#6b6459;--line:#e4dccd;--gold:#b88a2e;--gold2:#f3d58b;--ok:#1f7a3a;--okbg:#e7f4ea;--warn:#a23b1d;--warnbg:#fbeae5;--amberbg:#fff4d6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;font-variant-numeric:tabular-nums}
+a{color:inherit}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--ink);background:#fff;color:var(--ink);padding:10px 14px}
+button:disabled{opacity:.4;cursor:default}
+header{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;padding:12px 16px}
+header .row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;max-width:880px;margin:0 auto}
+h1{font-size:20px;margin:0;letter-spacing:.02em}
+.hs{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:15px}
+.hs .pill{background:#333;border-radius:20px;padding:3px 10px}
+.hs a{text-decoration:none;border:1px solid #555;border-radius:20px;padding:3px 10px}
+.bar{height:8px;background:#444;border-radius:4px;overflow:hidden;max-width:880px;margin:10px auto 0}
+.bar i{display:block;height:100%;background:#5fc27e;width:0;transition:width .3s}
+main{max-width:880px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:0 0 auto;padding:8px 13px;font-size:15px;border-radius:20px;white-space:nowrap}
+.tabs button[aria-pressed=true]{background:var(--ink);color:#fff}
+.tabs .n{display:inline-block;min-width:20px;font-size:12px;font-weight:800;background:var(--warn);color:#fff;border-radius:20px;padding:0 6px;margin-left:6px}
+.tabs .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-left:6px;vertical-align:middle}
+.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.top .nm{font-size:24px;font-weight:800;flex:1;min-width:150px}
+.top .nm small{display:block;font-size:14px;font-weight:500;color:var(--muted)}
+.facts{display:flex;gap:8px;flex-wrap:wrap}
+.fact{background:#f3efe6;border-radius:10px;padding:6px 10px;text-align:center;min-width:76px}
+.fact b{display:block;font-size:19px}
+.fact span{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.fact.red{background:var(--warnbg)}.fact.red b{color:var(--warn)}
+.plan{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld>span{font-size:13px;font-weight:700;color:var(--muted)}
+.num{display:flex;align-items:center;gap:6px}
+.num button{width:40px;height:40px;padding:0;font-size:20px;font-weight:800}
+.num input{width:60px;height:40px;text-align:center;font:inherit;font-size:20px;font-weight:800;border:2px solid var(--ink);border-radius:10px}
+.sm-btn{padding:3px 9px;font-size:13px;margin-left:6px}
+.dots{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 2px}
+.dots button{width:32px;height:32px;padding:0;border-radius:50%;font-size:13px;font-weight:800;border:2px solid var(--line);background:#fff;color:var(--muted)}
+.dots button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.dots button.cur{border-color:var(--ink);color:var(--ink);box-shadow:0 0 0 3px rgba(184,138,46,.35)}
+.step{background:#141414;color:#fff;border-radius:20px;padding:20px;margin-top:12px}
+.step .k{font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--gold2);text-transform:uppercase}
+.step h2{margin:4px 0 6px;font-size:28px;line-height:1.15}
+.step .d{color:#d9d3c7;font-size:16.5px}
+.step .d b{color:#fff}
+.weigh{display:grid;gap:8px;margin:14px 0 0}
+.w{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#222;border:2px solid #333;border-radius:14px;padding:10px 12px;color:#fff}
+.w .amt{font-size:26px;font-weight:900;min-width:118px;color:var(--gold2)}
+.w .wn{flex:1;font-size:17px;font-weight:600;min-width:0}
+.w .wn small{display:block;font-size:13px;color:#9a9385;font-weight:500}
+.w .bx{flex:0 0 40px;height:40px;border-radius:10px;border:2px solid #555;display:grid;place-items:center;font-size:20px}
+.w.on{border-color:#2f8a4a;background:#173a22}.w.on .bx{background:#5fc27e;border-color:#5fc27e;color:#111}.w.on .amt{color:#8fd6a4}
+.clock{display:flex;align-items:center;gap:14px;margin-top:16px;background:#222;border-radius:14px;padding:12px 14px}
+.clock .t{font:800 34px/1 ui-monospace,Menlo,monospace;min-width:110px}
+.clock .l{flex:1;font-size:14px;color:#cfc8ba}
+.clock .l b{color:#fff}
+.clock button{background:var(--gold2);border-color:var(--gold2);color:#111;font-weight:800}
+.clock.run .t{color:var(--gold2)}
+.clock.up{background:#173a22}.clock.up .t{color:#8fd6a4}
+.flag{margin-top:12px;background:#3a2c0e;color:#f3d58b;border-radius:10px;padding:8px 12px;font-size:14px}
+.nav{display:flex;gap:10px;margin-top:16px;align-items:center}
+.nav .back{background:none;border-color:#555;color:#ddd}
+.nav .done{flex:1;font-size:20px;font-weight:900;padding:16px;background:#5fc27e;border-color:#5fc27e;color:#111;border-radius:14px}
+.nav .done:disabled{background:#333;border-color:#333;color:#888;opacity:1}
+.next{margin-top:10px;font-size:14px;color:var(--muted)}
+.next b{color:var(--ink)}
+.note{background:var(--amberbg);border:1px solid #f0d58c;border-radius:10px;padding:8px 12px;margin-top:12px;font-size:15px;color:#5a3b00}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.row+.row{margin-top:10px}
+.txt{font:inherit;font-size:17px;padding:8px 10px;height:40px;border:2px solid var(--line);border-radius:10px;background:#fff}
+.txt:focus,.num input:focus{outline:none;border-color:var(--ink)}
+.chk{display:flex;gap:8px;align-items:center;font-weight:600;font-size:15px}
+.chk input{width:20px;height:20px;accent-color:var(--ok)}
+.go{font-weight:900;background:var(--ok);color:#fff;border-color:var(--ok);font-size:19px;padding:14px 20px;border-radius:14px}
+.lot{font-size:34px;font-weight:900;letter-spacing:.04em;margin:6px 0 10px}
+.src{font-size:12.5px;color:var(--muted);margin-top:12px}
+.small{font-size:14px;color:var(--muted)}
+.msg{padding:16px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.pick{text-align:left;border:2px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.pick b{display:block;font-size:19px}
+.pick span{display:block;font-size:13.5px;color:var(--muted);margin-top:2px}
+.pick .w8{display:inline;color:var(--warn);font-weight:800}
+table{width:100%;border-collapse:collapse;background:var(--card);min-width:600px}
+td,th{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;font-size:15px}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+td.b{font-weight:800;white-space:nowrap}
+tr.void td{opacity:.5;text-decoration:line-through}tr.void td.act{opacity:1;text-decoration:none}
+.tscroll{overflow-x:auto;border-radius:12px;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:60;background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 32px)}
+.toast.show{opacity:1}
+@media (max-width:600px){.step h2{font-size:24px}.w .amt{font-size:22px;min-width:96px}.clock .t{font-size:28px;min-width:90px}.top .nm{font-size:21px}.hide-sm{display:none}}
+button:focus-visible,input:focus-visible{outline:3px solid rgba(184,138,46,.6);outline-offset:2px}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <h1>Serum Station</h1>
+    <div class="hs"><span id="count">Pick a serum</span><span class="pill hide-sm" id="today"></span><a href="/store-next/packing.html">Packing Check</a></div>
+  </div>
+  <div class="bar"><i id="bar"></i></div>
+</header>
+<main>
+  <div id="signin"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="out"><div class="msg">Loading…</div></div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+(function(){
+'use strict';
+// -----------------------------------------------------------------------------------------------------------------
+// RECIPES. Amounts are the recipes as written in the Glow Protocols ChatGPT project (found 24 Nov 2026); the source is
+// on each recipe. Amounts are for `ref` mL of filled product (Protocol 01: the 235 g batch fills 15 × 15 mL = 225 mL;
+// the extra is the recipe's own loss allowance). A batch scales by planned mL ÷ ref. `u:'mL'` = millilitres, else
+// grams. `bottle` = amount per bottle instead (Luxe's KPV). HA base: grams to make ÷ 250.
+// Step times: `min` with no `est` is the recipe's own mixing time and LOCKS Done until the timer ends. `est:true` is
+// our usual time (shown with ≈, never locks). `until` = a check instead of a clock (cool to 30 °C, fully dissolved).
+// -----------------------------------------------------------------------------------------------------------------
+var P01_STEPS=[
+ {t:'Set up',d:'Gloves on. Sanitize the table, both beakers, stir bars, spatulas, pipettes and bottles.',min:5,est:true},
+ {t:'Warm the water',d:'Small beaker, stir bar. Heat to <b>40–45 °C</b>, low-medium stir. Don’t boil.',uses:['water','pdo'],min:5,est:true},
+ {t:'Dissolve the panthenol',d:'Sprinkle it in slowly. Stir until no powder shows.',uses:['panth'],min:10},
+ {t:'Cool it down',d:'Heat <b>off</b>. Keep stirring until it reads <b>under 30 °C</b>.',until:'Under 30 °C'},
+ {t:'Start the main beaker',d:'Big beaker, stir bar, <b>low</b> speed. No big whirlpool.',uses:['ha'],min:2,est:true},
+ {t:'Add the glycerin',d:'Pour in slowly while it stirs.',uses:['gly'],min:3},
+ {t:'Pour in the panthenol mix',d:'Only once it’s cool. Pour slowly. Look for smooth, no clumps.',min:5},
+ {t:'Add the SNAP-8',d:'Weigh carefully. Add slowly. No heat.',uses:['snap'],min:10,only:'snap'},
+ {t:'Add the GHK-Cu',d:'Add slowly so it spreads out. Stir gently until it’s all one even blue.',uses:['ghk'],min:15},
+ {t:'Add the Germall Plus',d:'Weigh it on the scale. Don’t eyeball it.',uses:['germ'],min:5},
+ {t:'Check weight + pH',d:'Should weigh <b>{total}</b> (top up with HA base only). Test a sample: <b>pH 5.0–5.8</b>, best 5.3–5.6.',min:3,est:true},
+ {t:'Final mix',d:'Gentle stir. No foam, no heat.',min:10},
+ {t:'Rest',d:'Stirrer off. Cover it. Let the bubbles rise out.',min:30},
+ {t:'Fill',d:'Fill {fill}.',min:15,est:true}];
+function EYE_STEPS(kpv){var s=[
+ {t:'Set up',d:'Gloves on. Sanitize a small beaker, stir bar and the rollers.',min:3,est:true},
+ {t:'Measure the Protocol 01',d:'Into a clean beaker. Short on it? Tap <b>Make Protocol 01 first</b> up top.',uses:['p01'],min:2,est:true},
+ {t:'Make the caffeine mix',d:'Pour about <b>{cut}</b> of the serum into the small beaker. Add the caffeine a little at a time. Stir until fully dissolved. No hard heat.',uses:['caff'],until:'Fully dissolved'}];
+ if(kpv)s.push({t:'Add the KPV',d:'{perbottle} for every bottle. Stir until fully dissolved.',uses:['kpv'],until:'Fully dissolved',flag:'How the KPV goes in wasn’t written down in the chats. Do it the way you have been.'});
+ s.push({t:'Blend it back in',d:'Slowly stir the caffeine mix back into the rest until it’s all the same.',until:'Even all the way through'},
+ {t:'Check pH',d:'Same as Protocol 01: <b>pH 5.0–5.8</b>.',min:3,est:true},
+ {t:'Fill',d:'Fill {fill}.',min:10,est:true});return s}
+function HAIR_STEPS(cu){return [
+ {t:'Set up',d:'Gloves on. Sanitize both beakers, stir bars and the droppers.',min:5,est:true},
+ {t:'Water + HA',d:'Main beaker. Mix until it’s all the same.',uses:['water','ha'],min:3,est:true},
+ {t:'Add the aloe',d:'Mix gently.',uses:['aloe'],min:2,est:true},
+ {t:'Dissolve the powders',d:'Second beaker. Warm gently, <b>45 °C max</b>, stir until dissolved.',uses:['pdo','nia','panth'],until:'No grit left',flag:'Thick and stringy? Add 5–10 g warm water from the main amount and stir 15–20 min more.'},
+ {t:'Combine',d:'Slowly pour the dissolved mix into the main beaker.',min:10},
+ {t:'Add the '+cu,d:'Gently. No heat, no fast stir, no whisk.',uses:['cu'],min:5,est:true},
+ {t:'Add the Germall Plus',d:'Weigh it on the scale.',uses:['germ'],min:5,est:true},
+ {t:'Fill',d:'Fill {fill}.',min:15,est:true}]}
+var RECIPES=[
+ {key:'protocol-01',code:'P01',name:'Protocol 01',sub:'GHK-Cu + SNAP-8 face serum',ref:225,
+  yields:[{sku:'protocol-01-15-ml-0-5-oz',ml:15,def:15,label:'15 mL'},{sku:'protocol-01-50-ml-1-7-oz',ml:50,def:0,label:'50 mL'},{sku:'bf-mini-protocol-01',ml:1,def:0,label:'1 mL mini'}],
+  ing:[{id:'water',n:'Distilled water',g:10},{id:'pdo',n:'Propanediol 1,3',g:11.75},{id:'panth',n:'DL-Panthenol',g:4.7},{id:'ha',n:'Premade HA base',s:'your 1% HA',g:201.5},{id:'gly',n:'Vegetable glycerin',g:4.7},{id:'snap',n:'SNAP-8',g:0.235},{id:'ghk',n:'GHK-Cu',g:0.94},{id:'germ',n:'Liquid Germall Plus',g:1.175}],
+  steps:P01_STEPS,
+  src:'ChatGPT › Glow Protocols › “GHK-cu Serum Recipe” (May 11, 2026): printable Protocol 01 batch sheet (235 g, 0.40% GHK-Cu, 0.10% SNAP-8). Mixing times are the sheet’s.'},
+ {key:'protocol-02',code:'P02',name:'Protocol 02',sub:'GHK-Cu only face serum',ref:225,
+  yields:[{sku:'protocol-02-15-ml',ml:15,def:15,label:'15 mL'},{sku:'bf-mini-protocol-02',ml:1,def:0,label:'1 mL mini'}],
+  ing:[{id:'water',n:'Distilled water',g:10},{id:'pdo',n:'Propanediol 1,3',g:11.75},{id:'panth',n:'DL-Panthenol',g:4.7},{id:'ha',n:'Premade HA base',s:'your 1% HA',g:201.5},{id:'gly',n:'Vegetable glycerin',g:4.7},{id:'ghk',n:'GHK-Cu',g:0.94},{id:'germ',n:'Liquid Germall Plus',g:1.175}],
+  steps:P01_STEPS,note:'Protocol 02 = Protocol 01 without the SNAP-8 (same 0.40% GHK-Cu). No separate batch sheet was saved.',
+  src:'ChatGPT › Glow Protocols › “GHK-cu Serum Recipe”: Heather asked for “a serum with JUST ghk-cu” and named it Protocol 02; later “Protocol 02 also contains 0.40% GHK-Cu, but without SNAP-8.”'},
+ {key:'cu-hair-01',code:'H01',name:'Cu-Hair 01',sub:'GHK-Cu scalp serum',ref:450,
+  yields:[{sku:'cu-hair-01-30-ml',ml:30,def:15,label:'30 mL'}],
+  ing:[{id:'water',n:'Distilled water',g:253.575},{id:'ha',n:'Premade 1% HA',g:90},{id:'aloe',n:'Aloe vera juice',g:67.5},{id:'pdo',n:'Propanediol',g:13.5},{id:'nia',n:'Niacinamide',g:13.5},{id:'panth',n:'Panthenol',g:9},{id:'cu',n:'GHK-Cu',g:0.675},{id:'germ',n:'Liquid Germall Plus',g:2.25}],
+  steps:HAIR_STEPS('GHK-Cu'),
+  src:'ChatGPT › Glow Protocols › “GHK-Cu Hair Growth Potential” (May 21, 2026): Revised CU-Hair 01, 15 bottles = 450 g, 0.15% GHK-Cu.'},
+ {key:'cu-hair-02',code:'H02',name:'Cu-Hair 02',sub:'AHK-Cu scalp serum',ref:450,
+  yields:[{sku:'cu-hair-02-30-ml',ml:30,def:15,label:'30 mL'},{sku:'bf-mini-cu-hair-02',ml:1,def:0,label:'1 mL mini'}],
+  ing:[{id:'water',n:'Distilled water',g:253.575},{id:'ha',n:'Premade 1% HA',g:90},{id:'aloe',n:'Aloe vera juice',g:67.5},{id:'pdo',n:'Propanediol',g:13.5},{id:'nia',n:'Niacinamide',g:13.5},{id:'panth',n:'Panthenol',g:9},{id:'cu',n:'AHK-Cu',g:0.675},{id:'germ',n:'Liquid Germall Plus',g:2.25}],
+  steps:HAIR_STEPS('AHK-Cu'),note:'The November listing also says caffeine, betaine and biotin. None of the saved recipes have them. Check before you make it.',
+  src:'Cu-Hair 01’s base with AHK-Cu at the same 0.15% (“AHK-Cu Formula Revision”).'},
+ {key:'glow-eyes',code:'GE',name:'Glow Eyes',sub:'Protocol 01 + 1% caffeine',ref:50,
+  yields:[{sku:'glow-eyes-0-34-fl-oz-10-ml',ml:10,def:5,label:'10 mL roller'},{sku:'bf-mini-glow-eyes',ml:1,def:0,label:'1 mL mini'}],
+  ing:[{id:'p01',n:'Protocol 01 serum',s:'finished',g:50,u:'mL'},{id:'caff',n:'Caffeine powder',s:'cosmetic grade',g:0.5}],
+  steps:EYE_STEPS(false),
+  src:'ChatGPT › Glow Protocols › “Adding Caffeine to Serum” (Sep 15, 2026, the newest): Protocol 01 + 1% caffeine (0.5 g per 50 mL).'},
+ {key:'glow-eyes-luxe',code:'GEL',name:'Glow Eyes Luxe',sub:'Glow Eyes + KPV',ref:50,
+  yields:[{sku:'glow-eyes-luxe-kpv-0-34-fl-oz-10-ml',ml:10,def:5,label:'10 mL roller'}],
+  ing:[{id:'p01',n:'Protocol 01 serum',s:'finished',g:50,u:'mL'},{id:'caff',n:'Caffeine powder',s:'cosmetic grade',g:0.5},{id:'kpv',n:'KPV',s:'10 mg per bottle',bottle:0.010}],
+  steps:EYE_STEPS(true),
+  src:'Glow Eyes + 10 mg KPV in each 10 mL roller (“Under-Eye Product Advice”: “I will add KPV 10mg”).'},
+ {key:'rose-mist',code:'RM',name:'Rose Mist',sub:'Rose Recovery Mist',ref:100,
+  yields:[{sku:'rose-recovery-mist-60-ml',ml:60,def:7,label:'60 mL spray'},{sku:'bf-mini-rose-recovery-mist',ml:1,def:0,label:'1 mL mini'}],
+  ing:[{id:'aloe',n:'Aloe vera juice',g:3,u:'mL'},{id:'panth',n:'Panthenol',g:1},{id:'rose',n:'Rose hydrosol',g:95.5,u:'mL'},{id:'germ',n:'Liquid Germall Plus',g:0.5,u:'mL'}],
+  steps:[{t:'Set up',d:'Gloves on. Sanitize the beakers and spray bottles.',min:3,est:true},
+   {t:'Dissolve the panthenol',d:'Small beaker. Warm to <b>40–45 °C</b> and stir until fully dissolved.',uses:['aloe','panth'],until:'Fully dissolved'},
+   {t:'Add the rose hydrosol',d:'Stir gently.',uses:['rose'],min:2,est:true},
+   {t:'Add the Germall Plus',d:'Only once it’s <b>under 50 °C</b>. Stir gently, keep the bubbles down.',uses:['germ'],min:2,est:true},
+   {t:'Fill',d:'Fill {fill}.',min:10,est:true}],
+  src:'ChatGPT › Glow Protocols › “Rosewater for Peptide Burn” (June 2026): 95.5% rose hydrosol, 3% aloe, 1% panthenol, 0.5% Germall Plus.'},
+ {key:'ha-base',code:'HA',name:'HA base',sub:'1% HA gel, prep for the serums',prep:true,yields:[],ref:250,def_g:500,
+  ing:[{id:'water',n:'Distilled water',g:247.5},{id:'ha',n:'Hyaluronic acid powder',g:2.5}],
+  steps:[{t:'Set up',d:'Sanitize a big beaker and stir bar.',min:3,est:true},
+   {t:'Water in',d:'Start stirring on low.',uses:['water'],min:1,est:true},
+   {t:'Sprinkle in the HA',d:'Slowly, over the moving water. Don’t dump it.',uses:['ha'],min:3,est:true},
+   {t:'Let it hydrate',d:'Keep stirring low until it’s a smooth, clear gel.',min:30},
+   {t:'Cover + date it',d:'Label it with today’s date. Protocol 01/02 use about 201.5 g per 15 bottles; Cu-Hair 90 g per 15.',min:1,est:true}],
+  src:'ChatGPT › Glow Protocols: “247.5 g distilled water + 2.5 g HA powder = 250 g” (1%). Hydrate 30–60 min (Cu-Hair chat).'}];
+// -----------------------------------------------------------------------------------------------------------------
+var STATE_K='glp_serum_v3',WHO_K='glp_serum_who_v1';
+var products=[],bySku={},byId={},orders=[],batches=[],need={},st=null,view=null,authed=true,voidArm=null,tick=null,actx=null;
+function ls(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function $(id){return document.getElementById(id)}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove('show')},2800)}
+function rec(k){for(var i=0;i<RECIPES.length;i++)if(RECIPES[i].key===k)return RECIPES[i];return null}
+function api(path,body){return fetch('/api/admin/'+path,{method:body?'POST':'GET',headers:Object.assign({'X-Store-Request':'1'},body?{'Content-Type':'application/json'}:{}),body:body?JSON.stringify(body):undefined,cache:'no-store',credentials:'same-origin'})
+ .then(function(r){if(r.status===401){authed=false;$('signin').innerHTML='<div class="msg" style="margin-bottom:12px"><b>Sign in first.</b> Open <a href="/store-next/admin" target="_blank" rel="noopener">Management</a>, sign in, then refresh. Recipes work without it; finishing a batch needs it.</div>';throw new Error('Sign in first.')}
+  return r.json().catch(function(){return{}}).then(function(d){if(!r.ok)throw new Error(d.error||d.message||('Error '+r.status));return d})})}
+// ---- amounts ----------------------------------------------------------------------------------------------------
+function ml(r,s){if(r.prep)return Number(s.grams)||0;var t=0;r.yields.forEach(function(y,i){t+=(Number(s.counts[i])||0)*y.ml});return t}
+function bottles(r,s){var n=0;r.yields.forEach(function(y,i){if(y.ml>1)n+=Number(s.counts[i])||0});return n}
+function amt(r,s,i){return i.bottle?i.bottle*bottles(r,s):i.g*ml(r,s)/r.ref}
+function total(r,s){var t=0;r.ing.forEach(function(i){t+=amt(r,s,i)});return t}
+function fmt(v,u){u=u||'g';if(!(v>0))return '0 '+u;if(u==='g'&&v<1)return Math.round(v*1000)+' mg';var d=v>=100?1:v>=10?2:3;return (Math.round(v*Math.pow(10,d))/Math.pow(10,d)).toLocaleString('en-US',{minimumFractionDigits:d===1?1:2,maximumFractionDigits:d})+' '+u}
+function stepsOf(r){return r.steps.filter(function(x){return !x.only||r.ing.some(function(i){return i.id===x.only})})}
+function mins(r){var a=0,b=0;stepsOf(r).forEach(function(x){if(x.min)a+=x.min;else b++});return {m:a,open:b}}
+function hm(m){m=Math.round(m);return m>=60?Math.floor(m/60)+' h'+(m%60?' '+(m%60)+' min':''):m+' min'}
+function mmss(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+// ---- waiting = in paid orders not shipped yet (bundles counted through what's inside) ---------------------------------
+function buildNeed(){need={};orders.forEach(function(o){if(o.is_test!==false||o.status!=='paid')return;(o.items||[]).forEach(function(i){var p=byId[i.id];if(!p)return;
+ if(p.components&&p.components.length)p.components.forEach(function(c){need[c.id]=(need[c.id]||0)+i.quantity*(c.qty||1)});else need[p.id]=(need[p.id]||0)+i.quantity*(Number(p.units)||1)})})}
+function waiting(r){var n=0;r.yields.forEach(function(y){var p=bySku[y.sku];if(p)n+=need[p.id]||0});return n}
+// ---- state ------------------------------------------------------------------------------------------------------
+function fresh(r){return {recipe:r.key,counts:r.yields.map(function(y){return y.def}),grams:r.def_g||0,cur:0,done:{},got:{},timer:{},key:'sb-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10)}}
+function save(){lsSet(STATE_K,st)}
+function started(){return st&&!st.result&&(Object.keys(st.done).length||Object.keys(st.got).length)}
+function open(k){if(k==='log'){view='log';render();return}var r=rec(k);
+ if(!st||st.recipe!==k){if(started()&&open._ok!==k){open._ok=k;toast('A '+rec(st.recipe).name+' batch is going. Tap '+r.name+' again to start a new one.');setTimeout(function(){open._ok=null},4000);return}
+  open._ok=null;st=fresh(r);save()}view=k;render();window.scrollTo(0,0)}
+// ---- render -----------------------------------------------------------------------------------------------------
+function render(){renderTabs();renderHead();$('out').innerHTML=view==='log'?logHtml():(st&&view===st.recipe)?batchHtml():pickHtml();ensureTick()}
+function renderTabs(){$('tabs').innerHTML=RECIPES.map(function(r){var w=waiting(r);return '<button data-open="'+r.key+'" aria-pressed="'+(view===r.key)+'">'+esc(r.name)+(w?'<span class="n">'+w+'</span>':'')+(st&&st.recipe===r.key&&started()?'<span class="dot"></span>':'')+'</button>'}).join('')+'<button data-open="log" aria-pressed="'+(view==='log')+'">Batch log</button>'}
+function renderHead(){var day=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'}).replace(/-/g,''),t=batches.filter(function(b){return b.day===day&&!b.voided_at}),made=0;
+ t.forEach(function(b){(b.yields||[]).forEach(function(y){made+=y.quantity||0})});$('today').textContent='Today: '+made+' made';
+ if(st&&view===st.recipe){var r=rec(st.recipe),n=stepsOf(r).length,d=Object.keys(st.done).length;$('count').innerHTML=st.result?'Done · <b>'+esc(st.result.lot)+'</b>':st.cur>=n?'<b>Finish</b> · '+esc(r.name):'Step <b>'+(st.cur+1)+'</b> of '+n+' · '+esc(r.name);$('bar').style.width=(st.result?100:Math.round(d/n*100))+'%'}
+ else{$('count').textContent=view==='log'?'Batch log':'Pick a serum';$('bar').style.width='0'}}
+function pickHtml(){return '<div class="grid">'+RECIPES.map(function(r){var w=waiting(r),m=mins(r);return '<button class="pick" data-open="'+r.key+'"><b>'+esc(r.name)+'</b><span>'+esc(r.sub)+'</span><span>≈ '+hm(m.m)+(m.open?' + mixing':'')+(w?' · <span class="w8">'+w+' waiting</span>':'')+'</span></button>'}).join('')+'</div>'}
+function numFld(id,val,label,stp){return '<label class="fld"><span>'+esc(label)+'</span><span class="num"><button type="button" data-nudge="'+id+'" data-d="-'+(stp||1)+'" aria-label="Less">−</button><input id="'+id+'" inputmode="numeric" value="'+esc(val)+'"><button type="button" data-nudge="'+id+'" data-d="'+(stp||1)+'" aria-label="More">+</button></span></label>'}
+function fillText(r){var p=[];r.yields.forEach(function(y,i){var n=Number(st.counts[i])||0;if(n)p.push('<b>'+n+' × '+esc(y.label)+'</b>')});return p.join(' + ')||'the bottles'}
+function batchHtml(){var r=rec(st.recipe);if(st.result)return doneHtml(r);var steps=stepsOf(r),m=mins(r),w=waiting(r),tot=total(r,st);
+ var plan=r.prep?numFld('n-g',st.grams,'Grams to make',50):r.yields.map(function(y,i){var p=bySku[y.sku];return numFld('n-'+i,st.counts[i],y.label+(p?' · '+Number(p.stock||0)+' on site':''))}).join('');
+ var fresh0=st.cur===0&&!Object.keys(st.done).length;
+ var head='<div class="card"><div class="top"><div class="nm">'+esc(r.name)+'<small>'+esc(r.sub)+'</small></div><div class="facts"><div class="fact"><b>'+(r.prep?fmt(tot,'g'):bottles(r,st))+'</b><span>'+(r.prep?'Batch':'Bottles')+'</span></div><div class="fact"><b>≈ '+hm(m.m)+'</b><span>Time</span></div>'+(w?'<div class="fact red"><b>'+w+'</b><span>Waiting</span></div>':'')+'</div></div>'+
+  (fresh0?'<div class="plan">'+plan+'</div>':'<div class="small" style="margin-top:8px">'+(r.prep?'':fillText(r)+' · ')+'batch '+fmt(tot,'g')+'<button type="button" class="sm-btn" data-edit="1">Change</button></div>')+
+  (r.key.indexOf('glow-eyes')===0&&st.cur<2?'<div style="margin-top:10px"><button type="button" data-p01="'+Math.ceil(amt(r,st,r.ing[0])/15)+'">Make Protocol 01 first ('+Math.ceil(amt(r,st,r.ing[0]))+' mL)</button></div>':'')+
+  (r.note?'<div class="note">⚠️ '+esc(r.note)+'</div>':'')+
+  '<div class="dots">'+steps.map(function(x,k){return '<button type="button" data-go="'+k+'" class="'+(st.done[k]?'ok':'')+(k===st.cur?' cur':'')+'" title="'+esc(x.t)+'">'+(st.done[k]?'✓':k+1)+'</button>'}).join('')+'<button type="button" data-go="'+steps.length+'" class="'+(st.cur>=steps.length?'cur':'')+'" title="Finish">★</button></div></div>';
+ if(st.cur>=steps.length)return head+finishHtml(r);
+ var x=steps[st.cur],v={total:fmt(tot,'g'),fill:fillText(r),cut:r.ing[0].id==='p01'?fmt(amt(r,st,r.ing[0])*0.15,'mL'):'',perbottle:'<b>10 mg</b>'},d=x.d.replace(/\{(\w+)\}/g,function(a,b){return v[b]!=null?v[b]:a});
+ var ws=(x.uses||[]).map(function(id){var i=r.ing.filter(function(z){return z.id===id})[0],a=amt(r,st,i),u=i.u||'g',on=!!st.got[id];
+  return '<button type="button" class="w'+(on?' on':'')+'" data-got="'+id+'"><span class="amt">'+fmt(a,u)+'</span><span class="wn">'+esc(i.n)+'<small>'+esc([i.s,(u==='g'&&a<1&&a>0)?(Math.round(a*1000)/1000).toFixed(3)+' g on the scale':''].filter(Boolean).join(' · '))+'</small></span><span class="bx">'+(on?'✓':'')+'</span></button>'}).join('');
+ var clock='',locked=false,tm=st.timer[st.cur];
+ if(x.min){var left=tm?(tm.end-Date.now())/1000:x.min*60,up=!!tm&&left<=0;if(!x.est&&!up)locked=true;
+  clock='<div class="clock'+(tm&&!up?' run':'')+(up?' up':'')+'"><span class="t" id="clockT">'+(up?'✓ done':mmss(left))+'</span><span class="l">'+(x.est?'About <b>'+x.min+' min</b>. Our usual time.':'Mix <b>'+x.min+' min</b>. Done unlocks when the timer ends.')+'</span>'+(up?'':tm?'<button type="button" data-timer="stop">Reset</button>':'<button type="button" data-timer="go">Start</button>')+'</div>'}
+ else if(x.until)clock='<div class="clock"><span class="t" style="font-size:20px;min-width:0">Until</span><span class="l"><b>'+esc(x.until)+'</b>. No set time. Check it, then tap Done.</span></div>';
+ var allGot=(x.uses||[]).every(function(id){return st.got[id]}),nx=steps[st.cur+1];
+ return head+'<div class="step"><div class="k">Step '+(st.cur+1)+' of '+steps.length+'</div><h2>'+esc(x.t)+'</h2><div class="d">'+d+'</div>'+(ws?'<div class="weigh">'+ws+'</div>':'')+clock+(x.flag?'<div class="flag">'+esc(x.flag)+'</div>':'')+
+  '<div class="nav">'+(st.cur>0?'<button type="button" class="back" data-go="'+(st.cur-1)+'">Back</button>':'')+'<button type="button" class="done" data-done="1"'+((locked||!allGot)?' disabled':'')+'>'+(!allGot?'Tap what you weighed':locked?'Wait for the timer':'Done ✓')+'</button></div></div>'+
+  '<div class="next">'+(nx?'Next: <b>'+esc(nx.t)+'</b>'+(nx.min?' · '+(nx.est?'≈ ':'')+nx.min+' min':nx.until?' · until '+esc(nx.until.toLowerCase()):''):'Next: <b>Finish</b> and add the bottles to stock')+'</div>'+
+  '<div class="src">Recipe: '+esc(r.src)+' Times with ≈ are our usual time, not from the recipe.</div>'}
+function finishHtml(r){var who=st.who!=null?st.who:ls(WHO_K,''),miss=r.yields.filter(function(y){return !bySku[y.sku]}).map(function(y){return y.label});
+ var fills=r.prep?'':r.yields.map(function(y,i){return numFld('f-'+i,st.filled&&st.filled[i]!=null?st.filled[i]:st.counts[i],'Filled · '+y.label)}).join('');
+ return '<div class="card" style="margin-top:12px"><div class="top"><div class="nm">Finish<small>Enter what you actually filled</small></div></div>'+(miss.length?'<div class="note">Not on the site, so not added to stock: '+esc(miss.join(', '))+'</div>':'')+
+  '<div class="row" style="margin-top:12px">'+fills+'<label class="fld"><span>pH</span><input class="txt" id="ph" style="width:86px" inputmode="decimal" placeholder="5.4" value="'+esc(st.ph||'')+'"></label><label class="fld" style="flex:1;min-width:150px"><span>Made by</span><input class="txt" id="who" placeholder="Your name" value="'+esc(who)+'"></label></div>'+
+  '<div class="row"><label class="fld" style="flex:1"><span>Notes</span><input class="txt" id="notes" placeholder="Anything unusual" value="'+esc(st.notes||'')+'"></label></div>'+
+  '<div class="row" style="justify-content:space-between;margin-top:14px">'+(r.prep?'<span class="small">HA base isn’t sold, so it only goes in the log.</span>':'<label class="chk"><input type="checkbox" id="addstock" '+(st.addStock===false?'':'checked')+'> Add to the site’s stock</label>')+'<button type="button" class="go" data-finish="1"'+(authed?'':' disabled')+'>'+finishLabel(r)+'</button></div></div>'}
+function finishLabel(r){if(r.prep||st.addStock===false)return '✓ Log batch';var n=0;r.yields.forEach(function(y,i){var v=st.filled&&st.filled[i]!=null?st.filled[i]:st.counts[i];if(bySku[y.sku])n+=Number(v)||0});return '✓ Finish · add '+n+' to stock'}
+function doneHtml(r){var b=st.result,added=(b.yields||[]).filter(function(y){return y.added}).map(function(y){return '<div style="font-size:17px;margin:4px 0"><b>+'+y.added+'</b> '+esc(y.name)+' <span class="small">('+y.stock_before+' → '+y.stock_after+')</span></div>'}).join('');
+ return '<div class="card" style="border-color:var(--ok);background:var(--okbg)"><div class="small">Write this on the bottles</div><div class="lot">'+esc(b.lot)+'</div>'+(added||'<div class="small">Logged. Stock not changed.</div>')+'<div style="margin-top:14px"><button type="button" class="go" data-again="1">Start another '+esc(r.name)+'</button></div></div>'}
+function logHtml(){if(!authed)return '<div class="msg">Sign in to see the batch log.</div>';if(!batches.length)return '<div class="msg">No batches yet.</div>';
+ return '<div class="tscroll"><table><thead><tr><th>Lot</th><th>When</th><th>Made</th><th>pH</th><th>By</th><th></th></tr></thead><tbody>'+batches.map(function(b){
+  var made=(b.yields||[]).filter(function(y){return y.quantity}).map(function(y){return y.quantity+' × '+esc(y.name)}).join('<br>')||esc(b.name+(b.batch_g?' · '+b.batch_g+' g':''));
+  return '<tr class="'+(b.voided_at?'void':'')+'"><td class="b">'+esc(b.lot)+'</td><td>'+esc(new Date(b.created*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'</td><td>'+made+(b.added_to_stock?'':'<br><span class="small">not added to stock</span>')+(b.notes?'<br><span class="small">'+esc(b.notes)+'</span>':'')+'</td><td>'+esc(b.ph||'—')+'</td><td>'+esc(b.made_by)+'</td><td class="act">'+(b.voided_at?'<span class="small">undone</span>':'<button type="button" data-void="'+esc(b.id)+'" style="padding:5px 10px;font-size:14px">'+(voidArm===b.id?'Tap again':'Undo')+'</button>')+'</td></tr>'}).join('')+'</tbody></table></div><p class="small">Undo takes that batch’s bottles back off stock (not if they already sold).</p>'}
+// ---- timer -------------------------------------------------------------------------------------------------------
+function chime(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();[0,.25,.5].forEach(function(d){var o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.setValueAtTime(.0001,actx.currentTime+d);g.gain.exponentialRampToValueAtTime(.25,actx.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+d+.2);o.connect(g).connect(actx.destination);o.start(actx.currentTime+d);o.stop(actx.currentTime+d+.22)})}catch(e){}}
+function ensureTick(){if(tick)return;tick=setInterval(function(){if(!st||st.result||view!==st.recipe)return;var tm=st.timer[st.cur];if(!tm||tm.rang)return;var left=(tm.end-Date.now())/1000,el=$('clockT');
+ if(left<=0){tm.rang=true;save();chime();toast('⏱ Time’s up. Tap Done.');render();return}if(el)el.textContent=mmss(left)},500)}
+// ---- events ------------------------------------------------------------------------------------------------------
+function readInputs(){if(!st||st.result)return;var r=rec(st.recipe);r.yields.forEach(function(y,i){var a=$('n-'+i);if(a)st.counts[i]=Math.max(0,parseInt(a.value,10)||0);var f=$('f-'+i);if(f){st.filled=st.filled||[];st.filled[i]=Math.max(0,parseInt(f.value,10)||0)}});
+ var g=$('n-g');if(g)st.grams=Math.max(0,parseInt(g.value,10)||0);['ph','notes','who'].forEach(function(k){var x=$(k);if(x)st[k]=x.value});var a=$('addstock');if(a)st.addStock=a.checked}
+document.addEventListener('click',function(ev){var t=ev.target.closest('button');if(!t)return;var r=st&&rec(st.recipe);
+ if(t.dataset.open){readInputs();save();open(t.dataset.open);return}
+ if(t.dataset.nudge){readInputs();var inp=$(t.dataset.nudge);inp.value=Math.max(0,(parseFloat(inp.value)||0)+Number(t.dataset.d));readInputs();if(/^n-/.test(t.dataset.nudge))st.filled=null;save();render();return}
+ if(t.dataset.edit){st.cur=0;st.done={};save();render();return}
+ if(t.dataset.got){st.got[t.dataset.got]=!st.got[t.dataset.got];save();render();return}
+ if(t.dataset.timer){if(t.dataset.timer==='go'){var x=stepsOf(r)[st.cur];st.timer[st.cur]={end:Date.now()+x.min*60000};try{actx=actx||new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}else delete st.timer[st.cur];save();render();return}
+ if(t.dataset.done){st.done[st.cur]=true;st.cur++;save();render();window.scrollTo({top:0,behavior:'smooth'});return}
+ if(t.dataset.go!=null){readInputs();st.cur=Number(t.dataset.go);save();render();return}
+ if(t.dataset.p01){var n=Number(t.dataset.p01);st=fresh(rec('protocol-01'));st.counts=[n,0,0];view='protocol-01';save();render();toast('Protocol 01 set to '+n+' × 15 mL. Make that first.');return}
+ if(t.dataset.again){st=fresh(r);save();render();return}
+ if(t.dataset.finish){finish(t);return}
+ if(t.dataset.void){var id=t.dataset.void;if(voidArm!==id){voidArm=id;render();setTimeout(function(){if(voidArm===id){voidArm=null;render()}},5000);return}
+  voidArm=null;api('serums/batch/void',{id:id}).then(function(d){toast('Undone: '+d.batch.lot);return reload()}).catch(function(e){toast(e.message)})}});
+document.addEventListener('change',function(ev){if(!st)return;var id=ev.target.id;if(/^(n-|f-|addstock)/.test(id)){readInputs();if(/^n-/.test(id))st.filled=null;save();render()}});
+document.addEventListener('input',function(ev){if(st&&/^(ph|who|notes)$/.test(ev.target.id)){readInputs();save()}});
+function finish(btn){readInputs();var r=rec(st.recipe),who=(st.who||ls(WHO_K,'')||'').trim();if(!who){toast('Add who made it.');$('who').focus();return}lsSet(WHO_K,who);
+ var yields=[];r.yields.forEach(function(y,i){var p=bySku[y.sku],q=st.filled&&st.filled[i]!=null?st.filled[i]:st.counts[i];if(p&&q>0)yields.push({id:p.id,quantity:Number(q)})});
+ if(!r.prep&&!yields.length){toast('Enter how many you filled.');return}btn.disabled=true;btn.textContent='Saving…';
+ api('serums/batch',{key:st.key,recipe:r.key,code:r.code,name:r.name,made_by:who,ph:String(st.ph||'').trim(),notes:String(st.notes||'').trim(),batch_g:Math.round(total(r,st)*1000)/1000,
+  ingredients:r.ing.map(function(i){return{name:i.n,amount:Math.round(amt(r,st,i)*1000)/1000,unit:i.u||'g'}}),yields:yields,add_stock:r.prep?false:st.addStock!==false})
+ .then(function(d){st.result=d.batch;save();toast((d.already?'Already logged: ':'Logged ')+d.batch.lot);return reload()}).catch(function(e){btn.disabled=false;btn.textContent=finishLabel(r);toast(e.message)})}
+// ---- load --------------------------------------------------------------------------------------------------------
+function reload(){return Promise.all([api('data').then(function(d){products=d.products||[];orders=d.orders||[];bySku={};byId={};products.forEach(function(p){byId[p.id]=p;if(p.brand!=='zader'||!bySku[p.sku])bySku[p.sku]=p});buildNeed()}),
+ api('serums/batches').then(function(d){batches=d.batches||[]})]).then(function(){authed=true;$('signin').innerHTML=''}).catch(function(e){if(authed)toast(e.message)}).then(function(){var f=document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName);if(!f)render()})}
+st=ls(STATE_K,null);if(st&&!rec(st.recipe))st=null;view=st?st.recipe:null;
+render();reload();
+document.addEventListener('visibilitychange',function(){if(!document.hidden)reload()});
+})();
+</script>
+</body>
+</html>
