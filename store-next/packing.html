@@ -73,6 +73,8 @@ button:disabled{opacity:.45;cursor:default}
 .tag.amber{background:var(--amberbg);color:var(--amber)}
 .tag.new{background:#5b3fd6;color:#fff}
 .tag.pf{background:#1b1b1b;color:#c9a24b}
+.tag.shirt{background:#1f4fd8;color:#fff}.shirtline{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:#e9efff;border:2px solid #1f4fd8;font-weight:800;color:#12308a}
+.shirts{background:#eef3ff;border:2px solid #1f4fd8;border-radius:12px;padding:10px 12px;margin:10px 0}.shirts summary{cursor:pointer;font-weight:800;color:#12308a}.shirts table{width:100%;margin-top:8px;font-size:14px}.shirts td{padding:4px 6px;border-top:1px solid #d5def7}.shirts .go2{color:#1a7f3c;font-weight:700}.shirts .mail{color:#b3261e;font-weight:700}
 .tag.lbl{background:#e2efe5;color:var(--ok)}
 .tag.nolbl{background:#f3e6e1;color:var(--warn)}
 .items{margin:14px 0 6px;padding:0;list-style:none}
@@ -256,6 +258,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
     <button id="sound" class="mini" aria-pressed="true" title="Sounds for new orders and finished boxes">🔔 Sound on</button> <button id="autoprint" class="mini" aria-pressed="false" title="Turn on only on the computer next to the label printer">🖨️ Auto-print off</button><button id="notify" class="mini" title="Pop-up on this computer when a new order comes in, even when this tab is in the background">🛎️ Turn on order pop-ups</button><button id="testPing" class="mini" title="Show what a new-order alert looks like">Test alert</button>
   </div>
   <div id="buyAll"></div>
+  <div id="shirts"></div>
   <div class="tools tabs">
     <button data-view="todo" aria-pressed="true">To check<span class="n" id="nTodo">0</span></button>
     <button data-view="done" aria-pressed="false">Checked<span class="n" id="nDone">0</span></button>
@@ -455,7 +458,7 @@ function render(){setTimeout(fitNowBar,0);
   var rs=restockRows().filter(function(x){return x.status==='out'||x.status==='now'}).length,nr=document.getElementById('nRestock');nr.textContent=rs;nr.className='n'+(rs?' red':'');
   document.getElementById('chips').style.display=(view==='pick'||view==='restock'||view==='stats'||view==='calls'||view==='ship')?'none':'';document.getElementById('shipPanel').hidden=view!=='ship';
   weekBanner();var nc=callList().filter(function(c){return !callDone(c)}).length,ncb=document.getElementById('nCalls');ncb.textContent=nc;
-  alerts();buyAllBox();
+  alerts();buyAllBox();shirtBox();
   var out=document.getElementById('out');
   if(view==='ship'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=shipList();return}
   if(view==='pick'||view==='restock'||view==='stats'||view==='calls'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=view==='pick'?pickList():view==='stats'?statsView():view==='calls'?callsView():restock();return}
@@ -616,7 +619,8 @@ function slipHTML(list){
    +'.glow-season-corner,[class*=season-],[class*=glow-season]{display:none!important}';
   var slips=list.map(function(o){
     var c=o.customer||{},z=o.brand==='zader',site=z?'zaderhealth.com':'glowglps.com',mail=z?'':'support@glowglps.com',gift=o.gift||null,shipName=gift&&gift.to_name||c.name||'',first=String(shipName).trim().split(/\s+/)[0]||'friend',u=units(o);
-    var items=o.items||[],many=items.length>7;
+    // Packing slip lines A→Z by product name (Jonah, 24 Nov 2026: "from now on put the packing slip in alphabetical order").
+    var items=(o.items||[]).slice().sort(function(x,y){return String(x.name||'').localeCompare(String(y.name||''),'en',{numeric:true,sensitivity:'base'})}),many=items.length>7;
     var rows=items.map(function(i){var parts=String(i.name||'').split(' · '),nm=parts.shift(),det=parts.join(' · ');
       var ins=insideText(i),hq=heldQ(o,i);return '<tr><td class="bx"><i></i></td><td class="q">'+esc(i.quantity)+'×</td><td class="pn">'+esc(nm)+(ins?'<span class="ins">'+esc(ins)+'</span>':'')+(hq?'<span class="ins">'+(hq>=i.quantity?'COMING SEPARATELY':hq+' COMING SEPARATELY')+'</span>':'')+'</td><td class="pd">'+esc(det)+'</td></tr>'}).join('');
     var when=function(ts){return ts?new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''};
@@ -863,12 +867,12 @@ function card(o){
   }).join('');
   var notes=[o.staff_note,o.note,o.notes,o.customer_note].concat((o.staff_notes||[]).map(function(n){return n&&n.text?'📝 '+n.text+(n.author?' — '+n.author:''):''})).filter(function(v){return typeof v==='string'&&v.trim()});
   var n=tickCount(o),u=units(o),paidAt=o.paid||o.created||0;
-  var tags=brand+(o.ships_with?'<span class="tag cust" title="Two Subscribe &amp; save packages for the same person, same address, same day. Pack them in one box with one label.">📦 SAME BOX AS '+esc(o.ships_with)+'</span>':'')+(o.member_priority===true&&!o.replacement?'<span class="tag pf" title="Skool member who picked Packed first">⭐ PACK FIRST</span>':'')+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.hold&&o.hold.lines&&o.hold.lines.length?'<span class="tag held" title="Management → Ship &amp; stock → Waiting on">⏳ '+(heldAll(o)?'ON HOLD':'PART ON HOLD')+' · '+esc(heldNames(o).toUpperCase())+'</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.manual?'<span class="tag manual">📮 '+esc(SN_REASONS[o.manual.reason]||'SHIPMENT').toUpperCase()+'</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
+  var tags=brand+(o.ships_with?'<span class="tag cust" title="Two Subscribe &amp; save packages for the same person, same address, same day. Pack them in one box with one label.">📦 SAME BOX AS '+esc(o.ships_with)+'</span>':'')+(o.member_priority===true&&!o.replacement?'<span class="tag pf" title="Skool member who picked Packed first">⭐ PACK FIRST</span>':'')+shirtTag(o)+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.hold&&o.hold.lines&&o.hold.lines.length?'<span class="tag held" title="Management → Ship &amp; stock → Waiting on">⏳ '+(heldAll(o)?'ON HOLD':'PART ON HOLD')+' · '+esc(heldNames(o).toUpperCase())+'</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.manual?'<span class="tag manual">📮 '+esc(SN_REASONS[o.manual.reason]||'SHIPMENT').toUpperCase()+'</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
   var ship=o.manual&&!hasLabel(o)?manualBuyBox(o):!hasLabel(o)&&canBuy(o)&&!heldAll(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" data-plabel="'+esc(o.id)+'" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||carrierName(o))+'</span>'+(o.tracking?'<span>'+trkLink(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   if(o.manual&&hasLabel(o))ship=ship.slice(0,-6)+manualEmailBtn(o)+'</div>';
   return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement||o.manual?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">'+(o.manual?'Made':'Paid')+' '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+(o.manual?'<div class="small">'+esc(manualWhy(o.manual))+'</div>':'')+'<ul class="items">'+rows+'</ul>'
-    +(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
+    +shirtLine(o)+(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
     +ship+printBadges(o)+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(heldAll(o)?'⏳ On hold: everything in this order is still on the way ('+esc(heldNames(o))+'). Nothing to pack yet.':done?'✅ All '+u+' in the bag. '+(o.hold&&o.hold.lines&&o.hold.lines.length?'('+esc(heldNames(o))+' ships later.) ':'')+(hasLabel(o)?'Put the label on.':'Ready for its label.'):blk?'⛔ Waiting on: '+esc(blockedItems(o).map(function(i){return i.name}).join(', ')):n+' of '+u+' checked')+'</span>'+'<span class="btns">'+(o.replacement?'':'<button data-slip="'+esc(o.id)+'" title="Print a packing slip for this box">🧾 Slip</button> ')+(n?'<button data-reset="'+esc(o.id)+'">Start over</button> ':'')+(o.manual?'<button data-sncancel="'+esc(o.id)+'" title="Cancel this shipment: voids the label in Shippo (if bought) and puts the items back in stock">Cancel shipment</button> ':'')+'<button data-skip="'+esc(o.id)+'">'+(isSkipped(o)?'Un-skip':'Skip for now')+'</button></span></div></section>';
 }
 // What to pull off the shelf for one order line: a kit of 10 is 10 of that vial; a bundle is the vials inside it.
@@ -1058,7 +1062,7 @@ function fetchOrders(quiet){
     var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);var ks={};orders.forEach(function(o){if(skipped[o.id])ks[o.id]=skipped[o.id]});skipped=ks;saveSkip();
     var fresh=hadData?orders.filter(function(o){return !before[o.id]}):[];
     if(!hadData){orders.forEach(function(o){seen[o.id]=1});lsSet(SEEN,seen)}
-    lastLoad=Date.now();buildPools();snProducts();render();checkScans();
+    lastLoad=Date.now();buildPools();buildShirts();snProducts();render();checkScans();
     fetchPrintLog().then(function(){render();detectNew();autoPrintNew()});
     var loadedIds=orders.map(function(o){return o.id});setTimeout(function(){loadedIds.forEach(function(id){seen[id]=1});var s2={};orders.forEach(function(o){if(seen[o.id])s2[o.id]=1});seen=s2;lsSet(SEEN,seen)},60000);
   }).catch(function(e){if(e!==0&&!quiet)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
@@ -1132,6 +1136,24 @@ function baRetryable(o,why){if(o.balance_due_cents>0||o.refund_due_cents>0||o.sh
 function buyAllLists(){var ready=[],needs=[],retry=[],failed=buyAllLast?buyAllLast.failed:[];
   orders.forEach(function(o){if(o.manual||!canBuy(o)||hasLabel(o)||isSkipped(o))return;var f=failed.find(function(x){return x.id===o.id});var why=f?f.why:buyAllNeeds(o);if(why){needs.push({o:o,why:why});if(baRetryable(o,why))retry.push({o:o,why:why})}else ready.push(o)});
   return{ready:ready,needs:needs,retry:retry}}
+// Free shirt (Jonah, 24 Nov 2026: "add the first 15 paid orders, midnight Monday live, Monday evening live" → "free shirt").
+// For each Monday live, the first 15 different customers (by order time, Eastern) whose order from that live is paid get a
+// shirt. One shirt per person per live: it goes in their first order from that live. Lives: midnight = Mon 23 Nov
+// 12:00–6:00 AM; evening = Mon 23 Nov 8:00 PM – Tue 3:00 AM (orders jump at 8 PM). Orders that already shipped are
+// listed so the shirt can be mailed on its own.
+var SHIRT={gift:'FREE SHIRT',per:15,lives:[{name:'Midnight live',from:Date.UTC(2026,10,23,5)/1000,to:Date.UTC(2026,10,23,11)/1000},{name:'Evening live',from:Date.UTC(2026,10,24,1)/1000,to:Date.UTC(2026,10,24,8)/1000}]};
+var shirtMap={},shirtList=[];
+function buildShirts(){shirtMap={};shirtList=[];var who=function(o){var c=o.customer||{};return String(c.email||c.name||o.id).toLowerCase().trim()};
+  SHIRT.lives.forEach(function(L){var seen={},n=0;
+    all.filter(function(o){return o.is_test!==true&&o.paid&&(o.status==='paid'||o.status==='shipped')&&o.created>=L.from&&o.created<L.to}).sort(function(a,b){return a.created-b.created}).forEach(function(o){
+      var w=who(o);if(n>=SHIRT.per||seen[w])return;seen[w]=1;n++;shirtMap[o.id]={live:L.name,rank:n};shirtList.push(o)})})}
+function shirtTag(o){var x=shirtMap[o.id];return x?'<span class="tag shirt" title="First '+SHIRT.per+' paid orders from the '+esc(x.live)+' on Monday get a free shirt">👕 FREE SHIRT</span>':''}
+function shirtLine(o){var x=shirtMap[o.id];return x?'<div class="shirtline">👕 Put a free shirt in this box · '+esc(x.live)+' #'+x.rank+' of '+SHIRT.per+'</div>':''}
+function shirtBox(){var el=document.getElementById('shirts');if(!el)return;if((view!=='todo'&&view!=='all')||!shirtList.length){el.innerHTML='';return}
+  var inQ={};orders.forEach(function(o){inQ[o.id]=1});var pack=shirtList.filter(function(o){return inQ[o.id]}),mail=shirtList.filter(function(o){return !inQ[o.id]});
+  var rows=SHIRT.lives.map(function(L){return '<tr><td colspan="4"><b>'+esc(L.name)+'</b></td></tr>'+shirtList.filter(function(o){return shirtMap[o.id].live===L.name}).map(function(o){var x=shirtMap[o.id],c=o.customer||{};
+    return '<tr><td>#'+x.rank+'</td><td>'+esc(c.name||'')+'</td><td>'+esc(o.id)+'<br><span class="small">ordered '+esc(new Date(o.created*1000).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'}))+'</span></td><td>'+(inQ[o.id]?'<span class="go2">In the box (on this list)</span>':'<span class="mail">Already shipped · mail it</span>')+'</td></tr>'}).join('')}).join('');
+  el.innerHTML='<details class="shirts"><summary>👕 Free shirts · first '+SHIRT.per+' from each Monday live · '+pack.length+' go in boxes here · '+mail.length+' already shipped, mail separately</summary><table><tbody>'+rows+'</tbody></table></details>'}
 function buyAllBox(){var el=document.getElementById('buyAll');if(!el)return;
   if(view!=='todo'&&view!=='all'){el.innerHTML='';return}
   var L=buyAllLists(),h='';

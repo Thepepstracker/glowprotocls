@@ -2906,6 +2906,24 @@
    ]
   },
   {
+   "id": "nasal-glutathione-1500-mg",
+   "name": "Glutathione nasal spray",
+   "strength": "1,500 mg",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-11.bin",
+    0,
+    163999
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2633420,
+    21758
+   ]
+  },
+  {
    "id": "big-bac-water-30-ml",
    "name": "BAC Water",
    "strength": "30 mL",

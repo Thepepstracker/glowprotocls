@@ -197,7 +197,7 @@ button:focus-visible,input:focus-visible{outline:3px solid rgba(184,138,46,.6);o
 'use strict';
 // -----------------------------------------------------------------------------------------------------------------
 // RECIPES. Amounts are the recipes as written in the Glow Protocols ChatGPT project (found 24 Nov 2026); the source is
-// on each recipe. Amounts are for `ref` mL of filled product (Protocol 01: the 235 g batch fills 15 × 15 mL = 225 mL;
+// on each recipe. Amounts are for `ref` mL of filled product (Protocol 01: the 235 g batch fills 15 × 15 mL = 225 mL; weighed in grams as on the 8 Sep 2026 batch record, except water shown as mL (1 mL = 1 g);
 // the extra is the recipe's own loss allowance). A batch scales by planned mL ÷ ref. `u:'mL'` = millilitres, else
 // grams. `bottle` = amount per bottle instead (Luxe's KPV). HA base: grams to make ÷ 250.
 // Step times: `min` with no `est` is the recipe's own mixing time and LOCKS Done until the timer ends. `est:true` is
@@ -238,12 +238,12 @@ function HAIR_STEPS(cu){return [
 var RECIPES=[
  {key:'protocol-01',code:'P01',name:'Protocol 01',sub:'GHK-Cu + SNAP-8 face serum',ref:225,
   yields:[{sku:'protocol-01-15-ml-0-5-oz',ml:15,def:15,label:'15 mL'},{sku:'protocol-01-50-ml-1-7-oz',ml:50,def:0,label:'50 mL'},{sku:'bf-mini-protocol-01',ml:1,def:0,label:'1 mL mini'}],
-  ing:[{id:'water',n:'Distilled water',g:10},{id:'pdo',n:'Propanediol 1,3',g:11.75},{id:'panth',n:'DL-Panthenol',g:4.7},{id:'ha',n:'Premade HA base',s:'your 1% HA',g:201.5},{id:'gly',n:'Vegetable glycerin',g:4.7},{id:'snap',n:'SNAP-8',g:0.235},{id:'ghk',n:'GHK-Cu',g:0.94},{id:'germ',n:'Liquid Germall Plus',g:1.175}],
+  ing:[{id:'water',n:'Distilled water',s:'10 mL = 10 g (water)',g:10,u:'mL'},{id:'pdo',n:'Propanediol 1,3',g:11.75},{id:'panth',n:'DL-Panthenol',g:4.7},{id:'ha',n:'Premade HA base',s:'your 1% HA',g:201.5},{id:'gly',n:'Vegetable glycerin',g:4.7},{id:'snap',n:'SNAP-8',g:0.235},{id:'ghk',n:'GHK-Cu',g:0.94},{id:'germ',n:'Liquid Germall Plus',g:1.175}],
   steps:P01_STEPS,
-  src:'ChatGPT › Glow Protocols › “GHK-cu Serum Recipe” (May 11, 2026): printable Protocol 01 batch sheet (235 g, 0.40% GHK-Cu, 0.10% SNAP-8). Mixing times are the sheet’s.'},
+  src:'ChatGPT › Glow Protocols › “GHK-cu Serum Recipe”: printable batch record of Sep 8, 2026 (235 g by weight, 0.40% GHK-Cu, 0.10% SNAP-8). Weigh everything except the water. Mixing times are the sheet’s.'},
  {key:'protocol-02',code:'P02',name:'Protocol 02',sub:'GHK-Cu only face serum',ref:225,
   yields:[{sku:'protocol-02-15-ml',ml:15,def:15,label:'15 mL'},{sku:'bf-mini-protocol-02',ml:1,def:0,label:'1 mL mini'}],
-  ing:[{id:'water',n:'Distilled water',g:10},{id:'pdo',n:'Propanediol 1,3',g:11.75},{id:'panth',n:'DL-Panthenol',g:4.7},{id:'ha',n:'Premade HA base',s:'your 1% HA',g:201.5},{id:'gly',n:'Vegetable glycerin',g:4.7},{id:'ghk',n:'GHK-Cu',g:0.94},{id:'germ',n:'Liquid Germall Plus',g:1.175}],
+  ing:[{id:'water',n:'Distilled water',s:'10 mL = 10 g (water)',g:10,u:'mL'},{id:'pdo',n:'Propanediol 1,3',g:11.75},{id:'panth',n:'DL-Panthenol',g:4.7},{id:'ha',n:'Premade HA base',s:'your 1% HA',g:201.5},{id:'gly',n:'Vegetable glycerin',g:4.7},{id:'ghk',n:'GHK-Cu',g:0.94},{id:'germ',n:'Liquid Germall Plus',g:1.175}],
   steps:P01_STEPS,note:'Protocol 02 = Protocol 01 without the SNAP-8 (same 0.40% GHK-Cu). No separate batch sheet was saved.',
   src:'ChatGPT › Glow Protocols › “GHK-cu Serum Recipe”: Heather asked for “a serum with JUST ghk-cu” and named it Protocol 02; later “Protocol 02 also contains 0.40% GHK-Cu, but without SNAP-8.”'},
  {key:'cu-hair-01',code:'H01',name:'Cu-Hair 01',sub:'GHK-Cu scalp serum',ref:450,
@@ -375,7 +375,7 @@ function batchHtml(){var r=rec(st.recipe);if(st.result)return doneHtml(r);var st
  else if(x.until)clock='<div class="clock"><span class="t" style="font-size:20px;min-width:0">Until</span><span class="l"><b>'+esc(x.until)+'</b>. No set time. Check it, then tap Done.</span></div>';
  var allGot=(x.uses||[]).every(function(id){return st.got[id]}),nx=steps[st.cur+1];
  return '<div class="work"><div class="wb">'+head+'</div><div class="wa">'+'<div class="step"><div class="k">Beaker '+(bench.sel+1)+' · Step '+(st.cur+1)+' of '+steps.length+'</div><h2>'+esc(x.t)+'</h2><div class="d">'+d+'</div>'+(ws?'<div class="weigh">'+ws+'</div>':'')+clock+(x.flag?'<div class="flag">'+esc(x.flag)+'</div>':'')+
-  '<div class="nav">'+(st.cur>0?'<button type="button" class="back" data-go="'+(st.cur-1)+'">Back</button>':'')+'<button type="button" class="done" data-done="1"'+((locked||!allGot)?' disabled':'')+'>'+(!allGot?'Tap what you weighed':locked?'Wait for the timer':'Done ✓')+'</button></div></div>'+
+  '<div class="nav">'+(st.cur>0?'<button type="button" class="back" data-go="'+(st.cur-1)+'">Back</button>':'')+'<button type="button" class="done" data-done="1"'+((locked||!allGot)?' disabled':'')+'>'+(!allGot?'Tap what you added':locked?'Wait for the timer':'Done ✓')+'</button></div></div>'+
   '<div class="next">'+(nx?'Next: <b>'+esc(nx.t)+'</b>'+(nx.min?' · '+(nx.est?'≈ ':'')+nx.min+' min':nx.until?' · until '+esc(nx.until.toLowerCase()):''):'Next: <b>Finish</b> and add the bottles to stock')+'</div>'+
   '<div class="src">Recipe: '+esc(r.src)+' Times with ≈ are our usual time, not from the recipe.</div></div></div>'}
 function finishHtml(r){var who=st.who!=null?st.who:ls(WHO_K,''),miss=r.yields.filter(function(y){return !bySku[y.sku]}).map(function(y){return y.label});
