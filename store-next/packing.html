@@ -92,7 +92,7 @@ button:disabled{opacity:.45;cursor:default}
 .state.ok{color:var(--ok)}
 .note{background:#fff8e6;border:1px solid #f0d58c;border-radius:10px;padding:8px 12px;margin-top:10px;font-size:15px}
 .ship{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-top:4px}
-.buyall{background:#fff8e6;border:2px solid #b88a2e;border-radius:12px;padding:10px 12px;margin:10px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}.buyall .primary{font-size:16px}.buyall.run{background:#eef6ff;border-color:#4a7bd0}.ba-res{width:100%;font-weight:600}.ba-needs{width:100%;margin-top:4px}.ba-needs ul{margin:6px 0 0;padding-left:18px}.ba-needs li{margin:3px 0}
+.buyall{background:#fff8e6;border:2px solid #b88a2e;border-radius:12px;padding:10px 12px;margin:10px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}.buyall .primary{font-size:16px}.ba-retry{width:100%;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}.ba-retry .primary{background:#8a5a00;border-color:#8a5a00}.buyall.run{background:#eef6ff;border-color:#4a7bd0}.ba-res{width:100%;font-weight:600}.ba-needs{width:100%;margin-top:4px}.ba-needs ul{margin:6px 0 0;padding-left:18px}.ba-needs li{margin:3px 0}
 .ship.buy{background:#fff8e6;border:1px dashed #b88a2e;border-radius:10px;padding:8px 10px}.ship.buy select{font:inherit;font-size:14px;padding:4px 6px;border:1px solid var(--ink);border-radius:8px;background:#fff;color:var(--ink)}.ship.buy .buybtn{font-weight:800;background:var(--ink);color:#fff;border-color:var(--ink)}.ship.buy .buybtn[disabled]{opacity:.5}.buywarn{font-size:13px;color:#8a5a00}.buywarn.price{color:#a3001b;font-weight:800}.ship.buy .overbtn{font-weight:800;background:#fff;color:#a3001b;border-color:#a3001b}
 .pst{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}.pst span{font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}.pst .ok{background:#e7f4ea;color:#1f7a3a}.pst .no{background:#fff1d6;color:#8a5a00}
 .ship a.lbtn{font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--ink);border-radius:8px;padding:4px 10px;text-decoration:none}
@@ -815,10 +815,19 @@ function removeLog(id,key){var o=all.find(function(x){return x.id===id});if(!o)r
   .then(function(x){return x.json().then(function(d){if(!x.ok)throw new Error(d.error||'Not removed');return d})}).then(function(){o.call_log=logsFor(o).filter(function(e){return e.key!==key});render();toast('Removed')}).catch(function(e){toast(e.message)})}
 function allLogs(){var out=[],cut=nowS()-30*86400;all.forEach(function(o){logsFor(o).forEach(function(e){if(e.at>=cut)out.push({e:e,o:o})})});return out.sort(function(a,b){return b.e.at-a.e.at})}
 // Delivery status on each call (Shippo tracking via /admin/orders/track, cached 2 h on the server).
-var trackLoading=false,trackLoadedAt=0;
+var trackLoading=false,trackLoadedAt=0,trackCache={};
+// UPS scanned it = it left the building (Jonah, 24 Nov 2026: "take out the ones that have been checked off by UPS").
+// Every refresh (at most every 10 min) asks the carrier about labeled boxes still on the list; any box the carrier has
+// scanned drops off To check. Labels bought in the last hour are skipped (they can't have been scanned yet).
+var scanLoading=false,scanAt=0;
+function checkScans(force){if(scanLoading||(!force&&Date.now()-scanAt<10*60*1000))return;
+  var list=orders.filter(function(o){return !o.replacement&&!o.manual&&o.status==='shipped'&&hasLabel(o)&&!(o.track&&o.track.first_scan_at)&&((o.shipment&&o.shipment.label_created_at)||0)<nowS()-3600});
+  if(!list.length){scanAt=Date.now();return}scanLoading=true;var ids=list.map(function(o){return o.id}),chunks=[];for(var i=0;i<ids.length;i+=25)chunks.push(ids.slice(i,i+25));
+  Promise.all(chunks.map(function(c){return fetch('/api/admin/orders/track',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ids:c,force:false})}).then(function(x){return x.json()}).then(function(d){var t=d.track||{};Object.keys(t).forEach(function(id){trackCache[id]=t[id]});all.forEach(function(o){if(t[o.id])o.track=t[o.id]})}).catch(function(){})}))
+  .then(function(){scanAt=Date.now();scanLoading=false;var before=orders.length;orders=orders.filter(function(o){return o.replacement||o.manual||needsPacking(o)});var gone=before-orders.length;if(gone){render();toast('🚚 '+gone+' box'+(gone===1?'':'es')+' UPS already scanned '+(gone===1?'is':'are')+' off the list')}})}
 function loadTracking(list,force){if(trackLoading||(!force&&Date.now()-trackLoadedAt<10*60*1000))return;var ids=list.map(function(o){return o.id});if(!ids.length)return;trackLoading=true;
   var chunks=[];for(var i=0;i<ids.length;i+=25)chunks.push(ids.slice(i,i+25)); // the server checks 25 orders per request
-  Promise.all(chunks.map(function(c){return fetch('/api/admin/orders/track',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ids:c,force:!!force})}).then(function(x){return x.json()}).then(function(d){var t=d.track||{};all.forEach(function(o){if(t[o.id])o.track=t[o.id]})}).catch(function(){})}))
+  Promise.all(chunks.map(function(c){return fetch('/api/admin/orders/track',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ids:c,force:!!force})}).then(function(x){return x.json()}).then(function(d){var t=d.track||{};Object.keys(t).forEach(function(id){trackCache[id]=t[id]});all.forEach(function(o){if(t[o.id])o.track=t[o.id]})}).catch(function(){})}))
   .then(function(){trackLoadedAt=Date.now();trackLoading=false;if(view==='calls')render()})}
 function daysAgo(sec){var d=Math.floor((nowS()-sec)/86400);return d<=0?'today':d===1?'yesterday':d+' days ago'}
 function shortDate(sec){return new Date(sec*1000).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
@@ -1044,12 +1053,12 @@ function fetchOrders(quiet){
     return r.json();
   }).then(function(d){
     var before={};orders.forEach(function(o){before[o.id]=1});var hadData=lastLoad>0;
-    all=d.orders||[];products=d.products||[];byId={};products.forEach(function(p){byId[p.id]=p});
+    all=d.orders||[];all.forEach(function(o){if(!o.track&&trackCache[o.id])o.track=trackCache[o.id]});products=d.products||[];byId={};products.forEach(function(p){byId[p.id]=p});
     zaderLive=d.zader_app_live===true;manuals=d.manual_shipments||[];var firstCfg=!shippoCfg.parcel;shippoCfg=d.shippo||{};if(firstCfg&&!sn.boxEdited)snBox(true);orders=all.filter(needsPacking).concat(replacementCards(all)).concat(manualCards(manuals)).sort(function(a,b){return ((a.member_priority===true&&!a.replacement?0:1)-(b.member_priority===true&&!b.replacement?0:1))||((a.paid||a.created||0)-(b.paid||b.created||0))});
     var keep={};orders.forEach(function(o){if(saved[o.id])keep[o.id]=saved[o.id]});saved=keep;save(saved);var ks={};orders.forEach(function(o){if(skipped[o.id])ks[o.id]=skipped[o.id]});skipped=ks;saveSkip();
     var fresh=hadData?orders.filter(function(o){return !before[o.id]}):[];
     if(!hadData){orders.forEach(function(o){seen[o.id]=1});lsSet(SEEN,seen)}
-    lastLoad=Date.now();buildPools();snProducts();render();
+    lastLoad=Date.now();buildPools();snProducts();render();checkScans();
     fetchPrintLog().then(function(){render();detectNew();autoPrintNew()});
     var loadedIds=orders.map(function(o){return o.id});setTimeout(function(){loadedIds.forEach(function(id){seen[id]=1});var s2={};orders.forEach(function(o){if(seen[o.id])s2[o.id]=1});seen=s2;lsSet(SEEN,seen)},60000);
   }).catch(function(e){if(e!==0&&!quiet)out.innerHTML='<div class="msg">Could not load orders. Check your connection and tap Refresh orders.</div>'});
@@ -1114,9 +1123,15 @@ function buyAllNeeds(o){
   var p=baPrice(o);if(p&&p.cents>BA_CAP&&!BA_NEXT[p.svc])return dollars(p.cents)+' '+(p.svc?svcName(p.svc):'')+' — $16 or more and nothing cheaper to try';
   return '';
 }
-function buyAllLists(){var ready=[],needs=[],failed=buyAllLast?buyAllLast.failed:[];
-  orders.forEach(function(o){if(o.manual||!canBuy(o)||hasLabel(o)||isSkipped(o))return;var f=failed.find(function(x){return x.id===o.id});var why=f?f.why:buyAllNeeds(o);if(why)needs.push({o:o,why:why});else ready.push(o)});
-  return{ready:ready,needs:needs}}
+// Try again (Jonah, 24 Nov 2026: "for ones that weren't bought in the last batch, a button to click to buy all"):
+// an order Shippo refused (billing issue, no rate, a hiccup) can go round again. Not ones on hold, waiting on stock,
+// owing money, or stopped by the $16 price rule: those still need a person.
+function baRetryable(o,why){if(o.balance_due_cents>0||o.refund_due_cents>0||o.shipstation_needs_review||heldAll(o)||(o.hold&&o.hold.lines&&o.hold.lines.length)||blockedItems(o).length||priceStops[o.id])return false;
+  if(/\$16 or more/.test(why||''))return false;
+  return !!(o.shippo_needs_review||o.shippo_status==='needs_review'||/not bought/i.test(why||''))}
+function buyAllLists(){var ready=[],needs=[],retry=[],failed=buyAllLast?buyAllLast.failed:[];
+  orders.forEach(function(o){if(o.manual||!canBuy(o)||hasLabel(o)||isSkipped(o))return;var f=failed.find(function(x){return x.id===o.id});var why=f?f.why:buyAllNeeds(o);if(why){needs.push({o:o,why:why});if(baRetryable(o,why))retry.push({o:o,why:why})}else ready.push(o)});
+  return{ready:ready,needs:needs,retry:retry}}
 function buyAllBox(){var el=document.getElementById('buyAll');if(!el)return;
   if(view!=='todo'&&view!=='all'){el.innerHTML='';return}
   var L=buyAllLists(),h='';
@@ -1127,7 +1142,9 @@ function buyAllBox(){var el=document.getElementById('buyAll');if(!el)return;
     +(buyAllLast.switched.length?'<div class="small">'+buyAllLast.switched.map(function(x){return esc(x)}).join('<br>')+'</div>':'')+'</div>';
   if(L.ready.length){var by={};L.ready.forEach(function(o){var v=baStart(o);by[v]=(by[v]||0)+1});
     h+='<button class="primary" data-buyall="1">🏷️ Buy all '+L.ready.length+' label'+(L.ready.length===1?'':'s')+'</button> <span class="small">'+esc(Object.keys(by).map(function(v){return by[v]+' × '+svcName(v)}).join(' · '))+' · over $16 → UPS Ground → USPS Priority · labels + slips print as they land</span>'}
-  else if(!buyAllLast)h+='<span class="small">Every order that can get a label already has one.</span>';
+  else if(!buyAllLast&&!L.retry.length)h+='<span class="small">Every order that can get a label already has one.</span>';
+  if(L.retry.length){var bill=L.retry.filter(function(x){return /billing/i.test(x.why)}).length;
+    h+='<div class="ba-retry"><button class="primary" data-buyretry="1">🔁 Try again: buy the '+L.retry.length+' that weren’t bought</button> <span class="small">'+(bill?(bill===L.retry.length?'All ':bill+' of them ')+'stopped on a Shippo billing issue. Pay the bill in Shippo first, then tap this.':'Same price rule: up to $15.99 bought, $16+ → UPS Ground → USPS Priority.')+'</span></div>'}
   if(L.needs.length)h+='<div class="ba-needs"><b>⚠️ '+L.needs.length+' need you before a label:</b><ul>'+L.needs.map(function(n){var c=n.o.customer||{};return '<li><a href="#" data-bafind="'+esc(n.o.id)+'">'+esc(c.name||n.o.id)+'</a> <span class="small">'+esc(n.o.id)+(c.state?' · '+esc(c.state):'')+'</span> — '+esc(n.why)+'</li>'}).join('')+'</ul></div>';
   el.innerHTML=h+'</div>'}
 function baPost(path,body){return fetch('/api/admin/shippo/'+path,{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify(body)})
@@ -1146,10 +1163,10 @@ function baChain(o){var id=o.id,first=true,tried=[],useRetry=o.shippo_status==='
       if(/^No .* rate|over the \$[0-9.]+ limit/i.test(msg)&&BA_NEXT[svc]){tried.push(svcName(svc)+': no rate');first=false;svc=BA_NEXT[svc];useRetry=true;return step()}
       return{why:(tried.length?tried.join(' · ')+' · ':'')+svcName(svc)+' not bought: '+msg.slice(0,160)}})}
   return step()}
-function buyAll(){var L=buyAllLists();if(!L.ready.length||buyAllRun)return;
-  var lines=L.ready.map(function(o){var c=o.customer||{},p=baPrice(o);return '• '+(c.name||o.id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+') — '+svcName(baStart(o))+(p&&p.cents?' ('+svcName(p.svc)+' was '+dollars(p.cents)+')':'')}).join('\n');
-  if(!confirm('Buy '+L.ready.length+' label'+(L.ready.length===1?'':'s')+'?\n\n'+lines+(L.needs.length?'\n\nNot included ('+L.needs.length+' need you): '+L.needs.map(function(n){return (n.o.customer||{}).name||n.o.id}).join(', '):'')+'\n\nPrice rule: up to $15.99 is bought. $16 or more switches to UPS Ground, then USPS Priority. Each label and slip prints as it lands.'))return;
-  buyAllLast=null;buyAllRun={total:L.ready.length,done:0,now:''};var res={bought:0,cents:0,failed:[],switched:[]},queue=L.ready.slice();buyAllBox();
+function buyAll(again){var L=buyAllLists(),list=again?L.retry.map(function(x){return x.o}):L.ready;if(!list.length||buyAllRun)return;
+  var lines=list.map(function(o){var c=o.customer||{},p=baPrice(o);return '• '+(c.name||o.id)+' ('+[c.city,c.state].filter(Boolean).join(', ')+') — '+svcName(baStart(o))+(p&&p.cents?' ('+svcName(p.svc)+' was '+dollars(p.cents)+')':'')}).join('\n');
+  if(!confirm((again?'Try again for the '+list.length+' that weren’t bought?':'Buy '+list.length+' label'+(list.length===1?'':'s')+'?')+'\n\n'+lines+(!again&&L.needs.length?'\n\nNot included ('+L.needs.length+' need you): '+L.needs.map(function(n){return (n.o.customer||{}).name||n.o.id}).join(', '):'')+'\n\nPrice rule: up to $15.99 is bought. $16 or more switches to UPS Ground, then USPS Priority. Each label and slip prints as it lands.'))return;
+  buyAllLast=null;buyAllRun={total:list.length,done:0,now:''};var res={bought:0,cents:0,failed:[],switched:[]},queue=list.slice();buyAllBox();
   function next(){var o=queue.shift();if(!o){buyAllRun=null;buyAllLast=res;toast('🏷️ Bought '+res.bought+' label'+(res.bought===1?'':'s')+(res.failed.length?' · '+res.failed.length+' need you':''));return fetchOrders(true).then(render,render)}
     var id=o.id,c=o.customer||{};
     return baChain(o).then(function(r){
@@ -1199,6 +1216,7 @@ document.addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;lastKey=Date.now();
   if(b.dataset.o){var o=orders.find(function(x){return x.id===b.dataset.o});if(!o)return;var on=b.getAttribute('aria-pressed')!=='true';var was=isDone(o);setTick(o,b.dataset.k,on);if(on)history.push({id:o.id,k:b.dataset.k});if(isDone(o)){justDone[o.id]=1;if(!was)celebrate(o)}b.blur();buildPools();render();return}
   if(b.dataset.buyall){buyAll();return}
+  if(b.dataset.buyretry){buyAll(true);return}
   if(b.dataset.buyalldismiss){buyAllLast=null;render();return}
   if(b.dataset.buy){buyLabel(b.dataset.buy,b);return}
   if(b.dataset.override){buyLabel(b.dataset.override,b,true);return}
