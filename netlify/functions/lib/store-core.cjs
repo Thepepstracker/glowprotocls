@@ -159,6 +159,8 @@ async function handle({path,method='GET',headers={},body={}}){
  const growthRoute=await require('./growth.cjs').route(path,body,h,method,{session});if(growthRoute)return growthRoute;
  // Glow levels v2 (Jonah, 15 Nov 2026): level-up seen, birthday, and the Management levels list. See glow-levels.cjs.
  const levelsRoute=await require('./glow-levels.cjs').route(path,body,h,method,{session});if(levelsRoute)return levelsRoute;
+ // Giveaway winners: the account pop-up's "seen" tap (giveaway.cjs).
+ if(path==='/account/giveaway/seen'){const gr=await require('./giveaway.cjs').route(path,body,h,method);if(gr)return gr}
  // Website features (Jonah, 16 Nov 2026): goes-well-with, back-in-stock alerts. See shop-extras.cjs.
  const extrasRoute=await require('./shop-extras.cjs').route(path,body,h,method,{session});if(extrasRoute)return extrasRoute;
  // Waiting on (Jonah, 17 Nov 2026): products we are waiting on, and the orders held for them. See waiting-on.cjs.
@@ -549,6 +551,25 @@ async function handle({path,method='GET',headers={},body={}}){
     emailJob=await emails.queueReminder(s,o,reminderToken(o),jobId);o.last_payment_reminder_at=clock();o.last_payment_reminder_job=jobId;await s.put('orders',o.id,o);await audit(s,'payment_reminder_requested',o.id);return{ok:true,job_id:jobId};
    }
    if(path==='/admin/customers'&&method==='GET')return accounts.adminData(s);
+   // Giveaway winners (Jonah, 23 Nov 2026). Preview shows the email; Send adds the prize free to the order (unless it is
+   // already there at $0), emails the winner, alerts their app and leaves a one-time "You won" pop-up in their account.
+   if(['/admin/giveaway/preview','/admin/giveaway/send'].includes(path)&&method==='POST'){const gw=require('./giveaway.cjs');
+    const o=await s.get('orders',text(body.order_id||'',50));if(!o)fail('Order not found.',404);if(o.is_test!==false)fail('Pick a real order, not a test order.',409);
+    const raw=Array.isArray(body.items)?body.items.slice(0,10):[];if(!raw.length)fail('Choose the prize.');const prize=[];
+    for(const it of raw){const p=await s.get('products',int(it.id));if(!p)fail('A prize product was not found. Refresh and try again.');const q=int(it.quantity??1,1,20);if(prize.some(x=>x.id===p.id))fail(p.name+' is listed twice.');const on=o.items.find(i=>i.id===p.id&&i.amount===0);prize.push({id:p.id,name:p.name,quantity:q,already:!!on})}
+    const note=text(body.note||'',300,false),c=gw.content(o,prize,note);
+    if(path.endsWith('/preview'))return{preview:true,to:o.customer?.email||'',name:o.customer?.name||'',order_id:o.id,status:o.status,subject:c.subject,html:c.content.html,adds:prize.filter(x=>!x.already).map(x=>x.name+' × '+x.quantity),already:prize.filter(x=>x.already).map(x=>x.name)};
+    const key=String(body.key||'').replace(/[^A-Za-z0-9-]/g,'').slice(0,64);if(key.length<8)fail('Missing click key.');const wid='win-'+gw.hash(o.id+':'+key).slice(0,16);
+    const prior=await s.get('giveaway_wins',wid);if(prior)return{ok:true,already:true,id:wid,order_id:o.id};
+    const add=prize.filter(x=>!x.already);
+    if(add.length){if(!['order_received','awaiting_payment','payment_submitted','paid'].includes(o.status))fail('This order has already shipped or closed, so the prize can’t go in its box. Pick an order that hasn’t shipped.',409);
+     const actor=(await s.get('sessions',sessionId)).staff_id||'owner';
+     await adjustments.edit(s,o,{expected_revision:o.revision||0,items:[...o.items.map(i=>({id:i.id,quantity:i.quantity,price:i.price})),...add.map(x=>({id:x.id,quantity:x.quantity,price:0}))],coupon_discount:o.coupon_discount||0,shipping:o.shipping,tax:o.tax||0,reason:'Giveaway prize: '+add.map(x=>x.name+' × '+x.quantity).join(', ')},actor,setStock)}
+    const cid=gw.customerId(o),win={id:wid,order_id:o.id,customer_id:cid,name:o.customer?.name||'',prize:prize.map(({name,quantity})=>({name,quantity})),note,created:clock(),seen_at:null};
+    if(o.customer?.email&&emails.configuration().ready){emailJob=await emails.enqueue(s,{id:'giveaway-'+wid,kind:'giveaway_win',brand:o.brand||'glow',to:o.customer.email,related_id:o.id,subject:c.subject,content:c.content});win.email_job=emailJob}
+    await s.put('giveaway_wins',wid,win);await audit(s,'giveaway_win',o.id);
+    return{ok:true,id:wid,order_id:o.id,added:add.map(x=>x.name+' × '+x.quantity),prize:win.prize,push_to:cid};
+   }
    if(['/admin/order/items','/admin/order/payment-adjustment'].includes(path)&&method==='POST'){
     const o=await s.get('orders',text(body.id||'',50)),actor=(await s.get('sessions',sessionId)).staff_id||'owner';
     const updated=path.endsWith('/items')?await adjustments.edit(s,o,body,actor,setStock):await adjustments.recordPayment(s,o,body,actor);
@@ -718,6 +739,7 @@ async function handle({path,method='GET',headers={},body={}}){
  if(emailJob){const delivery=await emails.safeDispatch(emailJob);if(result&&typeof result==='object')result.email=delivery}
  for(const id of new Set(staffJobs))await emails.safeDispatch(id);
  if(bulkJobs.length){const started=Date.now();let sent=0,left=0;for(const id of bulkJobs){if(Date.now()-started>20000){left++;continue}const r=await emails.safeDispatch(id);if(r?.status==='accepted')sent++}if(result&&typeof result==='object'){result.sent=sent;result.left_for_next_dispatch=left}}
+ if(path==='/admin/giveaway/send'&&result&&result.push_to!==undefined){const to=result.push_to;delete result.push_to;if(!result.already)result.pushed=await require('./giveaway.cjs').push(to,{id:result.order_id},result.prize||[])}
  if(invoiceJob){let r;try{r=await autoInvoice.sendFor(invoiceJob)}catch(e){r={status:'failed'}}if(result&&typeof result==='object')result.invoice={status:r.status,via:r.via||null}}
  if(path==='/admin/status'&&method==='POST'&&body.status==='paid'&&result?.ok&&result.affiliate_program!=='native'){try{result.goaffpro=await reporting.report(body.id)}catch{result.goaffpro={status:'failed',message:'Payment is saved. Affiliate reporting needs a later status check.'}}}
  if(path==='/admin/status'&&method==='POST'&&body.status==='paid'&&result?.ok){try{result.shipstation=await shipping.send(body.id)}catch{result.shipstation={status:'failed',message:'Payment saved. Check Shipping for transfer status.'}}}
