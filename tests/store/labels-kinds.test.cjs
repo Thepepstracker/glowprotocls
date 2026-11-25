@@ -6,7 +6,7 @@ const lab=require('../../netlify/functions/lib/labels.cjs');
 test('every kind has its stickers placed exactly once per sticker, and every label belongs to a kind with an image and thumbnail',()=>{
  const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','box','nasal','serum','vial']);
  assert.equal(L.kinds.nasal.cm.length,10);assert.equal(L.kinds.big.cm.length,30);for(const m of [...L.kinds.nasal.cm,...L.kinds.big.cm])assert.equal(m.length,6);
- const n=L.labels.filter(l=>l.kind==='nasal');assert.equal(n.length,16,'15 sprays + Glutathione 1,500 mg (24 Nov 2026)');assert.ok(n.some(l=>l.id==='nasal-glutathione-1500-mg'));assert.deepEqual(L.labels.filter(l=>l.kind==='big').map(l=>l.id),['big-bac-water-30-ml','big-glow-lab-brand'],'BAC Water 30 mL and the Glow Lab brand label (13 Nov)');
+ const n=L.labels.filter(l=>l.kind==='nasal');assert.equal(n.length,17,'15 sprays + Glutathione 1,500 mg (24 Nov 2026) + Rose Recovery Mist 60 mL (25 Nov 2026, same 4 × 2 in sticker)');assert.ok(n.some(l=>l.id==='nasal-rose-recovery-mist-60-ml'));assert.ok(n.some(l=>l.id==='nasal-glutathione-1500-mg'));assert.deepEqual(L.labels.filter(l=>l.kind==='big').map(l=>l.id),['big-bac-water-30-ml','big-glow-lab-brand'],'BAC Water 30 mL and the Glow Lab brand label (13 Nov)');
  for(const l of L.labels)assert.ok(Array.isArray(l.img)&&l.thumb&&l.thumb[1]>0,l.id);
 });
 test('nasal: 10 per sheet, 2 across, start sticker and new row; mixing kinds is refused',()=>{
@@ -44,7 +44,7 @@ test('box labels: the Glow Lab brand label prints on the proven vial-sheet posit
 });
 
 test('serum labels: Protocol 01 (15 and 50 mL), Protocol 02 and Glow Eyes Luxe on the OL875 sheet, same spots as BAC Water 30 mL',()=>{
- const L=lab.lib();assert.deepEqual(L.labels.filter(l=>l.kind==='serum').map(l=>l.id),['serum-protocol-01-15-ml','serum-protocol-01-50-ml','serum-protocol-02-15-ml','serum-protocol-02-30-ml','serum-glow-eyes-luxe-kpv'], 'Protocol 02 30 mL added 24 Nov 2026');
+ const L=lab.lib();assert.deepEqual(L.labels.filter(l=>l.kind==='serum').map(l=>l.id),['serum-protocol-01-15-ml','serum-protocol-01-50-ml','serum-protocol-02-15-ml','serum-protocol-02-30-ml','serum-glow-eyes-luxe-kpv','serum-glow-eyes','serum-cu-hair-01-30-ml','serum-cu-hair-02-30-ml'], 'Protocol 02 30 mL added 24 Nov 2026; Glow Eyes, Cu-Hair 01 and 02 30 mL added 25 Nov 2026');
  assert.deepEqual(L.kinds.serum.cm,L.kinds.big.cm);assert.equal(L.kinds.serum.cols,3);assert.equal(L.kinds.serum.rows,10);
  const pages=lab.plan([{id:'serum-protocol-01-15-ml',count:12},{id:'serum-glow-eyes-luxe-kpv',count:12}],{kind:'serum'});assert.equal(pages.length,1);
  const pdf=lab.pdf(pages,'t','serum').toString('latin1');assert.equal((pdf.match(/ cm\n\/L\d+ Do/g)||[]).length,24);

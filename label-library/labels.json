@@ -2924,6 +2924,24 @@
    ]
   },
   {
+   "id": "nasal-rose-recovery-mist-60-ml",
+   "name": "Rose Recovery Mist",
+   "strength": "60 mL \u00b7 2 fl oz",
+   "cs": "rgb",
+   "w": 2400,
+   "h": 1200,
+   "img": [
+    "img-13.bin",
+    184237,
+    142290
+   ],
+   "kind": "nasal",
+   "thumb": [
+    2698448,
+    15449
+   ]
+  },
+  {
    "id": "big-bac-water-30-ml",
    "name": "BAC Water",
    "strength": "30 mL",
@@ -3065,6 +3083,60 @@
    "thumb": [
     2622832,
     10588
+   ]
+  },
+  {
+   "id": "serum-glow-eyes",
+   "name": "Glow Eyes",
+   "strength": "10 mL \u00b7 0.34 fl oz",
+   "cs": "rgb",
+   "w": 1167,
+   "h": 450,
+   "img": [
+    "img-13.bin",
+    0,
+    68005
+   ],
+   "kind": "serum",
+   "thumb": [
+    2667019,
+    11404
+   ]
+  },
+  {
+   "id": "serum-cu-hair-01-30-ml",
+   "name": "Cu-Hair 01",
+   "strength": "30 mL \u00b7 1 fl oz",
+   "cs": "rgb",
+   "w": 1167,
+   "h": 450,
+   "img": [
+    "img-13.bin",
+    68005,
+    57669
+   ],
+   "kind": "serum",
+   "thumb": [
+    2678423,
+    9913
+   ]
+  },
+  {
+   "id": "serum-cu-hair-02-30-ml",
+   "name": "Cu-Hair 02",
+   "strength": "30 mL \u00b7 1 fl oz",
+   "cs": "rgb",
+   "w": 1167,
+   "h": 450,
+   "img": [
+    "img-13.bin",
+    125674,
+    58563
+   ],
+   "kind": "serum",
+   "thumb": [
+    2688336,
+    10112
    ]
   }
  ],
