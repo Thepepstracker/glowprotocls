@@ -154,7 +154,7 @@ async function chat(body,h,staff){const ip=clientIp(h),cid=/^[a-z0-9]{12,40}$/.t
  try{for(let i=0;i<6;i++){const r=await callClaude(sys,msgs);const u=r.usage||{};tokens.input+=(u.input_tokens||0)+(u.cache_creation_input_tokens||0);tokens.output+=u.output_tokens||0;tokens.cache_read+=u.cache_read_input_tokens||0;
    const content=Array.isArray(r.content)?r.content:[];msgs.push({role:'assistant',content});
    // Claude often writes the answer next to a tool call, then only a short wrap-up at the end: keep every part.
-   const said=content.filter(b=>b.type==='text').map(b=>b.text.trim()).filter(Boolean).join('\n');if(said&&!(r.stop_reason==='tool_use'&&/^(let me|i'll|i will|one moment|give me|checking|looking)\b/i.test(said)&&said.length<120))parts.push(said);
+   const said=content.filter(b=>b.type==='text').map(b=>b.text.trim()).filter(Boolean).join('\n');const kept=r.stop_reason==='tool_use'?said.replace(/(^|\n|(?<=[.!?])\s+)(let me|i'll|i will|one moment|give me a (sec|second|moment)|checking|looking)\b[^.!?\n]*[.!?…]*/gi,' ').replace(/\s{2,}/g,' ').trim():said;if(kept)parts.push(kept);
    if(r.stop_reason!=='tool_use'){reply=parts.join('\n\n').trim();break}
    const results=[];for(const b of content.filter(b=>b.type==='tool_use')){let out;try{out=await runTool(b.name,b.input,ctx)}catch(e){out={error:'That did not work. '+String(e.message||'').slice(0,120)}}results.push({type:'tool_result',tool_use_id:b.id,content:JSON.stringify(out)})}
    msgs.push({role:'user',content:results})}}

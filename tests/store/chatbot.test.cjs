@@ -83,3 +83,8 @@ test('text Claude writes next to a tool call is kept; "let me check" filler is n
  script=[step('Let me check that for you!','find_products',{query:'serum'}),step('Protocol 01 is our serum. Shipping is $15, free over $250.','show_products',{product_ids:[P.id]}),say('Anything else?')];
  const r=await call('/chat',{cid:'abcdefabcdef21',messages:[{role:'user',content:'serum and shipping?'}]},owner);
  assert.equal(r.body.reply,'Protocol 01 is our serum. Shipping is $15, free over $250.\n\nAnything else?')});
+
+test('a "let me check" sentence is dropped but the rest of that message is kept',async()=>{const step=(text,name,input)=>()=>({stop_reason:'tool_use',content:[{type:'text',text},{type:'tool_use',id:'x'+Math.random(),name,input}],usage:{input_tokens:1,output_tokens:1}});
+ script=[step("Shipping is $15, free on orders of $250 or more. Let me look up our serums for you!",'find_products',{query:'serum'}),say('I found three serums below.')];
+ const r=await call('/chat',{cid:'abcdefabcdef22',messages:[{role:'user',content:'serum and shipping?'}]},owner);
+ assert.equal(r.body.reply,'Shipping is $15, free on orders of $250 or more.\n\nI found three serums below.')});
