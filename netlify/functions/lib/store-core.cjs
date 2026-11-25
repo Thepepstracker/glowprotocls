@@ -175,6 +175,8 @@ async function handle({path,method='GET',headers={},body={}}){
  if(path.startsWith('/admin/labels')){const r=await require('./labels.cjs').route(path,body,h,method,{session});if(r)return r}
  // Live log + deep live analytics (Jonah, 9 Nov 2026). See live.cjs.
  if(path==='/live/ping'||path==='/admin/live'||path.startsWith('/admin/live/')){const r=await require('./live.cjs').route(path,body,h,method,{session});if(r)return r}
+ // Website chat (Jonah, 25 Nov 2026): the Glow chat bubble and its Management inbox. See chatbot.cjs.
+ if(path==='/chat'||path==='/chat/status'||path==='/chat/handoff'||path.startsWith('/admin/chat')){const r=await require('./chatbot.cjs').route(path,body,h,method,{session});if(r)return r}
  if(path==='/admin/end-of-day'){const r=await require('./end-of-day.cjs').route(path,body,h,method,{session});if(r)return r}
  if(path.startsWith('/admin/black-friday')){const r=await require('./black-friday.cjs').route(path,body,h,method,{session});if(r)return r}
  // Print log (Jonah, 9 Nov 2026): which labels and packing slips have been printed. See print-log.cjs.
