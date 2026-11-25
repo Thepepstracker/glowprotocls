@@ -78,3 +78,8 @@ test('Message the team form goes straight to the team without AI',async()=>{cons
  const r=await call('/chat/handoff',{name:'Sam',email:'sam@example.org',question:'Do you do wholesale?',cid:'abcdefabcdef19'},null,{ip:11});assert.equal(r.body.ok,true);assert.equal(seen.length,before);
  const v=(await call('/admin/chat',null,owner)).body;assert.ok(v.handoffs.some(x=>x.name==='Sam'&&x.question==='Do you do wholesale?'));
  await assert.rejects(call('/chat/handoff',{name:'Sam',email:'nope',question:'x'},null,{ip:11}),e=>e.status===400)});
+
+test('text Claude writes next to a tool call is kept; "let me check" filler is not',async()=>{const step=(text,name,input)=>()=>({stop_reason:'tool_use',content:[{type:'text',text},{type:'tool_use',id:'x'+Math.random(),name,input}],usage:{input_tokens:1,output_tokens:1}});
+ script=[step('Let me check that for you!','find_products',{query:'serum'}),step('Protocol 01 is our serum. Shipping is $15, free over $250.','show_products',{product_ids:[P.id]}),say('Anything else?')];
+ const r=await call('/chat',{cid:'abcdefabcdef21',messages:[{role:'user',content:'serum and shipping?'}]},owner);
+ assert.equal(r.body.reply,'Protocol 01 is our serum. Shipping is $15, free over $250.\n\nAnything else?')});

@@ -223,9 +223,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--gold)!important;box-s
  header .brand img{width:34px;height:auto}
  header nav{flex-wrap:nowrap!important;overflow-x:auto;gap:18px!important;padding:0 0 4px;align-items:center;margin:0;-webkit-overflow-scrolling:touch;scrollbar-width:none;width:100%}
  header nav::-webkit-scrollbar{display:none}
+ header nav.nav-more::after{content:'';position:sticky;right:0;flex:none;width:48px;margin-left:-48px;align-self:stretch;background:linear-gradient(90deg,rgba(255,255,255,0),#fff 85%);pointer-events:none}
  header nav a{white-space:nowrap;font-size:15px}
  header .bag-toggle{position:absolute;top:9px;right:16px;margin:0;padding:8px 14px;font-size:13px;z-index:2}
- header nav{padding-right:4px}header nav .glow-language{margin-left:4px;flex:none}header nav .glow-language select{padding-top:5px!important;padding-bottom:5px!important}
+ header nav{padding-right:4px}header nav .glow-language{margin-left:4px;flex:none}header nav .glow-language select{padding-top:7px!important;padding-bottom:7px!important;min-height:36px}
  .glow-language{font-size:11px}.glow-language select{min-width:96px!important;padding:6px 22px 6px 8px!important}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
@@ -1257,7 +1258,7 @@ a.vial-photo-frame{display:block}
 /* Product photo: the whole vial, and on a computer the whole photo fits on screen without scrolling. */
 @media (min-width:861px){.pp-main{max-height:min(calc(100vh - 250px),760px)}}
 /* One card per peptide: the other sizes, one tap away on the product page. */
-.card-sizes{margin:.1rem 0 .4rem;font-size:.86rem}.card-sizes a{color:var(--gold-dark,#7a5c12);font-weight:600;text-decoration:none}.card-sizes a:hover{text-decoration:underline}.card-sizes b{color:var(--ink,#111)}
+.card-sizes{margin:.1rem 0 .4rem;font-size:.86rem}.card-sizes a{color:var(--gold-dark,#7a5c12);font-weight:600;text-decoration:none}.card-sizes a:hover{text-decoration:underline}.card-sizes b{color:var(--ink,#111)}.card-more{white-space:nowrap}
 /* Waiting on (17 Nov 2026) */
 .wo-add{display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:12px;align-items:end;margin-top:12px}
 @media (max-width:760px){.wo-add{grid-template-columns:1fr}}
@@ -1742,3 +1743,7 @@ body.xm-snowing{background:transparent}
 .cha-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.cha-reply{background:#1b1b1b;color:#fff;border-radius:8px;padding:7px 12px;text-decoration:none;font-weight:600;font-size:14px}.cha-btns details{flex-basis:100%}
 .cha-t{background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin:6px 0;font-size:14px;max-width:90%}.cha-t.me{background:#1b1b1b;color:#fff;margin-left:auto}
 .cha-chats li{border-bottom:1px solid var(--line);padding:6px 0}.cha-chats summary{cursor:pointer}
+
+/* Marathon polish (25 Nov 2026) */
+h1,h2,h3,.eyebrow{text-wrap:balance}
+.sa-get .sa-x{min-width:40px;min-height:40px;display:inline-grid;place-items:center}

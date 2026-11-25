@@ -36,6 +36,7 @@ const RULES=`You are "Glow", the shop helper on the Glow Lab Protocols website a
 HOW TO TALK
 - Warm, friendly, plain words. Short: usually 1–3 sentences. No jargon, no tables, no markdown headings. Use a short list only when it really helps.
 - Never make up prices, stock, sizes, order details, policies or dates. For products use find_products. For an order use order_status. If you don't know, say so and offer to pass the question to the team.
+- Tools answer instantly, so don't say "let me check" or "one moment". Write your whole answer in your final message, after any tool calls: answer every part of the question there.
 - When you suggest or mention specific products the shopper might buy, call show_products with their ids so they get a card with an Add to bag button. Never more than 4.
 
 RESEARCH-USE RULE (very important, never break it)
@@ -149,13 +150,15 @@ async function chat(body,h,staff){const ip=clientIp(h),cid=/^[a-z0-9]{12,40}$/.t
  const day=etDay(now()),usage=await transaction(async s=>{const u=(await s.get('chat_usage',day))||{id:day,replies:0,input:0,output:0,cache_read:0,handoffs:0};if(u.replies>=DAILY_MAX())return null;u.replies++;await s.put('chat_usage',day,u);return u});
  if(!usage)return{reply:'The chat is very busy today. '+HANDOFF_TEXT,products:[],offer_handoff:true};
  const ctx={ip,cid,history,seen:[],show:[],order:'',handoff:null},sys=system(settings),msgs=history.map(x=>({role:x.role,content:x.content}));
- let reply='',tokens={input:0,output:0,cache_read:0};
+ let reply='',parts=[],tokens={input:0,output:0,cache_read:0};
  try{for(let i=0;i<6;i++){const r=await callClaude(sys,msgs);const u=r.usage||{};tokens.input+=(u.input_tokens||0)+(u.cache_creation_input_tokens||0);tokens.output+=u.output_tokens||0;tokens.cache_read+=u.cache_read_input_tokens||0;
    const content=Array.isArray(r.content)?r.content:[];msgs.push({role:'assistant',content});
-   if(r.stop_reason!=='tool_use'){reply=content.filter(b=>b.type==='text').map(b=>b.text).join('\n').trim();break}
+   // Claude often writes the answer next to a tool call, then only a short wrap-up at the end: keep every part.
+   const said=content.filter(b=>b.type==='text').map(b=>b.text.trim()).filter(Boolean).join('\n');if(said&&!(r.stop_reason==='tool_use'&&/^(let me|i'll|i will|one moment|give me|checking|looking)\b/i.test(said)&&said.length<120))parts.push(said);
+   if(r.stop_reason!=='tool_use'){reply=parts.join('\n\n').trim();break}
    const results=[];for(const b of content.filter(b=>b.type==='tool_use')){let out;try{out=await runTool(b.name,b.input,ctx)}catch(e){out={error:'That did not work. '+String(e.message||'').slice(0,120)}}results.push({type:'tool_result',tool_use_id:b.id,content:JSON.stringify(out)})}
    msgs.push({role:'user',content:results})}}
- catch(e){await saveLog(ctx,cid,ip,history,'',e.api?'api '+e.api:'error').catch(()=>{});return{reply:'Sorry, I couldn\'t answer just now. Please try again in a moment. '+HANDOFF_TEXT,products:[],offer_handoff:true}}
+ catch(e){const why=(e.api?'Claude API '+e.api+': ':'')+String(e.name==='AbortError'?'took too long':e.message||'error').replace(/sk-ant-[\w-]+/g,'[key]').slice(0,240);console.error('[chat] '+why);await saveLog(ctx,cid,ip,history,'',why).catch(()=>{});return{reply:'Sorry, I couldn\'t answer just now. Please try again in a moment. '+HANDOFF_TEXT,products:[],offer_handoff:true}}
  if(!reply)reply='Sorry, I got stuck on that one. '+HANDOFF_TEXT;
  await transaction(async s=>{const u=(await s.get('chat_usage',day))||usage;u.input+=tokens.input;u.output+=tokens.output;u.cache_read+=tokens.cache_read;if(ctx.handoff)u.handoffs=(u.handoffs||0)+1;await s.put('chat_usage',day,u)});
  await saveLog(ctx,cid,ip,history,reply).catch(()=>{});

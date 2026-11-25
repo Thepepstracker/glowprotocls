@@ -57,3 +57,6 @@ footer.site-footer{display:block;max-width:none;width:auto;margin:40px 0 0;paddi
 .gl-cta-btn{display:inline-block;font:700 14px/1 Inter,system-ui,sans-serif;background:#1b1b1b;color:#fff;border-radius:999px;padding:14px 24px;text-decoration:none}
 .gl-cta-btn:hover{background:#000;color:#fff}
 .site-footer a,.gl-head a,.gl-cta a{margin:0}.site-footer h2{border:0;padding:0}
+
+/* Marathon polish (25 Nov 2026): no lonely last words in headings */
+h1,h2,h3,.treq,.coa-off{text-wrap:balance}
