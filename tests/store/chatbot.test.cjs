@@ -88,3 +88,29 @@ test('a "let me check" sentence is dropped but the rest of that message is kept'
  script=[step("Shipping is $15, free on orders of $250 or more. Let me look up our serums for you!",'find_products',{query:'serum'}),say('I found three serums below.')];
  const r=await call('/chat',{cid:'abcdefabcdef22',messages:[{role:'user',content:'serum and shipping?'}]},owner);
  assert.equal(r.body.reply,'Shipping is $15, free on orders of $250 or more.\n\nI found three serums below.')});
+
+test('signed-in shopper: greeted by first name, and my_account gives points, level and their orders',async()=>{
+ const cookie=await transaction(async s=>{const acc=require('../../netlify/functions/lib/customer-accounts.cjs');const a={id:'cust-chat-1',name:'Pat Lee',email:'pat@example.org',verified:true,auth_version:1,created:1795000000};await s.put('customers',a.id,a);
+  const o=await s.get('orders','GLP-0123456789');o.customer_id=a.id;await s.put('orders',o.id,o);await s.put('rewards_wallets',a.id,{customer_id:a.id,balance:240,reserved:40});return (await acc.newSession(s,a)).split(';')[0]});
+ script=[body=>{assert.match(body.system[1].text,/SIGNED IN as Pat\b/);return use('my_account',{})()},body=>{const r=lastResult(body);assert.equal(r.signed_in,true);assert.equal(r.first_name,'Pat');assert.equal(r.points_available,200);assert.equal(r.points_worth,'$10.00');assert.ok(r.glow_level&&r.glow_level.name);
+   assert.equal(r.recent_orders[0].order_number,'GLP-0123456789');assert.ok(!JSON.stringify(r).includes('Secret'));return say('Hi Pat! You have 200 points.')()}];
+ const r=await call('/chat',{cid:'abcdefabcdef31',messages:[{role:'user',content:'how many points do I have'}]},cookie,{ip:31});assert.equal(r.body.reply,'Hi Pat! You have 200 points.');
+ script=[use('my_account',{}),body=>{assert.equal(lastResult(body).signed_in,false);return say('Please sign in.')()}];
+ await call('/chat',{cid:'abcdefabcdef32',messages:[{role:'user',content:'my points'}]},null,{ip:32})});
+
+test('order lookup by email: a 6-digit code goes to that email; only the right code in the same chat shows the orders',async()=>{
+ const sent=[];bot._setMail(async(to,code)=>{sent.push({to,code});return true});bot._setCode(()=>'482913');
+ const ask=(cid,input,name)=>{let res;script=[use(name,input),body=>{res=lastResult(body);return say('ok')()}];return call('/chat',{cid,messages:[{role:'user',content:'find my order'}]},null,{ip:41}).then(()=>res)};
+ let r=await ask('abcdefabcdef41',{email:'Pat@Example.org'},'send_order_code');assert.equal(r.sent,true);assert.deepEqual(sent,[{to:'pat@example.org',code:'482913'}]);
+ r=await ask('abcdefabcdef41',{email:'nobody@example.org'},'send_order_code');assert.equal(r.sent,true,'same answer for an email with no orders');assert.equal(sent.length,1,'no email sent for it');
+ r=await ask('abcdefabcdef41',{email:'pat@example.org',code:'111111'},'check_order_code');assert.equal(r.found,false);assert.match(r.message,/not right/);
+ r=await ask('abcdefabcdef49',{email:'pat@example.org',code:'482913'},'check_order_code');assert.equal(r.found,false,'a different chat cannot use the code');
+ r=await ask('abcdefabcdef41',{email:'pat@example.org',code:'482 913'},'check_order_code');assert.equal(r.found,true);assert.equal(r.recent_orders[0].order_number,'GLP-0123456789');assert.equal(r.recent_orders[0].carrier,'UPS');assert.ok(!JSON.stringify(r).includes('Secret'));
+ for(let i=0;i<5;i++)await ask('abcdefabcdef42',{email:'pat@example.org',code:'000000'},'check_order_code');
+ bot._setCode(()=>'111222');await ask('abcdefabcdef42',{email:'pat@example.org'},'send_order_code');
+ r=await ask('abcdefabcdef42',{email:'pat@example.org',code:'111222'},'check_order_code');assert.equal(r.found,true,'a new code starts fresh')});
+
+test('suggest_addons answers with in-stock products only, and the voice rules are in the prompt',async()=>{let res;
+ script=[use('suggest_addons',{product_ids:[P.id]}),body=>{res=lastResult(body);return say('ok')()}];await call('/chat',{cid:'abcdefabcdef51',messages:[{role:'user',content:'what goes with this'}]},null,{ip:51});
+ assert.ok(Array.isArray(res.products));for(const p of res.products)assert.ok(p.id&&p.name&&p.price);
+ assert.match(bot.RULES,/My pleasure/);assert.match(bot.RULES,/one simple step at a time/);assert.ok(bot.TOOLS.some(t=>t.name==='check_order_code'))});

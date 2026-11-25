@@ -1923,16 +1923,17 @@ if(/\/store-next\/admin/.test(location.pathname)&&location.hash==='#chat')state.
 (()=>{if(ZADER_SITE||/\/store-next\/(admin|packing|live|serumsbuild|staff-reset|unbox)/.test(location.pathname))return;
  const KEY='glp_chat_v1',ss={get(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null')}catch{return null}},set(v){try{sessionStorage.setItem(KEY,JSON.stringify(v))}catch{}}};
  const st=ss.get()||{cid:Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>(b%36).toString(36)).join(''),msgs:[],open:false};
- const WELCOME='Hi! I’m Glow, the Glow Lab helper. I can find products, check on an order, and answer questions about shipping, points and paying. What can I help you with?';
- const CHIPS=[['Where’s my order?','Where is my order?'],['Shipping & paying','How much is shipping and how can I pay?'],['Find a product','Can you help me find a product?'],['Talk to a person','__team']];
+ const firstName=()=>String(state.customer?.name||'').trim().split(/\s+/)[0]||'';
+ const welcome=()=>(firstName()?'Hi '+firstName()+'! ':'Hi there! ')+'I’m Glow, and I’m so glad you’re here. I can help you find something, check on an order, or answer questions about shipping, points and paying. Just type your question below, or tap one of these:';
+ const chips=()=>[['Where’s my order?','Where is my order?'],...(state.customer?[['My Glow Points','How many Glow Points do I have?']]:[]),['Shipping & paying','How much is shipping and how can I pay?'],['Find a product','Can you help me find a product?'],['Talk to a person','__team']];
  let busy=false,el,list,input,teamOpen=false;
  const fmt=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(https?:\/\/[^\s<)]+[^\s<).,!?])/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.replace(/^https?:\/\/(www\.)?/,'')}</a>`).replace(/(^|\s)(glowglps\.com\/[^\s<]*[^\s<.,!?)])/g,(m,a,u)=>`${a}<a href="https://${u}" target="_blank" rel="noopener">${u}</a>`).replace(/\n/g,'<br>');
  function card(p){const inCat=state.catalog?.products?.some(x=>x.id===p.id);
   return `<div class="gch-prod">${p.image?`<img src="${esc(p.image)}" alt="" loading="lazy">`:'<span class="gch-noimg"></span>'}<div><a href="${esc(p.url)}" class="gch-pname">${esc(p.name)}</a><div class="gch-price">${money(p.price)}${p.regular?` <s>${money(p.regular)}</s>`:''}</div>
    ${!p.in_stock?`<a class="gch-view" href="${esc(p.url)}">Sold out · view</a>`:inCat?`<button type="button" class="gch-add" data-action="add" data-id="${p.id}">Add to bag</button>`:`<a class="gch-view" href="${esc(p.url)}">View</a>`}</div></div>`}
- function paint(){if(!list)return;const rows=[{role:'assistant',content:WELCOME}].concat(st.msgs);
+ function paint(){if(!list)return;const rows=[{role:'assistant',content:welcome()}].concat(st.msgs);
   list.innerHTML=rows.map(m=>`<div class="gch-msg ${m.role==='user'?'me':'bot'}"><div class="gch-b">${fmt(m.content)}</div>${(m.products||[]).length?`<div class="gch-prods">${m.products.map(card).join('')}</div>`:''}${m.team?`<button type="button" class="gch-teambtn" data-gc="team">Message the team</button>`:''}</div>`).join('')
-   +(st.msgs.length?'':`<div class="gch-chips">${CHIPS.map(c=>`<button type="button" data-gc-chip="${esc(c[1])}">${esc(c[0])}</button>`).join('')}</div>`)
+   +(st.msgs.length?'':`<div class="gch-chips">${chips().map(c=>`<button type="button" data-gc-chip="${esc(c[1])}">${esc(c[0])}</button>`).join('')}</div>`)
    +(busy?'<div class="gch-msg bot"><div class="gch-b gch-typing"><i></i><i></i><i></i></div></div>':'')
    +(teamOpen?teamForm():'');
   list.scrollTop=list.scrollHeight;ss.set(st)}

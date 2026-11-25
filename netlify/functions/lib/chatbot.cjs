@@ -31,10 +31,15 @@ let FAQ=null;
 function faqText(){if(FAQ!==null)return FAQ;try{const s=fs.readFileSync(path.resolve(__dirname,'../../../faq.html'),'utf8');
  FAQ=s.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<header[\s\S]*?<\/header>|<nav[\s\S]*?<\/nav>|<footer[\s\S]*?<\/footer>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&[a-z#0-9]+;/gi,' ').replace(/\s+/g,' ').trim().slice(0,12000)}catch{FAQ=''}return FAQ}
 
-const RULES=`You are "Glow", the shop helper on the Glow Lab Protocols website and app (glowglps.com). Glow Lab is a small family business run by Heather and her son Jonah. Many customers are older and not comfortable with technology.
+const RULES=`You are "Glow", the shop helper on the Glow Lab Protocols website and app (glowglps.com). Glow Lab is a small family business in Ball Ground, Georgia, run by Heather and her son Jonah. Many customers are older and not comfortable with technology, and many come to you about an order.
 
-HOW TO TALK
-- Warm, friendly, plain words. Short: usually 1–3 sentences. No jargon, no tables, no markdown headings. Use a short list only when it really helps.
+HOW TO TALK (Jonah: "very warm and sweet, catered to help people that aren't tech savvy, professional when it needs to be")
+- Be warm, sweet and patient, like a kind neighbor who works at the shop. Plain everyday words, short sentences, no jargon, no tables, no markdown headings. Usually 1-4 short sentences; use a short list only when it really helps.
+- Help people who aren't comfortable with technology. Give one simple step at a time, and say exactly where to find things ("Your order number starts with GLP- and is at the top of your order email"). Never make anyone feel silly, and never rush them. If they seem stuck, offer to walk them through it.
+- The little things matter. When they share their name, use their first name now and then (not in every message). When they say thank you, answer "My pleasure!" Thank them for shopping with a family business when it fits. Remember what they already told you in this chat and never ask for it twice. End with a gentle offer to help with anything else when the conversation is wrapping up.
+- If something went wrong (a late package, a cracked vial, a payment problem), first say you're sorry it happened, then help right away.
+- Be professional when it matters: complaints, payments, refunds, privacy, and the research-use rule. Stay calm, clear and kind, with no jokes and no emoji.
+- No emoji, except at most one 💛 when saying thank you or goodbye.
 - Never make up prices, stock, sizes, order details, policies or dates. For products use find_products. For an order use order_status. If you don't know, say so and offer to pass the question to the team.
 - Tools answer instantly, so don't say "let me check" or "one moment". Write your whole answer in your final message, after any tool calls: answer every part of the question there.
 - When you suggest or mention specific products the shopper might buy, call show_products with their ids so they get a card with an Add to bag button. Never more than 4.
@@ -46,13 +51,19 @@ RESEARCH-USE RULE (very important, never break it)
 - Never discuss other brands, competitors, or where else to buy.
 
 ORDERS AND PRIVACY
-- To look up an order you need BOTH the order number (like GLP-6B78CCF0E8, on their email or packing slip) and the email used on the order. Ask for whichever is missing. Only share what order_status returns. Never guess, and never say whether an order number exists if the email doesn't match.
+- If the shopper is signed in (see STORE FACTS), use my_account for their orders, points and level: no number or code needed.
+- Otherwise there are two ways to find an order. Offer the easy one first:
+  1. They know the order number (like GLP-6B78CCF0E8, on the order email or packing slip): ask for it and the email used on the order, then use order_status.
+  2. They don't have the number: ask for the email they ordered with and use send_order_code. A 6-digit code goes to that email. Ask them to check their inbox (and spam folder) and type the code here, then use check_order_code. Never skip the code.
+- Only share what the tools return. Never guess, and never say whether an email or order exists unless a tool shows it.
 - Never ask for or accept card numbers, bank details, passwords or codes in chat. Payments happen on the order page or invoice, never in this chat.
 - You cannot change, cancel, refund, re-ship or discount orders, and you cannot promise any of that. For those, wrong or missing items, damaged vials, payment problems, wholesale, affiliates or anything you can't answer: offer to hand it to the team. Ask for their name, email and the question, then call hand_off. After hand_off, tell them Heather or Jonah will reply by email.
 
 SHOPPING HELP
 - Help people find products by name, size and price. If something is sold out, say so and say they can tap "Notify me" on the product page.
-- Don't invent discount codes. Mention only the sale and points information given below.`;
+- Don't invent discount codes. Mention only the sale and points information given below.
+- When someone picks a product or asks what goes with it, you may use suggest_addons and offer at most 2 of its results in one friendly sentence ("Customers often add ..."), shown as cards with show_products. Never push, never repeat the offer, and never say what a research product does.
+- Glow Points questions: signed-in shoppers get their real balance from my_account. Others: explain points from STORE FACTS and invite them to sign in at glowglps.com/store-next/account.`;
 
 async function settingsOf(s){return (await s.get('settings','main'))||{}}
 // Who sees the chat: 'off', 'staff' (only signed-in Glow Admin, for testing) or 'on' (everyone). Starts as 'staff'.
@@ -74,12 +85,16 @@ function facts(settings,t=now()){
   '- Certificates of analysis: glowglps.com/coa.html. FAQ: glowglps.com/faq.html. Email: support@glowglps.com.',
   bfOn?'- BLACK FRIDAY SALE is on until '+when(bf.end_at)+': Black Friday catalog items have special prices and most other items are 30% off. The prices find_products returns already include the sale. Codes can\'t be added on top of sale prices.':'- No store-wide sale is running right now.'].join('\n')}
 
-function system(settings){return [{type:'text',text:RULES+'\n\nTHE SITE\'S FAQ (use it for policy answers)\n'+faqText(),cache_control:{type:'ephemeral'}},{type:'text',text:facts(settings)}]}
+function system(settings,customer){return [{type:'text',text:RULES+'\n\nTHE SITE\'S FAQ (use it for policy answers)\n'+faqText(),cache_control:{type:'ephemeral'}},{type:'text',text:facts(settings)+'\n'+(customer?'- This shopper is SIGNED IN as '+first(customer.name)+'. Greet them by first name once, and use my_account for their orders and points.':'- This shopper is not signed in.')}]}
 
 const TOOLS=[
  {name:'find_products',description:'Search the Glow Lab store for products by name, ingredient or size. Returns id, name, size, current price, whether it is in stock, and the product page link.',input_schema:{type:'object',properties:{query:{type:'string',description:'What to look for, e.g. "BPC-157 10 mg", "nasal spray", "serum", "Little Bells"'}},required:['query']}},
  {name:'show_products',description:'Show product cards with an Add to bag button under your reply. Use ids from find_products. At most 4.',input_schema:{type:'object',properties:{product_ids:{type:'array',items:{type:'integer'},maxItems:4}},required:['product_ids']}},
  {name:'order_status',description:'Look up one order. Needs the order number and the email used on that order; both must match.',input_schema:{type:'object',properties:{order_number:{type:'string'},email:{type:'string'}},required:['order_number','email']}},
+ {name:'my_account',description:'Only for a signed-in shopper: their first name, Glow Points available and what they are worth, Glow Level, and their recent orders with status and tracking.',input_schema:{type:'object',properties:{}}},
+ {name:'send_order_code',description:'For a shopper who is not signed in and does not have their order number: emails a 6-digit code to the email they ordered with. Always answers the same way, whether or not that email has orders.',input_schema:{type:'object',properties:{email:{type:'string'}},required:['email']}},
+ {name:'check_order_code',description:'Checks the 6-digit code the shopper typed (from send_order_code) and, if right, returns their recent orders with status and tracking.',input_schema:{type:'object',properties:{email:{type:'string'},code:{type:'string'}},required:['email','code']}},
+ {name:'suggest_addons',description:'Products other customers bought together with the given products (from real orders). Use to offer a gentle add-on.',input_schema:{type:'object',properties:{product_ids:{type:'array',items:{type:'integer'},maxItems:4}},required:['product_ids']}},
  {name:'hand_off',description:'Send the shopper\'s question to Heather and Jonah, who reply by email. Use when you can\'t help or the shopper wants a person. Needs their name, email and the question in their words.',input_schema:{type:'object',properties:{name:{type:'string'},email:{type:'string'},question:{type:'string'}},required:['name','email','question']}}];
 
 // ---------- tools ----------
@@ -118,6 +133,28 @@ async function runTool(name,input,ctx){input=input&&typeof input==='object'?inpu
   if(!/^[A-Z]{2,5}-[0-9A-F]{10}$/.test(n)||!isEmail(email))return none;
   const o=await transaction(s=>s.get('orders',n));if(!o||o.is_test!==false||String(o.customer?.email||'').trim().toLowerCase()!==email||brands.orderBrand(o).id!=='glow')return none;
   ctx.order=o.id;return{found:true,...orderView(o)}}
+
+ if(name==='my_account'){const c=ctx.customer;if(!c)return{signed_in:false,note:'Not signed in. Offer order number + email, or the email code, or signing in at glowglps.com/store-next/account.'};
+  return transaction(async s=>{const acc=require('./customer-accounts.cjs'),lv=require('./glow-levels.cjs');const w=acc.publicWallet(await acc.wallet(s,c.id));let level=null;try{const L=await lv.levelOf(s,c.id);level={name:L.tier.name,...(L.next?{next_level:L.next.name,points_to_next_level:L.next.needed_points}:{})}}catch{}
+   const orders=(await s.list('orders')).filter(o=>o.customer_id===c.id&&o.is_test===false&&brands.orderBrand(o).id==='glow').sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,5).map(orderView);
+   return{signed_in:true,first_name:first(c.name),points_available:w.available,points_worth:money(w.value_cents),glow_level:level,recent_orders:orders}})}
+ if(name==='send_order_code'){if(!ctx.cid)return{error:'Please refresh the page and try again.'};const email=String(input.email||'').trim().toLowerCase();if(!isEmail(email))return{error:'That email does not look complete. Ask them to type it again.'};
+  if(!await rate('code-ip',ctx.ip,5,3600)||!await rate('code-email',email,3,3600))return{error:'Too many codes were asked for. Please try again in an hour, or email support@glowglps.com.'};
+  const sent={sent:true,message:'If that email has orders with us, a 6-digit code is on its way. It works for 15 minutes. Ask them to check their inbox and spam folder, then type the code here.'};
+  const has=await transaction(async s=>(await s.list('orders')).some(o=>o.is_test===false&&String(o.customer?.email||'').trim().toLowerCase()===email&&brands.orderBrand(o).id==='glow'));if(!has)return sent;
+  const code=makeCode(),key=hash('chat-code:'+ctx.cid+':'+email);await transaction(s=>s.put('chat_codes',key,{id:key,code:hash('code:'+code),expires:now()+900,tries:0,created:now()}));
+  const ok=await sendMail(email,code).catch(()=>false);return ok?sent:{error:'The code email could not be sent right now. Offer the order number + email way, or a person.'}}
+ if(name==='check_order_code'){const email=String(input.email||'').trim().toLowerCase(),code=String(input.code||'').replace(/\D/g,'');if(!ctx.cid||!isEmail(email))return{found:false,message:'Ask for the email again.'};
+  const key=hash('chat-code:'+ctx.cid+':'+email);const r=await transaction(async s=>{const c=await s.get('chat_codes',key);if(!c||c.expires<now())return'expired';if(c.verified_until>now())return'ok';if(c.tries>=5)return'locked';
+   if(code.length===6&&crypto.timingSafeEqual(Buffer.from(hash('code:'+code)),Buffer.from(c.code))){c.verified_until=now()+1800;await s.put('chat_codes',key,c);return'ok'}c.tries++;await s.put('chat_codes',key,c);return c.tries>=5?'locked':'wrong'});
+  if(r==='expired')return{found:false,message:'That code has expired or was never sent. Offer to send a new one.'};
+  if(r==='locked')return{found:false,message:'Too many wrong tries. Offer to send a new code in a little while, or a person.'};
+  if(r==='wrong')return{found:false,message:'That code is not right. Ask them to check the newest email from Glow Lab and type the 6 numbers again.'};
+  const orders=await transaction(async s=>(await s.list('orders')).filter(o=>o.is_test===false&&String(o.customer?.email||'').trim().toLowerCase()===email&&brands.orderBrand(o).id==='glow').sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,5).map(orderView));
+  if(orders[0])ctx.order=orders[0].order_number;return{found:true,recent_orders:orders}}
+ if(name==='suggest_addons'){const ids=(Array.isArray(input.product_ids)?input.product_ids:[]).map(Number).filter(Number.isSafeInteger).slice(0,4);if(!ids.length)return{products:[]};
+  const rel=await transaction(s=>require('./shop-extras.cjs').related(s,{ids,brand:'glow',limit:3})),list=await transaction(shopProducts),byId=new Map(list.map(p=>[p.id,p]));
+  const out=rel.map(r=>byId.get(r.id)).filter(p=>p&&p.in_stock).map(p=>({id:p.id,name:p.name,price:money(p.price),why:'often bought together'}));ctx.seen.push(...out.map(x=>byId.get(x.id)));return{products:out}}
  if(name==='hand_off'){const nm=String(input.name||'').trim().slice(0,80),email=String(input.email||'').trim().toLowerCase().slice(0,200),q=String(input.question||'').trim().slice(0,1500);
   if(!nm||!isEmail(email)||!q)return{error:'I need the shopper\'s name, a valid email and their question.'};
   if(ctx.handoff)return{ok:true,already:true,ticket:ctx.handoff.id};
@@ -126,6 +163,13 @@ async function runTool(name,input,ctx){input=input&&typeof input==='object'?inpu
   await transaction(s=>s.put('chat_handoffs',rec.id,rec));ctx.handoff=rec;await alertStaff(rec).catch(()=>{});return{ok:true,ticket:rec.id}}
  return{error:'Unknown tool.'}}
 
+const first=n=>String(n||'').trim().split(/\s+/)[0].slice(0,40);
+let sendMail=(...a)=>mailCode(...a);
+let makeCode=()=>String(crypto.randomInt(0,1000000)).padStart(6,'0');
+async function mailCode(email,code){const emails=require('./store-email.cjs');
+ const id=await transaction(s=>emails.enqueue(s,{id:'chat-code-'+hash(email+':'+code+':'+now()).slice(0,24),kind:'chat_order_code',brand:'glow',to:email,related_id:'chat',expires:now()+900,subject:'Your Glow Lab code: '+code,
+  content:emails.template('Your code is '+code,['You asked our website chat to look up your orders. Type this code in the chat:',code,'It works for 15 minutes. If you did not ask for it, you can ignore this email. Nobody can see your orders without it.'],null,null)}));
+ if(!id)return false;const r=await emails.safeDispatch(id);return !r||r.status!=='retry'}
 async function alertStaff(rec){const emails=require('./store-email.cjs');
  const lines=['A shopper asked the website chat for a person.','Name: '+rec.name,'Email: '+rec.email,'Question: '+rec.question,...(rec.order?['Order: '+rec.order]:[]),'','Reply to them by email. Mark it done in Glow Admin → More → Chat.'];
  const ids=await transaction(async s=>{const out=[];for(const to of emails.alertRecipients())out.push(await emails.enqueue(s,{id:'chat-handoff-'+rec.id+'-'+hash(to).slice(0,8),kind:'staff_chat_handoff',brand:'glow',to,related_id:rec.id,expires:now()+86400,subject:'💬 Chat question from '+rec.name,content:emails.template('Chat question from '+rec.name,lines,'mailto:'+rec.email+'?subject='+encodeURIComponent('Your question to Glow Lab'),'Reply to '+rec.name)}));return out.filter(Boolean)});
@@ -142,14 +186,14 @@ function cleanHistory(raw){if(!Array.isArray(raw))bad('Invalid chat.');const m=r
  if(!out.length||out[out.length-1].role!=='user')bad('Type a message first.');return out}
 const pub=p=>({id:p.id,name:p.name,size:p.size,price:p.price,regular:p.regular,in_stock:p.in_stock,image:p.image,url:p.url});
 
-async function chat(body,h,staff){const ip=clientIp(h),cid=/^[a-z0-9]{12,40}$/.test(String(body.cid||''))?String(body.cid):'';
+async function chat(body,h,staff,customer){const ip=clientIp(h),cid=/^[a-z0-9]{12,40}$/.test(String(body.cid||''))?String(body.cid):'';
  const history=cleanHistory(body.messages);
  const {settings,cs}=await transaction(async s=>({settings:await settingsOf(s),cs:await chatSettings(s)}));
  if(!openTo(cs,staff))return{reply:'The chat helper is resting right now. '+HANDOFF_TEXT,products:[],offer_handoff:true,off:true};
  if(!await rate('msg',ip,40,3600))return{reply:'You\'ve sent a lot of messages in a short time. Please try again a little later, or email support@glowglps.com.',products:[],offer_handoff:true};
  const day=etDay(now()),usage=await transaction(async s=>{const u=(await s.get('chat_usage',day))||{id:day,replies:0,input:0,output:0,cache_read:0,handoffs:0};if(u.replies>=DAILY_MAX())return null;u.replies++;await s.put('chat_usage',day,u);return u});
  if(!usage)return{reply:'The chat is very busy today. '+HANDOFF_TEXT,products:[],offer_handoff:true};
- const ctx={ip,cid,history,seen:[],show:[],order:'',handoff:null},sys=system(settings),msgs=history.map(x=>({role:x.role,content:x.content}));
+ const ctx={ip,cid,history,seen:[],show:[],order:'',handoff:null,customer:customer||null},sys=system(settings,customer),msgs=history.map(x=>({role:x.role,content:x.content}));
  let reply='',parts=[],tokens={input:0,output:0,cache_read:0};
  try{for(let i=0;i<6;i++){const r=await callClaude(sys,msgs);const u=r.usage||{};tokens.input+=(u.input_tokens||0)+(u.cache_creation_input_tokens||0);tokens.output+=u.output_tokens||0;tokens.cache_read+=u.cache_read_input_tokens||0;
    const content=Array.isArray(r.content)?r.content:[];msgs.push({role:'assistant',content});
@@ -175,6 +219,7 @@ async function adminView(s){const day=etDay(now()),usage=(await s.get('chat_usag
  const chats=(await s.list('chat_logs')).sort((a,b)=>(b.updated||0)-(a.updated||0)).slice(0,60).map(l=>({id:l.id,updated:l.updated,first:(l.messages.find(m=>m.role==='user')||{}).text?.slice(0,140)||'',turns:l.messages.filter(m=>m.role==='user').length,order:l.order||'',handoff:l.handoff||'',error:l.error||'',messages:l.messages}));
  const cs=await chatSettings(s);return{on:cs.mode==='on',mode:cs.mode,configured:configured(),model:MODEL(),daily_max:DAILY_MAX(),usage,handoffs,chats}}
 
+async function shopper(h){try{const a=await transaction(s=>require('./customer-accounts.cjs').session(s,h));return a?{id:a.id,name:a.name||'',email:a.email||''}:null}catch{return null}}
 async function isStaff(h,session){try{return !!(await transaction(s=>session(s,h)))}catch{return false}}
 async function route(path,body,h,method,{session}){
  if(path==='/chat/status'&&method==='GET'){if(brands.fromHeaders(h).id!=='glow')return{status:200,headers:{},body:{on:false}};const cs=await transaction(chatSettings),staff=cs.mode==='staff'&&await isStaff(h,session);return{status:200,headers:{'Cache-Control':'no-store'},body:{on:openTo(cs,staff),...(cs.mode==='staff'&&staff&&configured()?{preview:true}:{})}}}
@@ -184,7 +229,7 @@ async function route(path,body,h,method,{session}){
   const out=await runTool('hand_off',{name:body.name,email:body.email,question:body.question},ctx);if(out.error)bad(out.error,out.error.startsWith('Too many')?429:400);
   if(ctx.handoff)await transaction(async s=>{const day=etDay(now()),u=(await s.get('chat_usage',day))||{id:day,replies:0,input:0,output:0,cache_read:0,handoffs:0};u.handoffs=(u.handoffs||0)+1;await s.put('chat_usage',day,u)});
   return{status:200,headers:{},body:{ok:true,ticket:out.ticket}}}
- if(path==='/chat'&&method==='POST'){if(brands.fromHeaders(h).id!=='glow')bad('Not found.',404);return{status:200,headers:{'Cache-Control':'no-store'},body:await chat(body,h,await isStaff(h,session))}}
+ if(path==='/chat'&&method==='POST'){if(brands.fromHeaders(h).id!=='glow')bad('Not found.',404);return{status:200,headers:{'Cache-Control':'no-store'},body:await chat(body,h,await isStaff(h,session),await shopper(h))}}
  if(!path.startsWith('/admin/chat'))return null;
  return transaction(async s=>{const sid=await session(s,h);
   if(path==='/admin/chat'&&method==='GET')return{status:200,headers:{},body:await adminView(s)};
@@ -192,4 +237,4 @@ async function route(path,body,h,method,{session}){
   if(path==='/admin/chat/handoff/done'&&method==='POST'){const r=await s.get('chat_handoffs',String(body.id||'').slice(0,40));if(!r)bad('Question not found.',404);r.status=body.done===false?'open':'done';r.done_at=r.status==='done'?now():null;r.done_by=(await s.get('sessions',sid))?.staff_id||'owner';await s.put('chat_handoffs',r.id,r);return{status:200,headers:{},body:{ok:true,handoff:r}}}
   return null})}
 
-module.exports={route,chat,runTool,search,facts,RULES,TOOLS,cleanHistory,orderView,_setFetch:f=>{fetchImpl=f}};
+module.exports={route,chat,runTool,search,facts,RULES,TOOLS,cleanHistory,orderView,_setFetch:f=>{fetchImpl=f},_setCode:f=>{makeCode=f},_setMail:f=>{sendMail=f}};
