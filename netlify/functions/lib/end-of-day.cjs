@@ -15,7 +15,10 @@ function check({orders,subs,emails,printLog,manuals},brand,t=now()){
  const live=orders.filter(o=>o.is_test===false&&mine(o)&&!o.legacy_import);
  const printed=id=>!!(printLog.find(r=>r.id===id)||{}).label;
  // ---- fix before bed ----
- const labelProblems=live.filter(o=>o.shippo_needs_review||o.shippo_status==='needs_review'||(o.label_status==='buying'&&(o.label_started_at||o.updated||0)<t-900))
+ // A box that already went out (tracking, delivered, or handed over in person) has nothing left to fix, even if an old
+ // label attempt left a needs_review flag behind (25 Nov 2026: Taylor W.'s Oct 28 order was handed over in person).
+ const gone=o=>!!(o.tracking||o.shipment?.tracking||o.shipment?.carrier==='in_person'||o.delivery?.delivered||o.status==='canceled');
+ const labelProblems=live.filter(o=>!gone(o)).filter(o=>o.shippo_needs_review||o.shippo_status==='needs_review'||(o.label_status==='buying'&&(o.label_started_at||o.updated||0)<t-900))
   .map(o=>({id:o.id,name:name(o),why:String(o.shippo_message||'The label purchase did not finish.').slice(0,140)}));
  const subProblems=subs.filter(x=>mine(x)&&x.status!=='canceled'&&(x.payment_issue||x.problem))
   .map(x=>({id:x.id,name:name(x),why:String(x.problem||'Card payment did not go through.').slice(0,140)}));

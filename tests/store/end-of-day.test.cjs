@@ -27,3 +27,10 @@ test('staff only',async()=>{await transaction(async s=>{await s.put('settings','
  const cookie=(await handle({path:'/admin/login',method:'POST',headers:{'x-store-request':'1'},body:{password:process.env.STORE_ADMIN_PASSWORD}})).headers['Set-Cookie'].split(';')[0];
  const r=(await handle({path:'/admin/end-of-day',method:'GET',headers:{'x-store-request':'1',cookie},body:{}})).body;assert.equal(r.all_clear,true);assert.equal(r.brand,'glow');
  fs.rmSync(tmp,{recursive:true,force:true})});
+
+test('an order already handed over in person or delivered is not a label problem, even with an old needs_review flag',()=>{
+ const {check}=require('../../netlify/functions/lib/end-of-day.cjs');const t=1795600000;
+ const base={is_test:false,brand:'glow',customer:{name:'Taylor Wright'},shippo_status:'needs_review',created:t-30*86400};
+ const r=check({orders:[{...base,id:'A',status:'shipped',shipment:{carrier:'in_person',tracking:''},delivery:{delivered:true}},{...base,id:'B',status:'shipped',tracking:'1Z999'},{...base,id:'C',status:'paid'}],subs:[],emails:[],printLog:[],manuals:[]},'glow',t);
+ assert.deepEqual(r.fix.map(x=>x.id),['C']);
+});
