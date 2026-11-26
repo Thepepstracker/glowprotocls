@@ -44,7 +44,7 @@ button:disabled{opacity:.45;cursor:default}
 .week .wk-bar{height:12px;border-radius:8px;background:rgba(255,255,255,.3);margin-top:8px;overflow:hidden}.week .wk-bar i{display:block;height:100%;background:#fff;border-radius:8px}
 .week .rec{display:inline-block;margin-left:8px;font-size:13px;font-weight:800;background:rgba(255,255,255,.22);border-radius:20px;padding:2px 10px;vertical-align:middle}
 .t-red{background:#a23b1d}.t-yellow{background:#c98a00}.t-green{background:#1f7a3a}.t-blue{background:#1d5fbf}.t-gold{background:linear-gradient(135deg,#9a6b12,#d9b25b 55%,#a87a1e)}.t-purple{background:linear-gradient(135deg,#4b2aa8,#7b4fe0)}
-.t-diamond{background:linear-gradient(135deg,#1c6aa8 0%,#4fb3e8 35%,#bfe9ff 50%,#4fb3e8 65%,#1c6aa8 100%);text-shadow:0 1px 2px rgba(0,40,80,.45)}.t-galaxy{background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.35) 0 1px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(255,255,255,.3) 0 1px,transparent 2px),linear-gradient(135deg,#0b1240,#3a1c7a 45%,#b03a8f)}.t-rainbow{background:linear-gradient(110deg,#e0413a,#f08c2e,#e9c22e,#3aa65b,#2f7fd6,#7a4fd6);text-shadow:0 1px 3px rgba(0,0,0,.45)}
+.t-diamond{background:linear-gradient(135deg,#1c6aa8 0%,#4fb3e8 35%,#bfe9ff 50%,#4fb3e8 65%,#1c6aa8 100%);text-shadow:0 1px 2px rgba(0,40,80,.45)}.t-galaxy{background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.35) 0 1px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(255,255,255,.3) 0 1px,transparent 2px),linear-gradient(135deg,#0b1240,#3a1c7a 45%,#b03a8f)}.t-star{background:linear-gradient(135deg,#d97a00,#ffc93c 45%,#ffe9a3 55%,#e08a00);text-shadow:0 1px 3px rgba(80,40,0,.55)}
 @media (max-width:600px){.week{flex-wrap:wrap}.week .wk-c{font-size:24px}}
 .week.day{padding:10px 16px;margin:-6px 0 8px}.week.day .wk-c{font-size:22px}.week.day .wk-m b{font-size:20px}.week.day .wk-m small{font-size:14px}
 .days{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.days span{font-size:12.5px;font-weight:700;background:#f3f1ec;border:1px solid #e4dfd3;border-radius:10px;padding:4px 9px;white-space:nowrap}.days span.now{border-color:#1a1a1a}.days span.fut{opacity:.45}
@@ -726,7 +726,7 @@ var WEEK_FLOOR=450000;
 var WEEK_HISTORY={'2026-10-19':825227};
 function weekTotal(offset){var k=weekKeys(offset).keys;return WEEK_HISTORY[k[0]]!=null?WEEK_HISTORY[k[0]]:weekSum(k).cents}
 function targetFor(offset){return Math.max(WEEK_FLOOR,weekTotal((offset||0)+1))}
-// The color ladder lives in pace.js (shared with Management): Blue 1× · Gold 1.5× · Purple 2× · Rainbow 2.5× · Galaxy 3× · Diamond 4×.
+// The color ladder lives in pace.js (shared with Management): Blue 1× · Gold 1.5× · Purple 2× · Star 2.5× · Galaxy 3× · Diamond 4×.
 function tiersFor(t){return GlowPace.tiersFor(t,'week')}
 var WEEK_TARGET=WEEK_FLOOR,TIERS=tiersFor(WEEK_TARGET);
 function setTargets(){WEEK_TARGET=targetFor(0);TIERS=tiersFor(WEEK_TARGET);DAY_TARGET=Math.round(WEEK_TARGET/7);DAY_TIERS=dayTiersFor(DAY_TARGET)}

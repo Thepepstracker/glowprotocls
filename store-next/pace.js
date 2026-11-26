@@ -2,7 +2,7 @@
 // some other cool ones", and a colored circle in Management "telling us if we're on track for today, behind, or like
 // we are now purple"). One place for the color ladder and the day/week color, used by Packing Check and Management.
 //   Week target = what the week before made (never under $4,500). Day target = week target / 7.
-//   Red under 75% of pace · Yellow 75–99% · Green on pace · Blue target · Gold 1.5× · Purple 2× · Rainbow 2.5× · Galaxy 3× · Diamond 4× (Jonah: "i want the rainbow to be diamond": Diamond is the top)
+//   Red under 75% of pace · Yellow 75–99% · Green on pace · Blue target · Gold 1.5× · Purple 2× · Star 2.5× · Galaxy 3× · Diamond 4× (Jonah: "i want the rainbow to be diamond": Diamond is the top; "lets change the rainbow to a different thing, lets do star")
 // A day in progress is judged against how much of a normal day's money has usually come in by this time of day
 // (our own paid orders, last 28 days). Before a quarter of a normal day has come in, the color is yesterday's result.
 (function(root){
@@ -10,13 +10,13 @@
  var LADDER=[
   {k:'diamond',dot:'💎',name:'DIAMOND',mult:4,week:'Four times last week',day:'Diamond day: the very top'},
   {k:'galaxy',dot:'🌌',name:'GALAXY',mult:3,week:'Triple last week',day:'Out of this world'},
-  {k:'rainbow',dot:'🌈',name:'RAINBOW',mult:2.5,week:'2.5× last week',day:'Rainbow day'},
+  {k:'star',dot:'⭐',name:'STAR',mult:2.5,week:'2.5× last week',day:'Star day'},
   {k:'purple',dot:'🟣',name:'PURPLE',mult:2,week:'Double last week',day:'Record-day territory'},
   {k:'gold',dot:'🟨',name:'GOLD',mult:1.5,week:'Way past last week',day:'Big day'},
   {k:'blue',dot:'🔵',name:'BLUE',mult:1,week:'Beat last week',day:'Day target hit'}];
  // Highest first, each with the cents it starts at.
  function tiersFor(target,kind){return LADDER.map(function(x){return{k:x.k,dot:x.dot,name:x.name,say:kind==='day'?x.day:x.week,at:target*x.mult}})}
- // Lowest first: the marks a bar climbs through above the target (Blue, Gold, Purple, Rainbow, Galaxy, Diamond).
+ // Lowest first: the marks a bar climbs through above the target (Blue, Gold, Purple, Star, Galaxy, Diamond).
  function marks(target){return LADDER.slice().reverse().map(function(x){return{at:target*x.mult,dot:x.dot,name:x.name.charAt(0)+x.name.slice(1).toLowerCase()}})}
  var title=function(s){return s.charAt(0)+s.slice(1).toLowerCase()};
  function legend(target,money){return LADDER.slice().reverse().map(function(x){return title(x.name)+' '+(money?money(target*x.mult):x.mult+'×')}).join(' · ')}

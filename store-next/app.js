@@ -1328,7 +1328,7 @@ function eodCard(){const e=state.eod;if(!e&&!state.eodLoading)eodLoad();
 function eodLoad(){state.eodLoading=true;api('/api/admin/end-of-day').then(x=>{state.eod=x}).catch(()=>{state.eod={error:true}}).finally(()=>{state.eodLoading=false;if(state.tab==='today')renderAdmin()})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-action="eod-check"]');if(!b)return;e.preventDefault();state.eod=null;eodLoad();renderAdmin()});
 // Pace circles (Jonah, 26 Nov 2026: "a circle color telling us if we're on track for today, behind, or like we are now purple").
-// Same colors and targets as Packing Check (pace.js): Red · Yellow · Green · Blue · Gold · Purple · Rainbow · Galaxy · Diamond.
+// Same colors and targets as Packing Check (pace.js): Red · Yellow · Green · Blue · Gold · Purple · Star · Galaxy · Diamond.
 function paceCircles(orders){if(typeof GlowPace==='undefined'||!Array.isArray(orders))return '';const now=Date.now()/1000,dd=GlowPace.day(orders,now),wk=GlowPace.week(orders,now);
  const one=(label,x,tip)=>`<div class="pace-one" title="${esc(tip)}"><span class="pace-dot pace-${x.tier.k}" aria-hidden="true"></span><div><small>${label}</small><b>${esc(x.tier.name.charAt(0)+x.tier.name.slice(1).toLowerCase())}</b><span>${esc(x.tier.say)}</span><em>${money(x.cents)}${x.next?' · '+money(x.next.at-x.cents)+' to '+x.next.dot+' '+esc(x.next.name):' · top of the chart'}</em></div></div>`;
  return `<div class="pace" aria-label="Are we on track?">${one('Today',dd,'Day target '+money(dd.target)+' · '+GlowPace.legend(dd.target,money))}${one('This week',wk,'Week to beat '+money(wk.target)+' · '+GlowPace.legend(wk.target,money))}</div>`}
