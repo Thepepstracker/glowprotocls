@@ -44,6 +44,7 @@ button:disabled{opacity:.45;cursor:default}
 .week .wk-bar{height:12px;border-radius:8px;background:rgba(255,255,255,.3);margin-top:8px;overflow:hidden}.week .wk-bar i{display:block;height:100%;background:#fff;border-radius:8px}
 .week .rec{display:inline-block;margin-left:8px;font-size:13px;font-weight:800;background:rgba(255,255,255,.22);border-radius:20px;padding:2px 10px;vertical-align:middle}
 .t-red{background:#a23b1d}.t-yellow{background:#c98a00}.t-green{background:#1f7a3a}.t-blue{background:#1d5fbf}.t-gold{background:linear-gradient(135deg,#9a6b12,#d9b25b 55%,#a87a1e)}.t-purple{background:linear-gradient(135deg,#4b2aa8,#7b4fe0)}
+.t-diamond{background:linear-gradient(135deg,#1c6aa8 0%,#4fb3e8 35%,#bfe9ff 50%,#4fb3e8 65%,#1c6aa8 100%);text-shadow:0 1px 2px rgba(0,40,80,.45)}.t-galaxy{background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.35) 0 1px,transparent 2px),radial-gradient(circle at 70% 60%,rgba(255,255,255,.3) 0 1px,transparent 2px),linear-gradient(135deg,#0b1240,#3a1c7a 45%,#b03a8f)}.t-rainbow{background:linear-gradient(110deg,#e0413a,#f08c2e,#e9c22e,#3aa65b,#2f7fd6,#7a4fd6);text-shadow:0 1px 3px rgba(0,0,0,.45)}
 @media (max-width:600px){.week{flex-wrap:wrap}.week .wk-c{font-size:24px}}
 .week.day{padding:10px 16px;margin:-6px 0 8px}.week.day .wk-c{font-size:22px}.week.day .wk-m b{font-size:20px}.week.day .wk-m small{font-size:14px}
 .days{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}.days span{font-size:12.5px;font-weight:700;background:#f3f1ec;border:1px solid #e4dfd3;border-radius:10px;padding:4px 9px;white-space:nowrap}.days span.now{border-color:#1a1a1a}.days span.fut{opacity:.45}
@@ -60,6 +61,15 @@ button:disabled{opacity:.45;cursor:default}
 .alert .act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
 .group{font-size:13px;font-weight:800;letter-spacing:.12em;color:var(--muted);margin:20px 4px 8px;text-transform:uppercase}
 .order{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+/* Status + speed colors (Jonah, 26 Nov 2026) */
+.order[class*=" s-"]{border-left-width:10px}.order.s-nolabel{border-left-color:#e07a1f!important}.order.s-unprinted{border-left-color:#1d5fbf!important}.order.s-ready{border-left-color:#c9a227!important}.order.s-packed{border-left-color:#1f7a3a!important}.order.s-stock{border-left-color:#a23b1d!important}.order.s-hold{border-left-color:#7b4fe0!important}.order.s-skip{border-left-color:#9a958a!important}
+.tag.st{color:#fff}.tag.st-nolabel{background:#e07a1f}.tag.st-unprinted{background:#1d5fbf}.tag.st-ready{background:#c9a227;color:#1a1400}.tag.st-packed{background:#1f7a3a}.tag.st-stock{background:#a23b1d}.tag.st-hold{background:#7b4fe0}.tag.st-skip{background:#9a958a}
+.tag.sp{border:2px solid currentColor;background:#fff}.tag.sp-next{color:#6b3fd6}.tag.sp-two{color:#c0392b}.tag.sp-three{color:#d9731a}.tag.sp-ground{color:#1f7a3a}.tag.sp-usps{color:#1d5fbf}.tag.sp-person{color:#6b6b6b}
+.tn{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(170px,1.3fr);gap:10px;margin:0 0 14px}.tn>div{border-radius:14px;padding:10px 14px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.1)}.tn b{display:block;font-size:30px;line-height:1.05}.tn span{font-size:13px;font-weight:700;opacity:.95}
+.tn .tn-fill{background:#1a1a1a}.tn .tn-buy{background:#e07a1f}.tn .tn-print{background:#1d5fbf}.tn .tn-packed{background:#1f7a3a}.tn .tn-prog{background:#f3f1ec;color:#1a1a1a;border:1px solid #e4dfd3}
+.tn .tn-prog .tnbar{height:14px;border-radius:8px;background:#e4dfd3;overflow:hidden;margin:6px 0 4px}.tn .tn-prog .tnbar i{display:block;height:100%;border-radius:8px}
+.tn-legend{display:flex;gap:6px;flex-wrap:wrap;margin:-6px 0 14px;font-size:12px}.tn-legend .tag{margin-left:0}
+@media (max-width:760px){.tn{grid-template-columns:repeat(2,minmax(0,1fr))}.tn .tn-prog{grid-column:1/-1}}
 .order.done{border-color:var(--ok);background:var(--okbg)}
 .order.blocked{border-color:var(--warn);border-style:dashed}
 .oh{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
@@ -251,6 +261,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 <canvas id="confetti"></canvas><div class="cheer" id="cheer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div><div class="feed" id="feed" aria-live="polite"></div>
 <main>
   <div id="week"></div>
+  <div id="todayNums"></div>
   <div class="tools">
     <input type="search" id="search" placeholder="Search order number, name, city or product   ( / )" autocomplete="off">
     <button id="refresh" class="primary">Refresh orders</button>
@@ -332,6 +343,7 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
   <p class="small">Shows every order marked <b>Paid</b>, plus orders whose label is printed but the carrier has not scanned yet (last 7 days), oldest first. Press the <b>space bar</b> once for every vial as it goes in the bag (or tap the boxes). The gold box shows what to put in next. Ticks, skips and "out of stock" marks stay on this device. When a box is fully checked it is marked <b>Packed</b> in the store too, so every computer and Management see it (Start over un-marks it). <b>🧾 Slip</b> prints a 4×6 packing slip (its QR opens the customer’s Glow account) on the label printer. If an order is edited after you checked it, its ticks clear so you check it again. Orders refresh by themselves every minute while you are not typing — every new order pops up in the corner with a cha-ching (and on your computer, if order pop-ups are on).</p>
 </main>
 <script src="vendor/qrcode-generator.js"></script>
+<script src="pace.js"></script>
 <script>
 (function(){
 'use strict';
@@ -457,7 +469,7 @@ function render(){setTimeout(fitNowBar,0);
   document.getElementById('nTodo').textContent=todo.length;document.getElementById('nDone').textContent=done;document.getElementById('nSkip').textContent=sk;
   var rs=restockRows().filter(function(x){return x.status==='out'||x.status==='now'}).length,nr=document.getElementById('nRestock');nr.textContent=rs;nr.className='n'+(rs?' red':'');
   document.getElementById('chips').style.display=(view==='pick'||view==='restock'||view==='stats'||view==='calls'||view==='ship')?'none':'';document.getElementById('shipPanel').hidden=view!=='ship';
-  weekBanner();var nc=callList().filter(function(c){return !callDone(c)}).length,ncb=document.getElementById('nCalls');ncb.textContent=nc;
+  weekBanner();todayNums(todo,st);var nc=callList().filter(function(c){return !callDone(c)}).length,ncb=document.getElementById('nCalls');ncb.textContent=nc;
   alerts();buyAllBox();shirtBox();
   var out=document.getElementById('out');
   if(view==='ship'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=shipList();return}
@@ -714,7 +726,8 @@ var WEEK_FLOOR=450000;
 var WEEK_HISTORY={'2026-10-19':825227};
 function weekTotal(offset){var k=weekKeys(offset).keys;return WEEK_HISTORY[k[0]]!=null?WEEK_HISTORY[k[0]]:weekSum(k).cents}
 function targetFor(offset){return Math.max(WEEK_FLOOR,weekTotal((offset||0)+1))}
-function tiersFor(t){return [{k:'purple',dot:'🟣',name:'PURPLE',say:'Double last week',at:t*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Way past last week',at:t*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Beat last week',at:t}]}
+// The color ladder lives in pace.js (shared with Management): Blue 1× · Gold 1.5× · Purple 2× · Rainbow 2.5× · Galaxy 3× · Diamond 4×.
+function tiersFor(t){return GlowPace.tiersFor(t,'week')}
 var WEEK_TARGET=WEEK_FLOOR,TIERS=tiersFor(WEEK_TARGET);
 function setTargets(){WEEK_TARGET=targetFor(0);TIERS=tiersFor(WEEK_TARGET);DAY_TARGET=Math.round(WEEK_TARGET/7);DAY_TIERS=dayTiersFor(DAY_TARGET)}
 // Orders brought over from the old site were already counted on the old site: they never count toward today or the week.
@@ -729,13 +742,13 @@ function tierOf(cents,finished,lastWeekCents){
 function weekBanner(){var box=document.getElementById('week');if(!box)return;if(!all.length){box.innerHTML='';return}
   setTargets();
   var w=weekKeys(0),cur=weekSum(w.keys),last=weekSum(weekKeys(1).keys),t=tierOf(cur.cents,w.dow,last.cents),pace=WEEK_TARGET*w.dow/7;
-  var steps=[{at:pace*.75,dot:'🟡',name:'Yellow'},{at:pace,dot:'🟢',name:'Green'},{at:WEEK_TARGET,dot:'🔵',name:'Blue'},{at:WEEK_TARGET*1.5,dot:'🟨',name:'Gold'},{at:WEEK_TARGET*2,dot:'🟣',name:'Purple'}].filter(function(x){return x.at>cur.cents&&x.at>0});
-  var nx=steps[0],floor=0;[pace*.75,pace,WEEK_TARGET,WEEK_TARGET*1.5,WEEK_TARGET*2].forEach(function(v){if(v<=cur.cents&&v>floor)floor=v});
+  var ladder=[{at:pace*.75,dot:'🟡',name:'Yellow'},{at:pace,dot:'🟢',name:'Green'}].concat(GlowPace.marks(WEEK_TARGET)),steps=ladder.filter(function(x){return x.at>cur.cents&&x.at>0}).sort(function(a,b){return a.at-b.at});
+  var nx=steps[0],floor=0;ladder.forEach(function(x){if(x.at<=cur.cents&&x.at>floor)floor=x.at});
   var pct=nx?Math.max(3,Math.min(100,Math.round((cur.cents-floor)*100/Math.max(1,nx.at-floor)))):100;
   var best=0;for(var i=1;i<=8;i++){var s2=weekSum(weekKeys(i).keys).cents;if(s2>best)best=s2}
   var rec=cur.cents>best&&cur.cents>=WEEK_TARGET?'<span class="rec">🏆 Best week since the new store opened</span>':'';
   var ts=todayStats();
-  box.innerHTML='<section class="week t-'+t.k+'" title="Week color: Red under 75% of pace · Yellow 75–99% · Green on pace · Blue '+money(WEEK_TARGET)+' (last week) · Gold '+money(WEEK_TARGET*1.5)+' · Purple '+money(WEEK_TARGET*2)+'"><div><div class="wk-c">'+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
+  box.innerHTML='<section class="week t-'+t.k+'" title="Week color: Red under 75% of pace · Yellow 75–99% · Green on pace · '+GlowPace.legend(WEEK_TARGET,money)+'"><div><div class="wk-c">'+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
    +'<div class="wk-m"><b>'+money(cur.cents)+'</b> this week · '+cur.count+' paid order'+(cur.count===1?'':'s')+rec
    +'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-cur.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Beat last week: '+money(WEEK_TARGET)+' ('+Math.round(cur.cents*100/WEEK_TARGET)+'%) · Today '+money(ts.total)+'</small></div></section>'+weekStrip(w,t)+dayBanner(w)}
 // ---- Week colors strip (Jonah, 8 Nov 2026: "just like the days of the week have colors, the weeks should have colors too") ----
@@ -756,7 +769,7 @@ function weekStrip(w,t){var first=null;all.forEach(function(o){if(paidOrder(o)){
 // morning is not called Red. Before a quarter of a normal day's money has usually arrived, the color is
 // yesterday's result (Green if yesterday hit the target, Yellow if not), like the week does on Monday morning.
 // Finished days keep their final color: Red under 75% of target, Yellow 75–99%, then Blue / Gold / Purple.
-function dayTiersFor(t){return [{k:'purple',dot:'🟣',name:'PURPLE',say:'Record-day territory',at:t*2},{k:'gold',dot:'🟨',name:'GOLD',say:'Big day',at:t*1.5},{k:'blue',dot:'🔵',name:'BLUE',say:'Day target hit',at:t}]}
+function dayTiersFor(t){return GlowPace.tiersFor(t,'day')}
 var DAY_TARGET=Math.round(WEEK_TARGET/7),DAY_TIERS=dayTiersFor(DAY_TARGET);
 function etHM(t){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t*1000)),h=0,m=0;p.forEach(function(x){if(x.type==='hour')h=Number(x.value)%24;if(x.type==='minute')m=Number(x.value)});return{h:h,m:m}}
 function daySum(key){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&etDay(o.created||0)===key){n+=o.total||0;c++}});return{cents:n,count:c}}
@@ -768,11 +781,11 @@ function dayLiveTier(c,share,yHit){for(var i=0;i<DAY_TIERS.length;i++)if(c>=DAY_
   if(share<.25)return yHit?{k:'green',dot:'🟢',name:'GREEN',say:'Early — yesterday hit the target'}:{k:'yellow',dot:'🟡',name:'YELLOW',say:'Early — yesterday missed the target'};
   var r=c/(DAY_TARGET*share);if(r>=1)return{k:'green',dot:'🟢',name:'GREEN',say:'On pace for today'};if(r>=.75)return{k:'yellow',dot:'🟡',name:'YELLOW',say:'Slipping behind today’s pace'};return{k:'red',dot:'🔴',name:'RED',say:'Behind today’s pace'}}
 function dayBanner(w){var today=etDay(nowS()),td=daySum(today),y=new Date(today+'T12:00:00Z');y.setUTCDate(y.getUTCDate()-1);var yk=y.toISOString().slice(0,10),share=dayShare(),t=dayLiveTier(td.cents,share,daySum(yk).cents>=DAY_TARGET);
-  var marks=[0,DAY_TARGET,DAY_TARGET*1.5,DAY_TARGET*2],names=[['🔵','Blue'],['🟨','Gold'],['🟣','Purple']],nx=null,floor=0,i;for(i=1;i<4;i++){if(td.cents<marks[i]){nx={at:marks[i],dot:names[i-1][0],name:names[i-1][1]};floor=marks[i-1];break}}
+  var dm=GlowPace.marks(DAY_TARGET),nx=null,floor=0,i;for(i=0;i<dm.length;i++){if(td.cents<dm[i].at){nx=dm[i];floor=i?dm[i-1].at:0;break}}
   var pct=nx?Math.max(3,Math.min(100,Math.round((td.cents-floor)*100/Math.max(1,nx.at-floor)))):100;
   var strip=w.keys.map(function(k){var d=new Date(k+'T12:00:00Z').toLocaleDateString('en-US',{weekday:'short',timeZone:'UTC'}),s=daySum(k);
     if(k>today)return '<span class="fut">⚪ '+d+'</span>';if(k===today)return '<span class="now" title="Today so far">'+t.dot+' '+d+' '+money(s.cents)+'</span>';var f=dayFinalTier(s.cents);return '<span title="'+f.name+' · '+s.count+' paid order'+(s.count===1?'':'s')+'">'+f.dot+' '+d+' '+money(s.cents)+'</span>'}).join('');
-  return '<section class="week day t-'+t.k+'" title="Day color: Blue '+money(DAY_TARGET)+' · Gold '+money(DAY_TARGET*1.5)+' · Purple '+money(DAY_TARGET*2)+'. Before the target, today is compared with how much usually comes in by this time of day."><div><div class="wk-c">TODAY '+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
+  return '<section class="week day t-'+t.k+'" title="Day color: '+GlowPace.legend(DAY_TARGET,money)+'. Before the target, today is compared with how much usually comes in by this time of day."><div><div class="wk-c">TODAY '+t.dot+' '+t.name+'</div><div class="wk-n">'+esc(t.say)+'</div></div>'
    +'<div class="wk-m"><b>'+money(td.cents)+'</b> today · '+td.count+' paid order'+(td.count===1?'':'s')+'<div class="wk-bar"><i style="width:'+pct+'%"></i></div><small>'+(nx?money(nx.at-td.cents)+' to '+nx.dot+' '+nx.name:'Top of the chart')+' · Day target '+money(DAY_TARGET)+' ('+Math.round(td.cents*100/DAY_TARGET)+'%)</small></div></section>'
    +'<div class="days" aria-label="This week by day">'+strip+'</div>'}
 // Regulars: how many paid orders this customer has in the new store (since 5 Oct 2026), and what they have spent.
@@ -858,6 +871,19 @@ function callsView(){var list=callList(),todo=list.filter(function(o){return !ca
   html+='<div class="tools"><button class="mini" id="callLogShow">📒 '+(callLogShow?'Hide':'Show')+' call log ('+logs.length+' in 30 days)</button>'+(callLogShow?'<button class="mini" id="callLogProbs" aria-pressed="'+callLogProblemsOnly+'">'+(callLogProblemsOnly?'Show all calls':'⚠️ Problems only')+'</button>':'')+'</div>'
    +(callLogShow?'<div class="calllog">'+(shown.length?shown.map(function(x){return logLine(x.e,x.o,true)}).join(''):'<div class="msg">No calls logged yet.</div>')+'</div>':'');
   return html+'<p class="small">Calls are saved on the order, so they show on every computer and in Management. First orders are at the top — they are the customers most likely not to come back.</p>'}
+// ---- Status, speed and today's numbers (Jonah, 26 Nov 2026: "color by status, color by shipping speed, today's numbers bar") ----
+var ST_NAME={nolabel:'NEEDS LABEL',unprinted:'PRINT LABEL',ready:'READY TO PACK',packed:'PACKED',stock:'WAITING ON STOCK',hold:'ON HOLD',skip:'SKIPPED'};
+function packState(o){if(isSkipped(o))return 'skip';if(isDone(o))return 'packed';if(heldAll(o))return 'hold';if(isBlocked(o))return 'stock';if(!hasLabel(o))return 'nolabel';var r=printLog[o.id]||{};return r.label?'ready':'unprinted'}
+function speedOf(o){var sh=o.shipment||{};if(sh.carrier==='in_person')return ['person','IN PERSON'];var s=hasLabel(o)||sh.service?String(sh.service||carrierName(o)):svcName(svcChoice[o.id]||defaultService(o));
+  if(/next day/i.test(s))return ['next','🚀 NEXT DAY'];if(/2nd day|second day/i.test(s))return ['two','⚡ 2ND DAY AIR'];if(/3 ?day/i.test(s))return ['three','3 DAY'];if(/ground/i.test(s))return ['ground','🚚 GROUND'];if(/usps|priority|first class/i.test(s))return ['usps','📮 USPS'];return ['ground',String(s).toUpperCase().slice(0,20)]}
+function statusTag(o){var k=packState(o);return k==='packed'||k==='skip'||k==='stock'?'':'<span class="tag st st-'+k+'">'+ST_NAME[k]+'</span>'}
+function speedTag(o){if(o.replacement&&!hasLabel(o))return '';var s=speedOf(o);return '<span class="tag sp sp-'+s[0]+'" title="Shipping speed'+(hasLabel(o)?'':' (what Buy will pick)')+'">'+esc(s[1])+'</span>'}
+function todayNums(todo,st){var el=document.getElementById('todayNums');if(!el)return;if(!orders.length||view==='ship'||view==='stats'){el.innerHTML='';return}
+  var fill=todo.filter(function(o){return !isBlocked(o)}).length,buy=todo.filter(function(o){return packState(o)==='nolabel'}).length,pr=todo.filter(function(o){return packState(o)==='unprinted'}).length,packed=st.count||0,tot=packed+fill,pct=tot?Math.round(packed*100/tot):100;
+  var col=pct>=100?'linear-gradient(90deg,#4b2aa8,#7b4fe0)':pct>=75?'#1d5fbf':pct>=50?'#1f7a3a':pct>=25?'#c98a00':'#a23b1d';
+  el.innerHTML='<div class="tn" aria-label="Today in numbers"><div class="tn-fill"><b>'+fill+'</b><span>📦 Boxes to fill</span></div><div class="tn-buy"><b>'+buy+'</b><span>🏷️ Need a label</span></div><div class="tn-print"><b>'+pr+'</b><span>🖨️ Label not printed</span></div><div class="tn-packed"><b>'+packed+'</b><span>✅ Packed today</span></div>'
+   +'<div class="tn-prog"><span>Today’s packing</span><div class="tnbar"><i style="width:'+Math.max(3,pct)+'%;background:'+col+'"></i></div><span>'+(tot?pct+'% done · '+packed+' of '+tot+' boxes':'Nothing to pack')+'</span></div></div>'
+   +'<div class="tn-legend" aria-label="Card colors"><span class="tag st st-nolabel">NEEDS LABEL</span><span class="tag st st-unprinted">PRINT LABEL</span><span class="tag st st-ready">READY TO PACK</span><span class="tag st st-packed">PACKED</span><span class="tag st st-stock">WAITING ON STOCK</span><span class="tag st st-hold">ON HOLD</span><span class="tag sp sp-two">⚡ 2ND DAY AIR</span><span class="tag sp sp-ground">🚚 GROUND</span><span class="tag sp sp-usps">📮 USPS</span><span class="tag sp sp-next">🚀 NEXT DAY</span></div>'}
 function card(o){
   var t=ticks(o),c=o.customer||{},done=isDone(o),blk=isBlocked(o),brand=o.brand==='zader'?'<span class="tag z">ZADER</span>':'';
   var rows=(o.items||[]).map(function(i,idx){
@@ -870,7 +896,7 @@ function card(o){
   var tags=brand+(o.ships_with?'<span class="tag cust" title="Two Subscribe &amp; save packages for the same person, same address, same day. Pack them in one box with one label.">📦 SAME BOX AS '+esc(o.ships_with)+'</span>':'')+(o.member_priority===true&&!o.replacement?'<span class="tag pf" title="Skool member who picked Packed first">⭐ PACK FIRST</span>':'')+shirtTag(o)+custTag(o)+(isNew(o)?'<span class="tag new">NEW</span>':'')+(done?'<span class="tag done">'+(o.packed?'📦 PACKED'+(o.packed.by&&o.packed.by!=='you'?' BY '+esc(String(o.packed.by).toUpperCase()):'')+(o.packed.at?' · '+esc(new Date(o.packed.at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})):''):'CHECKED')+'</span>':'')+(isSkipped(o)?'<span class="tag" style="background:#e9e4f7;color:#4b3a8a">SKIPPED</span>':'')+(blk?'<span class="tag red">WAITING ON STOCK</span>':'')+(o.hold&&o.hold.lines&&o.hold.lines.length?'<span class="tag held" title="Management → Ship &amp; stock → Waiting on">⏳ '+(heldAll(o)?'ON HOLD':'PART ON HOLD')+' · '+esc(heldNames(o).toUpperCase())+'</span>':'')+(o.replacement?'<span class="tag amber">REPLACEMENT</span>':'')+(o.manual?'<span class="tag manual">📮 '+esc(SN_REASONS[o.manual.reason]||'SHIPMENT').toUpperCase()+'</span>':'')+(o.referred_by?'<span class="tag refer">🤝 REFERRAL</span>':'')+(hasLabel(o)?'<span class="tag lbl">LABEL READY</span>':'<span class="tag nolbl">NO LABEL</span>')+(isLate(o)?'<span class="tag red">'+ago(paidAt).toUpperCase()+' WAITING</span>':'');
   var ship=o.manual&&!hasLabel(o)?manualBuyBox(o):!hasLabel(o)&&canBuy(o)&&!heldAll(o)?buyBox(o):hasLabel(o)?'<div class="ship"><a class="lbtn" data-plabel="'+esc(o.id)+'" href="'+esc(o.shipment.label_url)+'" target="_blank" rel="noopener">🏷️ Print label</a><button class="mini" data-dl="'+esc(o.id)+'" title="Saves the label and packing slip to Downloads; the Mac helper prints both on the label printer">🖨️ Send to printer</button><span>'+esc(o.shipment.service||carrierName(o))+'</span>'+(o.tracking?'<span>'+trkLink(o.tracking)+'</span><button class="mini" data-copy="'+esc(o.tracking)+'">Copy tracking</button>':'')+'</div>':'';
   if(o.manual&&hasLabel(o))ship=ship.slice(0,-6)+manualEmailBtn(o)+'</div>';
-  return '<section class="order'+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement||o.manual?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">'+(o.manual?'Made':'Paid')+' '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
+  return '<section class="order s-'+packState(o)+(done?' done':'')+(blk?' blocked':'')+'" data-id="'+esc(o.id)+'"><div class="oh"><div><span class="oid">'+esc(o.id)+'</span>'+statusTag(o)+speedTag(o)+tags+'<div class="who">'+esc(c.name)+'</div><div class="addr">'+esc([c.address,c.address2,c.city,(c.state||'')+' '+(c.zip||'')].filter(Boolean).join(', '))+'</div>'+(o.replacement||o.manual?'':'<div class="sees">👀 Customer sees: <b>'+esc(custSees(o))+'</b></div>')+''+referLine(o)+'</div><div class="small">'+(o.manual?'Made':'Paid')+' '+esc(when(paidAt))+' · '+ago(paidAt)+' ago<br>'+u+' item'+(u===1?'':'s')+' total</div></div>'
     +(o.replacement?'<div class="small">Why: '+esc(o.replacement)+'</div>':'')+(o.manual?'<div class="small">'+esc(manualWhy(o.manual))+'</div>':'')+'<ul class="items">'+rows+'</ul>'
     +shirtLine(o)+(notes.length?'<div class="note">'+notes.map(esc).join('<br>')+'</div>':'')
     +ship+printBadges(o)+'<div class="foot"><span class="state'+(done?' ok':'')+'">'+(heldAll(o)?'⏳ On hold: everything in this order is still on the way ('+esc(heldNames(o))+'). Nothing to pack yet.':done?'✅ All '+u+' in the bag. '+(o.hold&&o.hold.lines&&o.hold.lines.length?'('+esc(heldNames(o))+' ships later.) ':'')+(hasLabel(o)?'Put the label on.':'Ready for its label.'):blk?'⛔ Waiting on: '+esc(blockedItems(o).map(function(i){return i.name}).join(', ')):n+' of '+u+' checked')+'</span>'+'<span class="btns">'+(o.replacement?'':'<button data-slip="'+esc(o.id)+'" title="Print a packing slip for this box">🧾 Slip</button> ')+(n?'<button data-reset="'+esc(o.id)+'">Start over</button> ':'')+(o.manual?'<button data-sncancel="'+esc(o.id)+'" title="Cancel this shipment: voids the label in Shippo (if bought) and puts the items back in stock">Cancel shipment</button> ':'')+'<button data-skip="'+esc(o.id)+'">'+(isSkipped(o)?'Un-skip':'Skip for now')+'</button></span></div></section>';
