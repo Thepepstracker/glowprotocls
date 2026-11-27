@@ -252,6 +252,18 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 .inc{background:#eefaf3;border:2px solid #1f7a3a;border-radius:12px;padding:10px 12px;margin:10px 0}.inc summary{cursor:pointer;font-weight:800;color:#14532d}.inc .inc-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}.inc h4{margin:6px 0 4px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.inc ul{margin:0;padding-left:18px;font-size:15px}.inc li{margin:3px 0}.inc .inc-miss{background:var(--warnbg);color:var(--warn);border-radius:8px;padding:8px 10px;margin:8px 0 0}.inc .red{color:var(--warn)}
 @media (max-width:700px){.inc .inc-cols{grid-template-columns:1fr}}
 .tag.pl-today{background:#e6f0ff;color:#123f8a}.tag.pl-later{background:#fff4d6;color:#7a5200}.tag.pl-miss{background:var(--warnbg);color:var(--warn)}
+/* Scan a packing slip (27 Nov 2026) + iPad: no week/day banner */
+.scanbtn{font-weight:700}
+.pk-scan{position:fixed;inset:0;z-index:200;background:#000;color:#fff}.pk-scan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pk-scan .fr{position:absolute;left:50%;top:42%;width:60vmin;height:60vmin;max-width:380px;max-height:380px;transform:translate(-50%,-50%);border:4px solid #f3d58b;border-radius:22px;box-shadow:0 0 0 200vmax rgba(0,0,0,.45)}
+.pk-scan .x{position:absolute;top:max(14px,env(safe-area-inset-top,0px));right:14px;width:52px;height:52px;border-radius:50%;border:0;background:rgba(255,255,255,.9);color:#111;font-size:24px}
+.pk-scan .bot{position:absolute;left:0;right:0;bottom:0;padding:18px 20px max(22px,env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,rgba(0,0,0,.85) 30%);text-align:center}
+.pk-scan .bot h3{margin:0 0 4px;font-size:22px}.pk-scan .bot p{margin:0 0 12px;font-size:16px;opacity:.92}
+.pk-scan form{display:flex;gap:8px;justify-content:center}.pk-scan input{font-size:18px;padding:12px;border-radius:10px;border:0;width:min(320px,60vw);text-transform:uppercase}.pk-scan form button{font-size:17px;padding:12px 18px;border-radius:10px;border:0;background:#f3d58b;color:#111;font-weight:800}
+.order.found{outline:4px solid #f3d58b;outline-offset:3px;transition:outline-color 1.5s}
+.now .scan-tap{display:none}
+@media (pointer:coarse){.now .scan-tap{display:inline-block}}
+@media (pointer:coarse) and (min-width:700px){#week{display:none!important}}
 /* Speed: the browser skips laying out boxes that are off screen (28 Nov 2026). */
 .order{content-visibility:auto;contain-intrinsic-size:auto 360px}
 /* iPad (Jonah, 28 Nov 2026: "make it iPad-friendly", like Serum Station). Works from the Home Screen, respects the
@@ -288,14 +300,14 @@ button,.tap{-webkit-user-select:none;user-select:none}
   </div>
   <div class="bar"><i id="bar"></i></div>
 </header>
-<div class="now" id="now" hidden><div class="in"><button type="button" class="key" id="nowNext" title="Next vial in (Space)"><span class="k-key">SPACE</span><span class="k-tap">✓ Next vial</span></button><button type="button" class="undo-tap" id="nowUndo" title="Undo (Backspace)">↩ Undo</button><div><div class="what" id="nowWhat"></div><div class="sub" id="nowSub"></div><div class="warnline" id="nowWarn"></div></div><div class="timer" id="nowTimer" title="Time on this box"></div></div></div>
+<div class="now" id="now" hidden><div class="in"><button type="button" class="key" id="nowNext" title="Next vial in (Space)"><span class="k-key">SPACE</span><span class="k-tap">✓ Next vial</span></button><button type="button" class="undo-tap" id="nowUndo" title="Undo (Backspace)">↩ Undo</button><button type="button" class="undo-tap scan-tap" id="nowScan" title="Scan a packing slip">📷 Scan</button><div><div class="what" id="nowWhat"></div><div class="sub" id="nowSub"></div><div class="warnline" id="nowWarn"></div></div><div class="timer" id="nowTimer" title="Time on this box"></div></div></div>
 <canvas id="confetti"></canvas><div class="cheer" id="cheer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div><div class="feed" id="feed" aria-live="polite"></div>
 <main>
   <div id="week"></div>
   <div id="todayNums"></div>
   <div class="tools">
     <input type="search" id="search" placeholder="Search order number, name, city or product   ( / )" autocomplete="off">
-    <button id="refresh" class="primary">Refresh orders</button>
+    <button id="refresh" class="primary">Refresh orders</button><button type="button" id="scanSlip" class="scanbtn" title="Scan the QR code on a packing slip to jump to that order">📷 Scan slip</button>
     <button id="printLabels" title="Opens every label for orders you have not checked yet">Open all labels</button><button id="printSlips" title="Packing slips for every order not checked yet (4×6, same as labels)">🧾 Print slips</button><button id="bigscreen" class="mini" aria-pressed="false" title="Huge text for the packing table (B)">🖥️ Big screen</button>
     <button id="sound" class="mini" aria-pressed="true" title="Sounds for new orders and finished boxes">🔔 Sound on</button> <button id="autoprint" class="mini" aria-pressed="false" title="Turn on only on the computer next to the label printer">🖨️ Auto-print off</button><button id="notify" class="mini" title="Pop-up on this computer when a new order comes in, even when this tab is in the background">🛎️ Turn on order pop-ups</button><button id="testPing" class="mini" title="Show what a new-order alert looks like">Test alert</button>
   </div>
@@ -547,7 +559,7 @@ function markTarget(list){
   var pi=poolInfo(x.item.id);document.getElementById('nowWarn').textContent=pi&&pi.stock<0?'Store count for this is '+pi.stock+' — check the shelf':'';
 }
 function currentOrder(){var x=target(visibleList());return x?x.o:null}
-function tickTarget(){var x=target(visibleList());if(!x)return;setTick(x.o,x.k,true);history.push({id:x.o.id,k:x.k});if(isDone(x.o)){justDone[x.o.id]=1;celebrate(x.o)}buildPools();render()}
+function tickTarget(){var x=target(visibleList());if(!x)return;setTick(x.o,x.k,true);history.push({id:x.o.id,k:x.k});if(isDone(x.o)){justDone[x.o.id]=1;if(query===x.o.id){query='';var sb=document.getElementById('search');if(sb)sb.value=''}celebrate(x.o)}buildPools();render()}
 function undo(){var h=history.pop();if(!h)return;var o=orders.find(function(z){return z.id===h.id});if(!o)return;setTick(o,h.k,false);delete justDone[o.id];buildPools();render()}
 var actx=null;function ding(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();var t=actx.currentTime;[880,1320].forEach(function(f,i){var o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0.0001,t+i*.12);g.gain.exponentialRampToValueAtTime(.18,t+i*.12+.02);g.gain.exponentialRampToValueAtTime(.0001,t+i*.12+.35);o.connect(g);g.connect(actx.destination);o.start(t+i*.12);o.stop(t+i*.12+.4)})}catch(e){}}
 function chaChing(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();var t=actx.currentTime;
@@ -1399,6 +1411,42 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
 document.getElementById('autoprint').addEventListener('click',function(){if(!autoPrint){if(!confirm('Turn on auto-print on THIS computer?\n\nEvery new shipping label prints here with its packing slip. Labels that already exist are skipped. Turn it on only on the computer next to the label printer.'))return;all.forEach(function(o){if(hasLabel(o))printedIds[o.id]=Date.now()});lsSet(APD,printedIds)}autoPrint=!autoPrint;lsSet(APK,autoPrint);syncAutoPrint();toast(autoPrint?'Auto-print is ON here. New labels print by themselves.':'Auto-print is off.')});
 syncAutoPrint();
 syncNotifyBtn();
+// Scan a packing slip (Jonah, 27 Nov 2026: "utilize the QR code on the packing slip ... scan it on iPads to find it
+// immediately"). Every slip's QR is that order's own mystery-gift link (/store-next/unbox/<key>), so the code already
+// points at one order: Packing Check matches the key to the order and jumps to it. Reading the code never opens the gift.
+// A typed order number works too. jsQR (vendor) is used where the browser has no built-in QR reader (iPad Safari).
+var scanStream=null,scanRaf=0;
+function loadJsQR(){if(window.jsQR)return Promise.resolve();return new Promise(function(ok,no){var sc=document.createElement('script');sc.src='/store-next/vendor/jsqr.js';sc.onload=function(){window.jsQR?ok():no()};sc.onerror=no;document.head.appendChild(sc)})}
+function scanStop(){if(scanRaf)cancelAnimationFrame(scanRaf);scanRaf=0;if(scanStream){scanStream.getTracks().forEach(function(t){t.stop()});scanStream=null}}
+function scanClose(){scanStop();var o=document.querySelector('.pk-scan');if(o)o.remove()}
+function orderFromScan(text){var t=String(text||'').trim(),m=t.match(/\/unbox\/([A-Za-z0-9._~-]{6,})/);
+  if(m){var k=m[1];return all.find(function(o){return o.unbox_key===k})||null}
+  var id=t.toUpperCase().match(/\b(GLP|ZDR|PEP)-?([0-9A-F]{10})\b/);if(id){var full=id[1]+'-'+id[2];return all.find(function(o){return o.id===full})||{id:full,missing:true}}
+  var hex=t.toUpperCase().match(/^[0-9A-F]{10}$/);if(hex){return all.find(function(o){return o.id.slice(-10)===hex[0]})||null}
+  return null}
+function jumpTo(o){var inList=orders.some(function(x){return x.id===o.id});var sb=document.getElementById('search');if(sb)sb.value=o.id;query=o.id;
+  if(!inList){toast((o.customer&&o.customer.name?o.customer.name.split(' ')[0]+'’s order ':'')+o.id+' isn’t waiting to be packed'+(o.status==='shipped'?' (it already shipped)':''));if(view!=='all')setView('all');else render()}
+  else{var want=isDone(o)?'done':isSkipped(o)?'skipped':'todo';if(view!==want&&view!=='all')setView(want);else render();toast('📷 Found '+o.id+(o.customer&&o.customer.name?' · '+o.customer.name:''))}
+  setTimeout(function(){var c=document.querySelector('.order[data-id="'+o.id+'"]');if(c){c.scrollIntoView({block:'start',behavior:'smooth'});c.classList.add('found');setTimeout(function(){c.classList.remove('found')},2500)}},60)}
+function scanHit(text){var o=orderFromScan(text);if(!o)return false;scanClose();if(navigator.vibrate)navigator.vibrate(40);if(o.missing){toast('No order '+o.id+' in Packing Check');return true}jumpTo(o);return true}
+function scanOpen(){scanClose();var ov=document.createElement('div');ov.className='pk-scan';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','Scan a packing slip');
+  ov.innerHTML='<video playsinline muted autoplay></video><div class="fr"></div><button type="button" class="x" aria-label="Close">✕</button><div class="bot"><h3>Scan a packing slip</h3><p class="msg">Point the camera at the QR code on the slip.</p><form><input name="o" maxlength="20" autocomplete="off" placeholder="Or type the order number"><button type="submit">Find</button></form></div>';
+  document.body.appendChild(ov);var msg=function(t){var m=ov.querySelector('.msg');if(m)m.textContent=t};
+  ov.querySelector('.x').addEventListener('click',scanClose);
+  ov.querySelector('form').addEventListener('submit',function(e){e.preventDefault();var v=e.target.elements.o.value;if(!scanHit(v))msg('No waiting order matches that. Check the number on the slip.')});
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){msg('This device can’t open the camera here. Type the order number below.');return}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(function(stream){
+    if(!document.body.contains(ov)){stream.getTracks().forEach(function(t){t.stop()});return}scanStream=stream;var video=ov.querySelector('video');video.srcObject=stream;video.play().catch(function(){});
+    var det=null;try{if('BarcodeDetector' in window)det=new BarcodeDetector({formats:['qr_code']})}catch(e){}
+    (det?Promise.resolve():loadJsQR()).then(function(){var cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true}),busy=false,last=0;
+      var tick=function(now){if(!scanStream)return;scanRaf=requestAnimationFrame(tick);if(busy||now-last<120||video.readyState<2)return;last=now;busy=true;
+        var done=function(t){busy=false;if(t&&!scanHit(t))msg('That code isn’t a Glow packing slip. Try the code on the slip.')};
+        if(det){det.detect(video).then(function(r){done(r[0]&&r[0].rawValue)},function(){busy=false})}
+        else{var w=video.videoWidth,h=video.videoHeight,k=Math.min(1,720/Math.max(w,h));cv.width=Math.round(w*k);cv.height=Math.round(h*k);cx.drawImage(video,0,0,cv.width,cv.height);var r=window.jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:'dontInvert'});done(r&&r.data)}};
+      scanRaf=requestAnimationFrame(tick)},function(){msg('The scanner didn’t load. Check the Wi-Fi, or type the order number below.')})
+  },function(e){msg(e&&e.name==='NotAllowedError'?'The camera is blocked. On the iPad: Settings → Safari → Camera → Allow, then try again. Or type the order number below.':'Couldn’t open the camera. Type the order number below.')})}
+document.getElementById('scanSlip').addEventListener('click',scanOpen);document.getElementById('nowScan').addEventListener('click',scanOpen);
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.querySelector('.pk-scan'))scanClose()});
 // iPad: tap targets for the keyboard-only actions, screen stays on while boxes are waiting, ‹ App when opened from the app.
 document.getElementById('nowNext').addEventListener('click',function(e){e.preventDefault();lastKey=Date.now();tickTarget()});
 document.getElementById('nowUndo').addEventListener('click',function(e){e.preventDefault();lastKey=Date.now();undo()});
