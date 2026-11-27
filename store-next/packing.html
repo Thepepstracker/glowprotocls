@@ -248,6 +248,8 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 .sn-modal iframe{border:0;width:100%;flex:1;min-height:420px;background:#f4efe6}.sn-modal .ft{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line)}
 @media (max-width:900px){.sn{grid-template-columns:1fr}.sn-sum{position:static}}
 @media (max-width:600px){.sngrid{grid-template-columns:1fr}.sngrid .row3{grid-template-columns:1fr 70px 100px}.snadd{grid-template-columns:1fr 70px}.snadd button{grid-column:1/-1}.snreasons{grid-template-columns:repeat(2,minmax(0,1fr))}.sn-box{grid-template-columns:repeat(2,minmax(0,1fr))}.snhist .hide-sm{display:none}}
+/* Speed: the browser skips laying out boxes that are off screen (28 Nov 2026). */
+.order{content-visibility:auto;contain-intrinsic-size:auto 360px}
 /* iPad (Jonah, 28 Nov 2026: "make it iPad-friendly", like Serum Station). Works from the Home Screen, respects the
    iPad's safe areas, no double-tap zoom or grey tap flash, bigger things to tap, keyboard-only hints hidden on touch,
    a tappable "✓ Next vial" and "↩ Undo" in the gold bar, and the screen stays on while there are boxes to pack. */
@@ -546,7 +548,10 @@ function chaChing(){if(!soundOn)return;try{actx=actx||new (window.AudioContext||
   [[1568,0],[2093,.09],[2637,.18],[3136,.27]].forEach(function(n){var o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.value=n[0];g.gain.setValueAtTime(.0001,t+n[1]);g.gain.exponentialRampToValueAtTime(.22,t+n[1]+.01);g.gain.exponentialRampToValueAtTime(.0001,t+n[1]+.5);o.connect(g);g.connect(actx.destination);o.start(t+n[1]);o.stop(t+n[1]+.55)});
   var len=actx.sampleRate*.12,buf=actx.createBuffer(1,len,actx.sampleRate),d=buf.getChannelData(0);for(var i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);var src=actx.createBufferSource(),f=actx.createBiquadFilter(),g2=actx.createGain();f.type='highpass';f.frequency.value=3000;g2.gain.value=.25;src.buffer=buf;src.connect(f);f.connect(g2);g2.connect(actx.destination);src.start(t)}catch(e){}}
 function money(c){return '$'+((c||0)/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
-function etDay(t){return new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'})}
+// Speed (Jonah, 28 Nov 2026: taps were slow on the iPad). One date formatter, reused, and each answer remembered:
+// making a new formatter for every order on every tap was most of the time a tap took.
+var ET_FMT=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}),ET_DAY=new Map();
+function etDay(t){var k=Math.floor(t/60),v=ET_DAY.get(k);if(v===undefined){v=ET_FMT.format(new Date(k*60000));if(ET_DAY.size>20000)ET_DAY.clear();ET_DAY.set(k,v)}return v}
 function liveOrder(o){return o&&o.is_test===false&&!o.legacy_import&&['canceled','expired'].indexOf(o.status)<0&&(!o.proof_required||o.submitted_at||o.status!=='order_received')}
 function todayStats(){var k=etDay(nowS()),l=all.filter(function(o){return paidOrder(o)&&etDay(o.created||0)===k});return{count:l.length,total:l.reduce(function(a,o){return a+(o.total||0)},0)}}
 function ordinal(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
@@ -764,7 +769,9 @@ function tierOf(cents,finished,lastWeekCents){
   if(!finished){var lw=lastWeekCents||0;if(lw>=targetFor(1))return{k:'green',dot:'🟢',name:'GREEN',say:'New week — last week beat the week before'};return{k:'yellow',dot:'🟡',name:'YELLOW',say:'New week — last week fell short'}}
   var pace=WEEK_TARGET*finished/7,r=cents/pace;
   if(r>=1)return{k:'green',dot:'🟢',name:'GREEN',say:'On pace',pace:pace};if(r>=.75)return{k:'yellow',dot:'🟡',name:'YELLOW',say:'Slipping behind pace',pace:pace};return{k:'red',dot:'🔴',name:'RED',say:'Behind pace',pace:pace}}
-function weekBanner(){var box=document.getElementById('week');if(!box)return;if(!all.length){box.innerHTML='';return}
+var weekKey='';
+function weekBanner(){var box=document.getElementById('week');if(!box)return;if(!all.length){box.innerHTML='';weekKey='';return}
+  var wk=lastLoad+'|'+all.length+'|'+Math.floor(Date.now()/60000);if(wk===weekKey&&box.innerHTML)return;weekKey=wk;
   setTargets();
   var w=weekKeys(0),cur=weekSum(w.keys),last=weekSum(weekKeys(1).keys),t=tierOf(cur.cents,w.dow,last.cents),pace=WEEK_TARGET*w.dow/7;
   var ladder=[{at:pace*.75,dot:'🟡',name:'Yellow'},{at:pace,dot:'🟢',name:'Green'}].concat(GlowPace.marks(WEEK_TARGET)),steps=ladder.filter(function(x){return x.at>cur.cents&&x.at>0}).sort(function(a,b){return a.at-b.at});
@@ -796,7 +803,8 @@ function weekStrip(w,t){var first=null;all.forEach(function(o){if(paidOrder(o)){
 // Finished days keep their final color: Red under 75% of target, Yellow 75–99%, then Blue / Gold / Purple.
 function dayTiersFor(t){return GlowPace.tiersFor(t,'day')}
 var DAY_TARGET=Math.round(WEEK_TARGET/7),DAY_TIERS=dayTiersFor(DAY_TARGET);
-function etHM(t){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t*1000)),h=0,m=0;p.forEach(function(x){if(x.type==='hour')h=Number(x.value)%24;if(x.type==='minute')m=Number(x.value)});return{h:h,m:m}}
+var ET_HM=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+function etHM(t){var p=ET_HM.formatToParts(new Date(t*1000)),h=0,m=0;p.forEach(function(x){if(x.type==='hour')h=Number(x.value)%24;if(x.type==='minute')m=Number(x.value)});return{h:h,m:m}}
 function daySum(key){var n=0,c=0;all.forEach(function(o){if(paidOrder(o)&&etDay(o.created||0)===key){n+=o.total||0;c++}});return{cents:n,count:c}}
 function dayShare(){var now=nowS(),today=etDay(now),bins=[],tot=0,n=0,i;for(i=0;i<24;i++)bins.push(0);
   all.forEach(function(o){if(paidOrder(o)&&o.created>=now-28*86400&&etDay(o.created)!==today){bins[etHM(o.created).h]+=o.total||0;tot+=o.total||0;n++}});

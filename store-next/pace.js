@@ -20,8 +20,11 @@
  function marks(target){return LADDER.slice().reverse().map(function(x){return{at:target*x.mult,dot:x.dot,name:x.name.charAt(0)+x.name.slice(1).toLowerCase()}})}
  var title=function(s){return s.charAt(0)+s.slice(1).toLowerCase()};
  function legend(target,money){return LADDER.slice().reverse().map(function(x){return title(x.name)+' '+(money?money(target*x.mult):x.mult+'×')}).join(' · ')}
- function etDay(t){return new Date(t*1000).toLocaleDateString('en-CA',{timeZone:'America/New_York'})}
- function etHM(t){var p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(t*1000)),h=0,m=0;p.forEach(function(x){if(x.type==='hour')h=Number(x.value)%24;if(x.type==='minute')m=Number(x.value)});return{h:h,m:m}}
+ // One reused formatter plus a cache: much faster on iPad (28 Nov 2026).
+ var ET_FMT=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}),ET_DAY=new Map();
+ function etDay(t){var k=Math.floor(t/60),v=ET_DAY.get(k);if(v===undefined){v=ET_FMT.format(new Date(k*60000));if(ET_DAY.size>20000)ET_DAY.clear();ET_DAY.set(k,v)}return v}
+ var ET_HM=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+ function etHM(t){var p=ET_HM.formatToParts(new Date(t*1000)),h=0,m=0;p.forEach(function(x){if(x.type==='hour')h=Number(x.value)%24;if(x.type==='minute')m=Number(x.value)});return{h:h,m:m}}
  function paidOrder(o){return !!o&&o.is_test===false&&!o.legacy_import&&!o.comped&&(o.status==='paid'||o.status==='shipped')}
  function weekKeys(now,offset){var today=etDay(now),d=new Date(today+'T12:00:00Z'),dow=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-dow-7*(offset||0));var k=[];for(var i=0;i<7;i++){k.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}return{keys:k,dow:dow}}
  function sum(orders,keys){var n=0,c=0;orders.forEach(function(o){if(paidOrder(o)&&keys.indexOf(etDay(o.created||0))>=0){n+=o.total||0;c++}});return{cents:n,count:c}}
