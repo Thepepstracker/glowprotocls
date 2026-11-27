@@ -63,6 +63,8 @@ SHOPPING HELP
 - Help people find products by name, size and price. If something is sold out, say so and say they can tap "Notify me" on the product page.
 - Don't invent discount codes. Mention only the sale and points information given below.
 - When someone picks a product or asks what goes with it, you may use suggest_addons and offer at most 2 of its results in one friendly sentence ("Customers often add ..."), shown as cards with show_products. Never push, never repeat the offer, and never say what a research product does.
+- BEAUTY SERUMS: when someone asks about serums, skin care, beauty, hair or scalp products, the eye roller or the mist, use find_products (for example "serum") and answer from what it returns. For each one give the name, what it is (type), one or two warm sentences from "about" in your own friendly words, the key ingredients, the size and the price (and the was price if there is one), and say if it is sold out. Show them as cards with show_products. Then offer to help them choose by asking what they'd like to focus on: face, under the eyes, scalp and hair, or a refreshing mist.
+- Describe a beauty serum only with what "about" and "key_ingredients" say. Never add results, promises, timelines, before-and-after talk, or medical, anti-aging or treatment claims, and never say what an ingredient does in the body. For how to use one, share only what "about" says (for example a leave-on serum, a roller for under the eyes, a dropper for the scalp, a mist after cleansing), and say a patch test first is always a good idea. For anything more, offer the team.
 - Glow Points questions: signed-in shoppers get their real balance from my_account. Others: explain points from STORE FACTS and invite them to sign in at glowglps.com/store-next/account.`;
 
 async function settingsOf(s){return (await s.get('settings','main'))||{}}
@@ -88,7 +90,7 @@ function facts(settings,t=now()){
 function system(settings,customer){return [{type:'text',text:RULES+'\n\nTHE SITE\'S FAQ (use it for policy answers)\n'+faqText(),cache_control:{type:'ephemeral'}},{type:'text',text:facts(settings)+'\n'+(customer?'- This shopper is SIGNED IN as '+first(customer.name)+'. Greet them by first name once, and use my_account for their orders and points.':'- This shopper is not signed in.')}]}
 
 const TOOLS=[
- {name:'find_products',description:'Search the Glow Lab store for products by name, ingredient or size. Returns id, name, size, current price, whether it is in stock, and the product page link.',input_schema:{type:'object',properties:{query:{type:'string',description:'What to look for, e.g. "BPC-157 10 mg", "nasal spray", "serum", "Little Bells"'}},required:['query']}},
+ {name:'find_products',description:'Search the Glow Lab store for products by name, ingredient or size. Returns id, name, size, current price, whether it is in stock, and the product page link. Beauty serums also come with their type, a short description (about) and key ingredients, the same words as on their product page.',input_schema:{type:'object',properties:{query:{type:'string',description:'What to look for, e.g. "BPC-157 10 mg", "nasal spray", "serum", "Little Bells"'}},required:['query']}},
  {name:'show_products',description:'Show product cards with an Add to bag button under your reply. Use ids from find_products. At most 4.',input_schema:{type:'object',properties:{product_ids:{type:'array',items:{type:'integer'},maxItems:4}},required:['product_ids']}},
  {name:'order_status',description:'Look up one order. Needs the order number and the email used on that order; both must match.',input_schema:{type:'object',properties:{order_number:{type:'string'},email:{type:'string'}},required:['order_number','email']}},
  {name:'my_account',description:'Only for a signed-in shopper: their first name, Glow Points available and what they are worth, Glow Level, and their recent orders with status and tracking.',input_schema:{type:'object',properties:{}}},
@@ -101,15 +103,23 @@ const TOOLS=[
 const isEmail=e=>/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,24}$/i.test(String(e||'').trim());
 const slugify=v=>String(v||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[’'+]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);
 const pageUrl=p=>'/store-next/p/'+(/^[a-z0-9-]{1,80}$/.test(String(p.slug||''))?p.slug:slugify(String(p.name||'').split(' · ')[0]));
+// Beauty serums (Jonah, 26 Nov 2026: "if someone asks about our beauty serums, make sure the bot knows what to say, and
+// gives a description and all the good stuff"). The words are the same ones on each product page: read from
+// BEAUTY_PRODUCT_COPY in store-next/app.js, so the site and the bot never disagree. Matched by slug, or by SKU prefix.
+let BEAUTY=null;
+function beautyCopy(){if(BEAUTY!==null)return BEAUTY;try{const s=fs.readFileSync(path.resolve(__dirname,'../../../store-next/app.js'),'utf8'),i=s.indexOf('const BEAUTY_PRODUCT_COPY='),j=s.indexOf('\n};',i);
+ BEAUTY=i<0||j<0?{}:JSON.parse(s.slice(i+'const BEAUTY_PRODUCT_COPY='.length,j+2))}catch{BEAUTY={}}return BEAUTY}
+const BEAUTY_KIND={'protocol-01':'Face serum','protocol-02':'Face serum','glow-eyes':'Under-eye roller serum','glow-eyes-luxe-kpv':'Under-eye roller serum','cu-hair-01':'Scalp and hair serum','cu-hair-02':'Scalp and hair serum','rose-recovery-mist':'Facial mist'};
+function beautyOf(p){const c=beautyCopy(),key=c[p.slug]?p.slug:Object.keys(c).sort((a,b)=>b.length-a.length).find(k=>String(p.sku||'').toLowerCase().startsWith(k+'-'));return key?{key,...c[key],kind:BEAUTY_KIND[key]||'Beauty serum'}:null}
 async function shopProducts(s){const all=await s.list('products'),byId=new Map(all.map(p=>[p.id,p]));
  return all.filter(p=>p.active&&brands.productBrand(p)==='glow'&&!p.members_only).map(p=>{let stock=Math.floor(Math.max(0,p.stock||0)/brands.units(p));
   if(Array.isArray(p.components)&&p.components.length){stock=Infinity;for(const c of p.components){const x=byId.get(c.id);stock=Math.min(stock,x?Math.floor(Math.max(0,x.stock||0)/(c.qty||1)):0)}if(stock===Infinity)stock=0}
-  return{id:p.id,name:p.name,size:p.size||'',price:p.price,regular:p.regular_price&&p.regular_price>p.price?p.regular_price:null,in_stock:stock>0,image:p.image||'',url:pageUrl(p),sku:p.sku||''}})}
+  return{id:p.id,name:p.name,size:p.size||'',price:p.price,regular:p.regular_price&&p.regular_price>p.price?p.regular_price:null,in_stock:stock>0,image:p.image||'',url:pageUrl(p),sku:p.sku||'',beauty:beautyOf(p)}})}
 function search(list,q){const words=String(q||'').toLowerCase().replace(/[^a-z0-9+. -]/g,' ').split(/\s+/).filter(w=>w.length>1&&!['the','and','for','with','what','have','you','your','do','any','a','some','got','need','want'].includes(w));
  if(!words.length)return[];const SYN={shirt:'tee',shirts:'tee','t-shirt':'tee',tshirt:'tee',spray:'nasal',sprays:'nasal',serums:'serum',kits:'kit',minis:'mini'};for(let i=0;i<words.length;i++)if(SYN[words[i]])words.push(SYN[words[i]]);const norm=x=>x.toLowerCase().replace(/[^a-z0-9]+/g,'');
- return list.map(p=>{const hay=(p.name+' '+p.size).toLowerCase(),toks=hay.split(/[^a-z0-9+.]+/).filter(Boolean),flat=norm(hay+' '+p.sku);let sc=0;
+ return list.map(p=>{const b=p.beauty,hay=(p.name+' '+p.size+(b?' serum serums beauty skincare skin care cosmetic topical '+b.kind+' '+b.ingredients+' '+b.description:'')).toLowerCase(),toks=hay.split(/[^a-z0-9+.]+/).filter(Boolean),flat=norm(hay+' '+p.sku);let sc=0;
   for(const w of words){const wn=norm(w);if(toks.includes(w))sc+=3;else if(toks.some(t=>t.startsWith(w)))sc+=1.5;else if(wn&&flat.includes(wn))sc+=1}
-  if(sc&&hay.startsWith(words[0]))sc+=1;if(sc&&/kit of 10/i.test(p.name)&&!words.includes('kit'))sc-=0.5;if(sc&&/(tote|tee|pouch|hoodie|hat|mug|bag)\b/i.test(p.name)&&!words.some(w=>/tote|tee|shirt|pouch|merch|hoodie|hat|mug|bag/.test(w)))sc-=1.5;if(sc&&p.in_stock)sc+=0.25;
+  if(sc&&(p.name+' '+p.size).toLowerCase().startsWith(words[0]))sc+=1;if(sc&&/kit of 10/i.test(p.name)&&!words.includes('kit'))sc-=0.5;if(sc&&/(tote|tee|pouch|hoodie|hat|mug|bag)\b/i.test(p.name)&&!words.some(w=>/tote|tee|shirt|pouch|merch|hoodie|hat|mug|bag/.test(w)))sc-=1.5;if(sc&&p.in_stock)sc+=0.25;
   return{p,sc}}).filter(x=>x.sc>0).sort((a,b)=>b.sc-a.sc||a.p.name.localeCompare(b.p.name)).slice(0,10).map(x=>x.p)}
 const STATUS={order_received:'Waiting for payment',awaiting_payment:'Waiting for payment (an invoice was sent)',payment_submitted:'Payment screenshot received; the team is checking it',paid:'Paid and in line to be packed',shipped:'Shipped',canceled:'Canceled',expired:'Closed (it was never paid)'};
 function orderView(o){const sh=o.shipment||{},d=o.delivery||{},t=o.track||{},st=d.state||t.state||'';
@@ -124,7 +134,7 @@ async function rate(kind,key,limit,seconds){return transaction(async s=>{const k
 
 async function runTool(name,input,ctx){input=input&&typeof input==='object'?input:{};
  if(name==='find_products'){const list=await transaction(shopProducts);const hits=search(list,String(input.query||'').slice(0,80));ctx.seen.push(...hits);
-  return hits.length?{products:hits.map(p=>({id:p.id,name:p.name,price:money(p.price),...(p.regular?{was:money(p.regular)}:{}),in_stock:p.in_stock,page:'https://glowglps.com'+p.url}))}:{products:[],note:'Nothing matched. Try another word, or browse glowglps.com/store-next/.'}}
+  return hits.length?{products:hits.map(p=>({id:p.id,name:p.name,...(p.size?{size:p.size}:{}),price:money(p.price),...(p.regular?{was:money(p.regular)}:{}),in_stock:p.in_stock,page:'https://glowglps.com'+p.url,...(p.beauty?{type:p.beauty.kind+' (cosmetic, for external use only)',about:p.beauty.description,key_ingredients:p.beauty.ingredients}:{})}))}:{products:[],note:'Nothing matched. Try another word, or browse glowglps.com/store-next/.'}}
  if(name==='show_products'){const ids=(Array.isArray(input.product_ids)?input.product_ids:[]).map(Number).filter(Number.isSafeInteger).slice(0,4);
   const list=await transaction(shopProducts),byId=new Map(list.map(p=>[p.id,p]));for(const id of ids)if(byId.has(id)&&!ctx.show.some(p=>p.id===id))ctx.show.push(byId.get(id));ctx.show=ctx.show.slice(0,4);return{shown:ctx.show.map(p=>p.name)}}
  if(name==='order_status'){if(!await rate('order',ctx.ip,8,3600))return{error:'Too many order lookups from here. Please try again in an hour, or email support@glowglps.com.'};
@@ -237,4 +247,4 @@ async function route(path,body,h,method,{session}){
   if(path==='/admin/chat/handoff/done'&&method==='POST'){const r=await s.get('chat_handoffs',String(body.id||'').slice(0,40));if(!r)bad('Question not found.',404);r.status=body.done===false?'open':'done';r.done_at=r.status==='done'?now():null;r.done_by=(await s.get('sessions',sid))?.staff_id||'owner';await s.put('chat_handoffs',r.id,r);return{status:200,headers:{},body:{ok:true,handoff:r}}}
   return null})}
 
-module.exports={route,chat,runTool,search,facts,RULES,TOOLS,cleanHistory,orderView,_setFetch:f=>{fetchImpl=f},_setCode:f=>{makeCode=f},_setMail:f=>{sendMail=f}};
+module.exports={route,chat,runTool,search,beautyOf,facts,RULES,TOOLS,cleanHistory,orderView,_setFetch:f=>{fetchImpl=f},_setCode:f=>{makeCode=f},_setMail:f=>{sendMail=f}};

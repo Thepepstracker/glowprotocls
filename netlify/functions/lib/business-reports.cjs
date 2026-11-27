@@ -68,5 +68,23 @@ async function saveExpense(s,b,actor,now=Math.floor(Date.now()/1000)){
  const id=clean(b.id,64);if(!/^[a-f0-9-]{16,64}$/.test(id))fail('Invalid expense identifier.');const old=await s.get('report_expenses',id);if(old){if(b.expected_revision!==(old.revision||0))fail('This expense already exists or changed. Refresh Reports before saving.',409);if(b.voided!==true)fail('Void an incorrect expense and create a replacement; posted expenses cannot be overwritten.',409);if(old.voided)fail('This expense is already voided.',409);await s.put('report_expenses',id,{...old,voided:true,void_reason:clean(b.reason,500),voided_at:now,voided_by:actor,revision:old.revision+1});return{ok:true,id}}
  if(b.voided)fail('Expense not found.',404);if(b.expected_revision!==0)fail('Refresh Reports before saving.',409);const brand=b.brand||'all';if(brand!=='all'&&!BRANDS.includes(brand))fail('Choose a valid store.');if(!Object.hasOwn(CATEGORIES,b.category))fail('Choose a valid expense category.');const amount=money(b.amount_cents);if(!amount)fail('Enter an expense amount greater than zero.');const record={id,date:date(b.date),category:b.category,brand,amount_cents:amount,vendor:clean(b.vendor,150),note:clean(b.note,500),created:now,actor,revision:1,voided:false};await s.put('report_expenses',id,record);return{ok:true,id};
 }
-module.exports={build,range,day,date,allocate,costFor,saveCost,saveExpense,CATEGORIES};
+// Profit this month for Management → Today (Jonah, 27 Nov 2026: "when will profits become more noticeable"; "yes" to a
+// Profit tile). Built from the same report as Reports → P&L, so the two always agree:
+//   Sales (after discounts, plus shipping charged) − product cost − shipping labels − affiliate commission − card fees − bills.
+// Card fees: what was entered under "Payment processing fees" in Reports; if nothing is entered for the month, an
+//   estimate of Stripe's standard 2.9% + 30¢ on each card-paid order (marked as an estimate).
+// Product cost: from the unit costs saved in Reports. Products with no cost saved are counted at the same cost rate as
+//   the products that have one (marked as an estimate), and listed so the cost can be added.
+const CARD=/^card/;
+async function profit(s,b={},now=Math.floor(Date.now()/1000)){const today=day(now),start=b.start||today.slice(0,7)+'-01',end=b.end||today;
+ const rep=await build(s,{start,end,brand:b.brand||'glow'},now),p=rep.pnl,sm=rep.summary,sales=p.revenue;
+ const missing=p.missing_costs||[],knownNet=rep.products.filter(x=>x.cost!==null).reduce((n,x)=>n+x.net,0),otherNet=sm.net-knownNet;
+ const knownRate=knownNet>0?p.known_cogs/knownNet:null,productCost=knownRate===null?null:Math.round(p.known_cogs+otherNet*knownRate);
+ const feesEntered=(p.expense_categories.find(c=>c.key==='fees')||{}).amount||0,cardOrders=rep.orders.filter(o=>CARD.test(o.method));
+ const feeEstimate=cardOrders.reduce((n,o)=>n+Math.round(o.verified_net_cash*0.029)+30,0),fees=feesEntered||feeEstimate,bills=p.operating_expenses-feesEntered;
+ const labels=p.label_costs,commission=sm.commission,out=productCost===null?null:sales-productCost-labels-commission-fees-bills;
+ return{start,end,month:start.slice(0,7),orders:sm.orders,sales,product_cost:productCost,product_cost_estimated:otherNet>0,known_cost_share:sm.net>0?Math.round(knownNet/sm.net*100):0,
+  missing_costs:missing.map(m=>m.name||m.sku||String(m.product_id)).slice(0,12),missing_count:missing.length,labels,labels_missing:p.label_costs_missing,commission,card_fees:fees,card_fees_estimated:!feesEntered&&cardOrders.length>0,card_orders:cardOrders.length,
+  bills,bills_entered:rep.expenses.filter(e=>e.category!=='fees').length,profit:out,kept_cents_per_dollar:out===null||!sales?null:Math.round(out*100/sales)}}
+module.exports={profit,build,range,day,date,allocate,costFor,saveCost,saveExpense,CATEGORIES};
 

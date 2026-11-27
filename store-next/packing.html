@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black"><meta name="apple-mobile-web-app-title" content="Packing Check"><meta name="theme-color" content="#1b1b1b"><link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="robots" content="noindex,nofollow">
 <title>Packing Check · Glow Lab</title>
 <style>
@@ -247,17 +248,41 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 .sn-modal iframe{border:0;width:100%;flex:1;min-height:420px;background:#f4efe6}.sn-modal .ft{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line)}
 @media (max-width:900px){.sn{grid-template-columns:1fr}.sn-sum{position:static}}
 @media (max-width:600px){.sngrid{grid-template-columns:1fr}.sngrid .row3{grid-template-columns:1fr 70px 100px}.snadd{grid-template-columns:1fr 70px}.snadd button{grid-column:1/-1}.snreasons{grid-template-columns:repeat(2,minmax(0,1fr))}.sn-box{grid-template-columns:repeat(2,minmax(0,1fr))}.snhist .hide-sm{display:none}}
+/* iPad (Jonah, 28 Nov 2026: "make it iPad-friendly", like Serum Station). Works from the Home Screen, respects the
+   iPad's safe areas, no double-tap zoom or grey tap flash, bigger things to tap, keyboard-only hints hidden on touch,
+   a tappable "✓ Next vial" and "↩ Undo" in the gold bar, and the screen stays on while there are boxes to pack. */
+header{padding-top:max(12px,env(safe-area-inset-top,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
+button,.tap,a.button,.chips button,.tabs button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button,.tap{-webkit-user-select:none;user-select:none}
+.now{top:calc(58px + env(safe-area-inset-top,0px))}
+#backApp{color:#f3d58b;text-decoration:none;margin-right:10px;font-weight:600}#backApp[hidden]{display:none}
+.wake{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 12px;font-size:14px}.wake[hidden]{display:none}
+.now button.key{cursor:pointer;color:var(--ink)}.now .k-tap,.now .undo-tap{display:none}
+.now .undo-tap{font-weight:700;font-size:16px;border:2px solid var(--ink);border-radius:10px;background:#fff;padding:10px 16px}
+@media (pointer:coarse){
+ .now .k-key{display:none}.now .k-tap{display:inline}.now .undo-tap{display:inline-block}
+ .now button.key{font-size:18px;letter-spacing:0;padding:14px 22px;background:var(--ink);color:#fff;border-radius:12px;min-height:56px}
+ .keys,#bigscreen,#notify,#testPing{display:none!important}
+ button,.tools button,.tabs button,.chips button{min-height:44px}
+ button.mini{padding:10px 14px;font-size:15px}
+ .tap{width:64px;height:64px;font-size:26px;border-radius:12px}
+ .tools input[type=search]{min-height:48px;font-size:17px}
+ select,input,textarea{font-size:17px}
+}
+/* iPad landscape: use the extra width. */
+@media (pointer:coarse) and (min-width:1100px){main,header .row,.now .in{max-width:1180px}}
 </style>
 </head>
 <body>
 <header>
   <div class="row">
-    <h1>Packing Check</h1>
-    <div class="hstats"><span class="count" id="count">0 of 0 orders checked</span><span class="pill hide-sm" id="left"></span><span class="pill ticker" id="ticker" hidden></span><span class="pill hide-sm" id="today"></span><span class="pill hide-sm" id="synced"></span></div>
+    <h1><a href="/store-next/admin" id="backApp" hidden>‹ App</a>Packing Check</h1>
+    <div class="hstats"><span class="count" id="count">0 of 0 orders checked</span><span class="pill hide-sm" id="left"></span><span class="pill ticker" id="ticker" hidden></span><span class="pill hide-sm" id="today"></span><span class="pill hide-sm" id="synced"></span><button type="button" class="wake" id="wakeBtn" hidden>🔆 Screen on</button></div>
   </div>
   <div class="bar"><i id="bar"></i></div>
 </header>
-<div class="now" id="now" hidden><div class="in"><span class="key">SPACE</span><div><div class="what" id="nowWhat"></div><div class="sub" id="nowSub"></div><div class="warnline" id="nowWarn"></div></div><div class="timer" id="nowTimer" title="Time on this box"></div></div></div>
+<div class="now" id="now" hidden><div class="in"><button type="button" class="key" id="nowNext" title="Next vial in (Space)"><span class="k-key">SPACE</span><span class="k-tap">✓ Next vial</span></button><button type="button" class="undo-tap" id="nowUndo" title="Undo (Backspace)">↩ Undo</button><div><div class="what" id="nowWhat"></div><div class="sub" id="nowSub"></div><div class="warnline" id="nowWarn"></div></div><div class="timer" id="nowTimer" title="Time on this box"></div></div></div>
 <canvas id="confetti"></canvas><div class="cheer" id="cheer"></div><div class="toast" id="toast" role="status" aria-live="polite"></div><div class="feed" id="feed" aria-live="polite"></div>
 <main>
   <div id="week"></div>
@@ -1167,19 +1192,21 @@ function buyAllLists(){var ready=[],needs=[],retry=[],failed=buyAllLast?buyAllLa
 // shirt. One shirt per person per live: it goes in their first order from that live. Lives: midnight = Mon 23 Nov
 // 12:00–6:00 AM; evening = Mon 23 Nov 8:00 PM – Tue 3:00 AM (orders jump at 8 PM). Orders that already shipped are
 // listed so the shirt can be mailed on its own.
-var SHIRT={gift:'FREE SHIRT',per:15,lives:[{name:'Midnight live',from:Date.UTC(2026,10,23,5)/1000,to:Date.UTC(2026,10,23,11)/1000},{name:'Evening live',from:Date.UTC(2026,10,24,1)/1000,to:Date.UTC(2026,10,24,8)/1000}]};
+// Added 27 Nov 2026 (Jonah: "add the first 15 orders to get t shirts last night"): the Thanksgiving night live,
+// Thu 26 Nov 8:00 PM – Fri 27 Nov 3:00 AM Eastern, the same hours as the Monday evening live.
+var SHIRT={gift:'FREE SHIRT',per:15,lives:[{name:'Monday midnight live',from:Date.UTC(2026,10,23,5)/1000,to:Date.UTC(2026,10,23,11)/1000},{name:'Monday evening live',from:Date.UTC(2026,10,24,1)/1000,to:Date.UTC(2026,10,24,8)/1000},{name:'Thursday night live',from:Date.UTC(2026,10,27,1)/1000,to:Date.UTC(2026,10,27,8)/1000}]};
 var shirtMap={},shirtList=[];
 function buildShirts(){shirtMap={};shirtList=[];var who=function(o){var c=o.customer||{};return String(c.email||c.name||o.id).toLowerCase().trim()};
   SHIRT.lives.forEach(function(L){var seen={},n=0;
     all.filter(function(o){return o.is_test!==true&&o.paid&&(o.status==='paid'||o.status==='shipped')&&o.created>=L.from&&o.created<L.to}).sort(function(a,b){return a.created-b.created}).forEach(function(o){
       var w=who(o);if(n>=SHIRT.per||seen[w])return;seen[w]=1;n++;shirtMap[o.id]={live:L.name,rank:n};shirtList.push(o)})})}
-function shirtTag(o){var x=shirtMap[o.id];return x?'<span class="tag shirt" title="First '+SHIRT.per+' paid orders from the '+esc(x.live)+' on Monday get a free shirt">👕 FREE SHIRT</span>':''}
+function shirtTag(o){var x=shirtMap[o.id];return x?'<span class="tag shirt" title="First '+SHIRT.per+' paid orders from the '+esc(x.live)+' get a free shirt">👕 FREE SHIRT</span>':''}
 function shirtLine(o){var x=shirtMap[o.id];return x?'<div class="shirtline">👕 Put a free shirt in this box · '+esc(x.live)+' #'+x.rank+' of '+SHIRT.per+'</div>':''}
 function shirtBox(){var el=document.getElementById('shirts');if(!el)return;if((view!=='todo'&&view!=='all')||!shirtList.length){el.innerHTML='';return}
   var inQ={};orders.forEach(function(o){inQ[o.id]=1});var pack=shirtList.filter(function(o){return inQ[o.id]}),mail=shirtList.filter(function(o){return !inQ[o.id]});
   var rows=SHIRT.lives.map(function(L){return '<tr><td colspan="4"><b>'+esc(L.name)+'</b></td></tr>'+shirtList.filter(function(o){return shirtMap[o.id].live===L.name}).map(function(o){var x=shirtMap[o.id],c=o.customer||{};
     return '<tr><td>#'+x.rank+'</td><td>'+esc(c.name||'')+'</td><td>'+esc(o.id)+'<br><span class="small">ordered '+esc(new Date(o.created*1000).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'}))+'</span></td><td>'+(inQ[o.id]?'<span class="go2">In the box (on this list)</span>':'<span class="mail">Already shipped · mail it</span>')+'</td></tr>'}).join('')}).join('');
-  el.innerHTML='<details class="shirts"><summary>👕 Free shirts · first '+SHIRT.per+' from each Monday live · '+pack.length+' go in boxes here · '+mail.length+' already shipped, mail separately</summary><table><tbody>'+rows+'</tbody></table></details>'}
+  el.innerHTML='<details class="shirts"><summary>👕 Free shirts · first '+SHIRT.per+' from each live · '+pack.length+' go in boxes here · '+mail.length+' already shipped, mail separately</summary><table><tbody>'+rows+'</tbody></table></details>'}
 function buyAllBox(){var el=document.getElementById('buyAll');if(!el)return;
   if(view!=='todo'&&view!=='all'){el.innerHTML='';return}
   var L=buyAllLists(),h='';
@@ -1321,6 +1348,16 @@ document.addEventListener('click',function(e){var a=e.target.closest&&e.target.c
 document.getElementById('autoprint').addEventListener('click',function(){if(!autoPrint){if(!confirm('Turn on auto-print on THIS computer?\n\nEvery new shipping label prints here with its packing slip. Labels that already exist are skipped. Turn it on only on the computer next to the label printer.'))return;all.forEach(function(o){if(hasLabel(o))printedIds[o.id]=Date.now()});lsSet(APD,printedIds)}autoPrint=!autoPrint;lsSet(APK,autoPrint);syncAutoPrint();toast(autoPrint?'Auto-print is ON here. New labels print by themselves.':'Auto-print is off.')});
 syncAutoPrint();
 syncNotifyBtn();
+// iPad: tap targets for the keyboard-only actions, screen stays on while boxes are waiting, ‹ App when opened from the app.
+document.getElementById('nowNext').addEventListener('click',function(e){e.preventDefault();lastKey=Date.now();tickTarget()});
+document.getElementById('nowUndo').addEventListener('click',function(e){e.preventDefault();lastKey=Date.now();undo()});
+var wakeLock=null,wantWake=ls('glp_pack_wake_v1',true);
+function packWaiting(){return !!currentOrder()}
+function renderWake(){var b=document.getElementById('wakeBtn');if(!b)return;if(!('wakeLock' in navigator)){b.hidden=true;return}b.hidden=false;b.textContent=wakeLock?'🔆 Screen stays on':wantWake?'🔆 Tap to keep screen on':'🌙 Screen can sleep'}
+function packWake(){renderWake();if(!wantWake||wakeLock||!('wakeLock' in navigator)||document.hidden||!packWaiting())return;navigator.wakeLock.request('screen').then(function(l){wakeLock=l;l.addEventListener('release',function(){wakeLock=null;renderWake()});renderWake()}).catch(function(){renderWake()})}
+document.getElementById('wakeBtn').addEventListener('click',function(){wantWake=!wantWake;lsSet('glp_pack_wake_v1',wantWake);if(!wantWake&&wakeLock){wakeLock.release();wakeLock=null}renderWake();packWake()});
+document.addEventListener('click',packWake,true);document.addEventListener('visibilitychange',function(){if(!document.hidden)packWake()});setInterval(function(){if(wakeLock&&!packWaiting()){wakeLock.release();wakeLock=null;renderWake()}else packWake()},15000);renderWake();
+try{if(new URLSearchParams(location.search).get('from')==='app')sessionStorage.setItem('glp_pack_from_app','1');if(sessionStorage.getItem('glp_pack_from_app')==='1')document.getElementById('backApp').hidden=false}catch(e){}
 (function(){var b=document.getElementById('sound');b.setAttribute('aria-pressed',String(soundOn));b.textContent=soundOn?'🔔 Sound on':'🔕 Sound off'})();
 setInterval(function(){if(document.hidden)return;if(Date.now()-lastKey<20000)return;if(Object.keys(logOpen).length)return;fetchOrders(true)},AUTO_MS);
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&Date.now()-lastLoad>AUTO_MS)fetchOrders(true)});

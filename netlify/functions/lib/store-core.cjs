@@ -523,6 +523,7 @@ async function handle({path,method='GET',headers={},body={}}){
     fail('Endpoint not found.',404);
    }
    if(path==='/admin/reports'&&method==='POST')return businessReports.build(s,body);
+   if(path==='/admin/profit'&&method==='GET'){if(!owner)fail('Only the owner can see profit.',403);return businessReports.profit(s,{brand:reqBrand.id})}
    if(path==='/admin/reports/cost'&&method==='POST'){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const result=await businessReports.saveCost(s,body,actor);await audit(s,'report_product_cost_saved',result.id);return result}
    if(path==='/admin/reports/expense'&&method==='POST'){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const result=await businessReports.saveExpense(s,body,actor);await audit(s,body.voided?'report_expense_voided':'report_expense_recorded',result.id);return result}
    if(path==='/admin/checkout-context'&&method==='GET')return{can_order_for_customer:true};

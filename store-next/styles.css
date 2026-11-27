@@ -1755,3 +1755,17 @@ h1,h2,h3,.eyebrow{text-wrap:balance}
 .pace-red{background:#a23b1d}.pace-yellow{background:#c98a00}.pace-green{background:#1f7a3a}.pace-blue{background:#1d5fbf}.pace-gold{background:linear-gradient(135deg,#9a6b12,#d9b25b 55%,#a87a1e)}.pace-purple{background:linear-gradient(135deg,#4b2aa8,#7b4fe0)}
 .pace-diamond{background:linear-gradient(135deg,#1c6aa8 0%,#4fb3e8 35%,#e6f7ff 50%,#4fb3e8 65%,#1c6aa8 100%)}.pace-galaxy{background:radial-gradient(circle at 30% 30%,#fff 0 1px,transparent 2px),radial-gradient(circle at 65% 55%,#fff 0 1px,transparent 2px),linear-gradient(135deg,#0b1240,#3a1c7a 45%,#b03a8f)}.pace-star{background:radial-gradient(circle at 50% 42%,#fffbe6 0 14%,#ffd34d 34%,#f39a12 70%,#c46a00)}
 @media (max-width:640px){.pace{grid-template-columns:1fr}.pace-dot{width:48px;height:48px}}
+
+/* Profit this month on Management → Today (27 Nov 2026) */
+.pf-card{background:#fff;border:1px solid var(--line,#e6dfd2);border-radius:14px;padding:18px 20px;margin:0 0 16px}
+.pf-card.pf-neg .pf-head strong{color:#b3261e}
+.pf-head{display:grid;gap:12px}.pf-head small{display:block;font:700 11px/1.2 Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted,#6f6a60)}
+.pf-head strong{display:block;font:500 40px/1.1 'Cormorant Garamond',Georgia,serif;color:#1b1b1b;margin:4px 0 2px}.pf-head span{font-size:14px;color:#3c3a35}.pf-head span b{color:#2f7a3d}
+.pf-est{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#fbf1d6;color:#8a6a1c;letter-spacing:.06em;font-size:10px;vertical-align:1px}
+.pf-split{display:flex;height:12px;border-radius:999px;overflow:hidden;background:#eee}.pf-split i{display:block;min-width:0}
+.pf-split .k-cost{background:#c9a24d}.pf-split .k-ship{background:#8fb3d9}.pf-split .k-aff{background:#b49ad6}.pf-split .k-fee{background:#d9a08f}.pf-split .k-bill{background:#9c9589}.pf-split .k-keep{background:#3f9a52}
+.pf-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px;font-size:14px}.pf-list li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed #ece6da;padding-bottom:6px}
+.pf-list li span em{font-style:normal;color:var(--muted,#6f6a60);font-size:12px}.pf-list li b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pf-list .pf-total{border:0;padding-top:2px;font-weight:700;font-size:15px}
+.pf-notes{margin:12px 0 0;padding:10px 12px 10px 28px;background:#faf7f2;border-radius:10px;font-size:13px;color:#4a463e;display:grid;gap:6px}
+.pf-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}.pf-dot.k-cost{background:#c9a24d}.pf-dot.k-ship{background:#8fb3d9}.pf-dot.k-aff{background:#b49ad6}.pf-dot.k-fee{background:#d9a08f}.pf-dot.k-bill{background:#9c9589}.pf-dot.k-keep{background:#3f9a52}
