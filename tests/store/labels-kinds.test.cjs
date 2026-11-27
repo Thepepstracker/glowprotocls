@@ -4,7 +4,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const lab=require('../../netlify/functions/lib/labels.cjs');
 test('every kind has its stickers placed exactly once per sticker, and every label belongs to a kind with an image and thumbnail',()=>{
- const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','box','nasal','serum','vial']);
+ const L=lab.lib();assert.deepEqual(Object.keys(L.kinds).sort(),['big','box','nasal','serum','vial','vial15']);
  assert.equal(L.kinds.nasal.cm.length,10);assert.equal(L.kinds.big.cm.length,30);for(const m of [...L.kinds.nasal.cm,...L.kinds.big.cm])assert.equal(m.length,6);
  const n=L.labels.filter(l=>l.kind==='nasal');assert.equal(n.length,17,'15 sprays + Glutathione 1,500 mg (24 Nov 2026) + Rose Recovery Mist 60 mL (25 Nov 2026, same 4 × 2 in sticker)');assert.ok(n.some(l=>l.id==='nasal-rose-recovery-mist-60-ml'));assert.ok(n.some(l=>l.id==='nasal-glutathione-1500-mg'));assert.deepEqual(L.labels.filter(l=>l.kind==='big').map(l=>l.id),['big-bac-water-30-ml','big-glow-lab-brand'],'BAC Water 30 mL and the Glow Lab brand label (13 Nov)');
  for(const l of L.labels)assert.ok(Array.isArray(l.img)&&l.thumb&&l.thumb[1]>0,l.id);
@@ -50,3 +50,11 @@ test('serum labels: Protocol 01 (15 and 50 mL), Protocol 02 and Glow Eyes Luxe o
  const pdf=lab.pdf(pages,'t','serum').toString('latin1');assert.equal((pdf.match(/ cm\n\/L\d+ Do/g)||[]).length,24);
  assert.throws(()=>lab.plan([{id:'serum-protocol-02-15-ml',count:1},{id:'big-bac-water-30-ml',count:1}],{kind:'serum'}));
 });
+
+// 1.5 × 0.75 in vial labels on OL1067WG, 60 per sheet (Jonah, 27 Nov 2026: GLP-3R 20 mg).
+test('vial15: OL1067WG 60 per sheet, GLP-3R 20 mg, builds a PDF and never mixes with the 1.75 in vial sheet',async()=>{
+ const L=lab.lib();assert.equal(L.kinds.vial15.cm.length,60);assert.equal(L.kinds.vial15.cols,5);
+ const g=L.labels.find(l=>l.id==='glp-3r-20-mg-ol1067');assert.equal(g.kind,'vial15');assert.equal(g.w,900);assert.equal(g.h,450);
+ const p=lab.plan([{id:'glp-3r-20-mg-ol1067',count:60}],{kind:'vial15'});assert.equal(p.length,1);assert.equal(p[0].filter(Boolean).length,60);
+ assert.throws(()=>lab.plan([{id:'glp-3r-20-mg-ol1067',count:1}],{kind:'vial'}),/different sheets/);
+ const pdf=await lab.pdf(p,'GLP-3R 20 mg','vial15');assert.ok(Buffer.isBuffer(pdf)||pdf instanceof Uint8Array);assert.ok(pdf.length>300000)});
