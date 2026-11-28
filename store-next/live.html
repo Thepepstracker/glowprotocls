@@ -37,6 +37,7 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .m input{width:90px;font:inherit;font-size:22px;font-weight:700;padding:2px 6px;border:1px solid var(--line);border-radius:8px}
 .cols{display:grid;grid-template-columns:1.25fr 1fr;gap:14px}
 @media (max-width:860px){.cols{grid-template-columns:1fr}}
+.f15t{width:100%;border-collapse:collapse;font-size:15px}.f15t th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#777);padding:4px 6px}.f15t td{padding:7px 6px;border-top:1px solid var(--line);vertical-align:middle}.f15t tr.done td{background:#eaf6ee}.f15t input[type=checkbox]{width:24px;height:24px}.f15t .f15note{width:100%;min-width:120px;font-size:15px;padding:6px 8px;border:1px solid var(--line);border-radius:8px}.f15t .rep{background:#fff4d6;color:#7a5200;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:700}.f15 .tablewrap{overflow-x:auto}
 .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
 .panel h2{font-size:17px;margin:0 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .feed{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
@@ -136,6 +137,9 @@ header .golive.on{background:#fff;border-color:#fff;color:#b3261e}
     <div class="m"><b id="mOnline">–</b><small>On the site now</small></div>
     <div class="m"><input id="viewers" type="number" min="0" step="1" placeholder="e.g. 250" aria-label="Viewers right now"><small id="conv">Viewers now · type it in to see % buying</small></div>
   </div>
+  <section class="panel f15" aria-label="First 15 orders this live"><h2>🏁 First 15 orders this live <span class="muted" style="font-size:13px;font-weight:400" id="f15n"></span></h2>
+    <p class="note" style="margin:-4px 0 10px">In the order they came in, counted from when this live started. Tick each one as you take care of it and add a note if you like. Ticks and notes are saved on this device.</p>
+    <div class="tablewrap"><table class="f15t"><thead><tr><th>#</th><th>Time</th><th>Customer</th><th>Order</th><th>Total</th><th>Paid?</th><th>Done</th><th>Note</th></tr></thead><tbody id="f15"><tr><td colspan="8" class="muted">No orders yet this live.</td></tr></tbody></table></div></section>
   <div class="cols">
     <section class="panel" aria-label="Orders as they come in"><h2>Orders as they come in <span class="muted" style="font-size:13px;font-weight:400" id="upd"></span></h2><ul class="feed" id="feed"><li class="muted" style="display:block">No orders yet tonight.</li></ul></section>
     <div>
@@ -194,6 +198,24 @@ function soldTonight(list){var by={};list.forEach(function(o){(o.items||[]).forE
 function product(id){return (data&&data.products||[]).find(function(p){return p.id===id})}
 function tile(p,sold){var left=Math.max(0,p.stock||0),cls=left===0?'out':left<=5?'low':'';return '<div class="tile '+cls+'"><button class="x" data-unfeat="'+p.id+'" aria-label="Stop watching '+esc(p.name)+'">×</button><div class="n">'+esc(p.name)+(p.size?' <span class="muted">'+esc(p.size)+'</span>':'')+'</div><div class="left">'+(left===0?'Sold out':left+' <small>left</small>')+'</div><div class="sold">'+(sold||0)+' sold tonight</div></div>'}
 var beepCtx=null;function beep(){if(!cfg.sound)return;try{beepCtx=beepCtx||new (window.AudioContext||window.webkitAudioContext)();var t=beepCtx.currentTime;[880,1320].forEach(function(f,i){var o=beepCtx.createOscillator(),g=beepCtx.createGain();o.frequency.value=f;o.connect(g);g.connect(beepCtx.destination);g.gain.setValueAtTime(.0001,t+i*.14);g.gain.exponentialRampToValueAtTime(.25,t+i*.14+.02);g.gain.exponentialRampToValueAtTime(.0001,t+i*.14+.22);o.start(t+i*.14);o.stop(t+i*.14+.25)})}catch(e){}}
+// First 15 orders this live (Jonah, 27 Nov 2026: "add to the live area, tracking for the first 15 orders so that we can
+// track it manually"). Same orders as the feed (from this live's start), oldest first. Done ticks and notes stay on
+// this device, kept per live (by its start time).
+var F15K='glow_live_first15_v1';function f15Load(){try{return JSON.parse(localStorage.getItem(F15K)||'{}')||{}}catch(e){return{}}}
+function f15Save(x){try{localStorage.setItem(F15K,JSON.stringify(x))}catch(e){}}
+function first15(list){var body=$('f15');if(!body)return;var key=String(startEpoch()),st=f15Load(),mine=st[key]||{};
+  var asc=list.slice().sort(function(a,b){return (a.submitted_at||a.created)-(b.submitted_at||b.created)}).slice(0,15),seen={};
+  $('f15n').textContent=asc.length?asc.length+' of 15'+(asc.length===15?' · full':'')+' · '+asc.filter(function(o){return (mine[o.id]||{}).done}).length+' done':'';
+  if(!asc.length){body.innerHTML='<tr><td colspan="8" class="muted">No orders yet this live.</td></tr>';return}
+  if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#f15'))return;
+  body.innerHTML=asc.map(function(o,i){var c=o.customer||{},em=String(c.email||c.name||o.id).toLowerCase(),rep=seen[em];seen[em]=1;var m=mine[o.id]||{};
+    return '<tr class="'+(m.done?'done':'')+'"><td><b>'+(i+1)+'</b></td><td>'+hm(o.submitted_at||o.created)+'</td><td><b>'+esc(c.name||'Customer')+'</b>'+(rep?' <small class="rep">2nd order</small>':'')+'<br><small class="muted">'+esc([c.city,c.state].filter(Boolean).join(', '))+'</small></td>'
+     +'<td><a href="/store-next/admin?order='+encodeURIComponent(o.id)+'" target="_blank" rel="noopener">'+esc(o.id)+'</a></td><td>'+money2(o.total)+'</td><td><span class="'+(isPaid(o)?'st-paid">Paid':'st-wait">Not yet')+'</span></td>'
+     +'<td><input type="checkbox" data-f15="'+esc(o.id)+'"'+(m.done?' checked':'')+' aria-label="Done: '+esc(o.id)+'"></td><td><input type="text" class="f15note" data-f15n="'+esc(o.id)+'" value="'+esc(m.note||'')+'" maxlength="80" placeholder="Note"></td></tr>'}).join('')}
+document.addEventListener('change',function(e){var t=e.target,id=t&&t.dataset&&(t.dataset.f15||t.dataset.f15n);if(!id)return;var key=String(startEpoch()),st=f15Load(),mine=st[key]=st[key]||{},m=mine[id]=mine[id]||{};
+  if(t.dataset.f15)m.done=t.checked;else m.note=t.value.slice(0,80);f15Save(st);var tr=t.closest('tr');if(tr&&t.dataset.f15)tr.classList.toggle('done',t.checked);
+  var all=Object.keys(st).sort();while(all.length>10)delete st[all.shift()];f15Save(st);
+  var n=$('f15n');if(n)n.textContent=n.textContent.replace(/\d+ done/,document.querySelectorAll('#f15 input[data-f15]:checked').length+' done')});
 function render(){
   var list=tonight(),fresh={};if(seen){list.forEach(function(o){if(!seen[o.id])fresh[o.id]=1})}var newCount=Object.keys(fresh).length;
   seen={};list.forEach(function(o){seen[o.id]=1});if(newCount){beep();if(!document.body.classList.contains('stream'))toast('🎉 '+newCount+' new order'+(newCount>1?'s':''))}
@@ -203,6 +225,7 @@ function render(){
   var L=shownLive(),mins=Math.max(0,Math.floor(((L&&L.ended_at?L.ended_at*1000:Date.now())/1000-startEpoch())/60));$('mOnline').textContent=liveInfo&&liveInfo.active?String(liveInfo.active.online_now||0):liveInfo&&liveInfo.site_now!=null?String(liveInfo.site_now):'–';$('since').textContent=sales>=goal?'🎯 Goal hit! '+money(sales-goal)+' over':L&&L.ended_at?'Live ended '+hm(L.ended_at)+' · '+money(goal-sales)+' short of the goal':mins>0?money(goal-sales)+' to go · live for '+(mins>=60?Math.floor(mins/60)+'h ':'')+(mins%60)+'m':L?'Live just started':'Press Start live when you go live';
   $('mOrders').textContent=list.length;$('mBuyers').textContent=nb;$('mAvg').textContent=list.length?money(sales/list.length):'$0';$('mPaid').textContent=money(paid);
   var v=Number(cfg.viewers);$('conv').textContent=v>0?(Math.round(nb/v*1000)/10)+'% of '+v+' viewers have bought':'Viewers now · type it in to see % buying';
+  first15(list);
   $('feed').innerHTML=list.length?list.slice(0,60).map(function(o){var c=o.customer||{};return '<li class="'+(fresh[o.id]?'new':'')+'"><time>'+hm(o.submitted_at||o.created)+'</time><div class="who"><b>'+esc(c.name||'Customer')+'</b><small>'+esc([c.city,c.state].filter(Boolean).join(', '))+' · '+units(o)+' item'+(units(o)===1?'':'s')+' · <a href="/store-next/admin?order='+encodeURIComponent(o.id)+'" target="_blank" rel="noopener">'+esc(o.id)+'</a></small></div><div class="amt">'+money2(o.total)+'<small class="'+(isPaid(o)?'st-paid">Paid':'st-wait">Not paid yet')+'</small></div></li>'}).join(''):'<li class="muted" style="display:block">No orders yet tonight.</li>';
   var sold=soldTonight(list),feat=(cfg.feat||[]).map(product).filter(Boolean);
   var tiles=feat.length?feat.map(function(p){return tile(p,sold[p.id])}).join(''):'<p class="muted" style="margin:0">Add the products you are showing to watch their stock.</p>';$('feat').innerHTML=tiles;$('sFeat').innerHTML=feat.map(function(p){return tile(p,sold[p.id])}).join('');
