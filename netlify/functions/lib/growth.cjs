@@ -180,7 +180,12 @@ async function route(path,body,h,method,{session}){
   const mine=(await list(s,'orders')).filter(o=>o.is_test===false&&(o.brand||'glow')==='glow'&&['paid','shipped'].includes(o.status)&&(o.items||[]).length&&ownsOrder(o,a)).sort((x,y)=>(y.created||0)-(x.created||0));
   for(const lite of mine.slice(0,3)){const o=await s.get('orders',lite.id),r=await bagItems(s,o.items);if(r.items.length)return{order:{id:o.id,date:longDate(o.created),...r}}}return{order:null}}));
  if(path==='/account/bag'&&method==='POST')return ok(await transaction(async s=>{const a=await accounts.session(s,h);if(!a)return{saved:false};await saveBag(s,a,body.items);return{saved:true}}));
- if(path==='/account/bag'&&method==='GET')return ok(await transaction(async s=>{const a=await accounts.session(s,h);if(!a)return{items:[]};const b=await s.get('bags',a.id);if(!b||!b.items?.length||now()-b.updated>7*DAY)return{items:[]};return bagItems(s,b.items)}));
+ if(path==='/account/bag'&&method==='GET')return ok(await transaction(async s=>{const a=await accounts.session(s,h);if(!a)return{items:[]};const b=await s.get('bags',a.id);if(!b||!b.items?.length||now()-b.updated>7*DAY)return{items:[]};
+  // A bag they already checked out must not come back (David, 27 Nov 2026: "his old cart keeps popping up" when he tried
+  // to order more). Any order placed since the bag was saved means that bag is done: clear it and return nothing.
+  const em=lower(a.email),done=(await list(s,'orders')).some(o=>o.is_test===false&&!['canceled','expired'].includes(o.status)&&(o.customer_id===a.id||lower(o.customer?.email)===em)&&(o.submitted_at||o.created||0)>=b.updated);
+  if(done){await s.put('bags',b.id,{...b,items:[],cleared:'ordered',updated:now()});return{items:[]}}
+  return bagItems(s,b.items)}));
  if(path==='/review/load'&&method==='POST'){const r=readRef(body.ref,['review']);return ok(await transaction(async s=>{const o=await s.get('orders',r.id);if(!o)bad('This link is not valid.',404);const done=await s.get('reviews',o.id);return{first_name:first(o.customer?.name),state:o.customer?.state||'',order_id:o.id,items:(o.items||[]).map(i=>i.name).slice(0,12),done:!!done}}))}
  if(path==='/review/submit'&&method==='POST'){const r=readRef(body.ref,['review']);const rating=Math.floor(Number(body.rating));if(!(rating>=1&&rating<=5))bad('Choose 1 to 5 stars.');
   const text=String(body.text||'').replace(/\s+/g,' ').trim().slice(0,600),show=body.show_name!==false;

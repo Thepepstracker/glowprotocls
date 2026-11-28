@@ -53,6 +53,17 @@ test('saved bag: signed-in only, comes back on the next visit, one reminder 3–
  await order('GLP-BG0000001',{created:N-3600,customer:{name:'Ora',email:'ora@example.test'}});assert.equal((await growth.bags(25,noon())).sent,0);
 });
 
+test('a bag that was checked out does not come back (David, 27 Nov 2026: old cart kept popping up)',async()=>{
+ const D=await account('dave@example.test','Dave Again');await call('/account/bag',{items:[{id:P.id,quantity:2}]},D.cookie);
+ await transaction(async s=>{const b=await s.get('bags',D.id);b.updated=nowS()-600;await s.put('bags',b.id,b)});
+ await order('GLP-DV0000001',{created:nowS()-60,customer:{name:'Dave Again',email:'dave@example.test'}});
+ assert.deepEqual((await call('/account/bag',undefined,D.cookie)).body.items,[],'the ordered bag is not restored');
+ assert.deepEqual((await transaction(s=>s.get('bags',D.id))).items,[],'and it is cleared');
+ // A new bag after that order still comes back as normal.
+ await new Promise(r=>setTimeout(r,1100));await call('/account/bag',{items:[{id:Q.id,quantity:1}]},D.cookie);
+ assert.deepEqual((await call('/account/bag',undefined,D.cookie)).body.items.map(i=>[i.id,i.quantity]),[[Q.id,1]]);
+});
+
 test('account Reorder button: only your own orders',async()=>{const A=await account('rae@example.test','Rae Reorder');
  assert.equal((await call('/account/reorder',{id:'GLP-RE0000001'},A.cookie)).body.items[0].quantity,2);
  await assert.rejects(call('/account/reorder',{id:'GLP-RE0000002'},A.cookie),e=>e.status===404,'someone else’s order');await assert.rejects(call('/account/reorder',{id:'GLP-RE0000001'}),e=>e.status===401)});

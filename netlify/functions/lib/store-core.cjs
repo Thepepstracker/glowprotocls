@@ -17,6 +17,7 @@ const catalogPhotos=require('./catalog-photo-upload.cjs');
 const couponRules=require('./coupon-rules.cjs');
 const productOffers=require('./product-offers.cjs');
 const businessReports=require('./business-reports.cjs');
+const inventory=require('./inventory.cjs');
 const {ensureMerchCatalog}=require('./merch-catalog.cjs');
 const {withProductPhotos}=require('./product-photos.cjs');const brands=require('./brands.cjs');
 const photoUrl=slug=>'/api/storefronts/'+encodeURIComponent(slug)+'/photo';
@@ -50,7 +51,7 @@ function checkoutCustomer(input){const body={customer:input},customer={};for(con
    if(!/^\d{5}(-\d{4})?$/.test(customer.zip))fail('Enter a five-digit ZIP code, optionally followed by four digits.');{const own=require('./own-contact.cjs').match(customer);if(own)fail(require('./own-contact.cjs').message(own))}
  return customer;
 }
-async function setStock(s,p,stock){int(stock);const members=p.stock_pool?(await s.list('products')).filter(x=>x.stock_pool===p.stock_pool&&x.id!==p.id):[];for(const x of [...members,p]){x.stock=stock;await s.put('products',x.id,x)}}
+async function setStock(s,p,stock){int(stock);{const before=Number(p.stock)||0;if(before!==stock)await inventory.logMove(s,p,before,stock)}const members=p.stock_pool?(await s.list('products')).filter(x=>x.stock_pool===p.stock_pool&&x.id!==p.id):[];for(const x of [...members,p]){x.stock=stock;await s.put('products',x.id,x)}}
 // A line takes stock from its draws: a bundle draws from the products inside it, anything else from itself (units per item).
 async function moveStock(s,line,sign){for(const d of lineDraws(line)){const p=await s.get('products',d.id);if(!p)fail('A product on this order is missing. Review inventory first.',409);await setStock(s,p,p.stock+sign*line.quantity*d.qty)}}
 async function bundleStock(get,p){if(!isBundle(p))return p;let n=Infinity;for(const c of p.components){const x=await get(c.id);n=Math.min(n,x?Math.floor(Math.max(0,x.stock||0)/c.qty):0)}return{...p,stock:n===Infinity?0:n}}
@@ -115,7 +116,8 @@ function draftStore(s,o){const reserved=new Map();for(const line of o.items){res
 async function editStore(s,o){const copy={...o,items:[]};for(const line of o.items)for(const d of lineDraws(line)){const p=await s.get('products',d.id);copy.items.push({id:d.id,quantity:line.quantity,units:d.qty,stock_pool:p?.stock_pool})}return draftStore(s,copy)}
 // Plain letters/digits/space/.'- only: these values end up in a Terminal window and a macOS notification on the shop's computer.
 const safeWord=(v,max)=>String(v||'').normalize('NFKC').replace(/[^\p{L}\p{N} .'-]/gu,'').replace(/\s+/g,' ').trim().slice(0,max);
-async function handle({path,method='GET',headers={},body={}}){
+function handle(args){const b=args&&args.body||{};return inventory.run({path:args&&args.path,ref:String(b.id||b.order_id||'').slice(0,40)},()=>handleInner(args))}
+async function handleInner({path,method='GET',headers={},body={}}){
  const h=Object.fromEntries(Object.entries(headers).map(([k,v])=>[k.toLowerCase(),v]));let setCookie,emailJob,invoiceJob;const staffJobs=[],bulkJobs=[]; // staff new-order alerts queued in this request; sent right after it (Sevalla has no email worker)
  if(!['GET','POST'].includes(method))fail('Method not allowed.',405);
  if(method==='POST'){
@@ -523,6 +525,7 @@ async function handle({path,method='GET',headers={},body={}}){
     fail('Endpoint not found.',404);
    }
    if(path==='/admin/reports'&&method==='POST')return businessReports.build(s,body);
+   if(path.startsWith('/admin/inventory')){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const r=await inventory.route(s,path,body,method,actor,setStock);if(r){if(method==='POST')await audit(s,path.endsWith('count')?'inventory_count':'inventory_received',String(body.ref||(body.counts||[]).length));return r}fail('Endpoint not found.',404)}
    if(path==='/admin/incoming'){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const r=await require('./incoming.cjs').route(s,path,body,method,actor);if(method==='POST')await audit(s,'incoming_saved',String(r.shipments));return r}
    if(path==='/admin/profit'&&method==='GET'){if(!owner)fail('Only the owner can see profit.',403);return businessReports.profit(s,{brand:reqBrand.id})}
    if(path==='/admin/reports/cost'&&method==='POST'){const actor=(await s.get('sessions',sessionId)).staff_id||'owner';const result=await businessReports.saveCost(s,body,actor);await audit(s,'report_product_cost_saved',result.id);return result}
@@ -672,6 +675,7 @@ async function handle({path,method='GET',headers={},body={}}){
     const saved=await catalogPhotos.applyPhotoUpdate(s,p,body.photo_update);
     const group=body.photo_update?.apply_design===true&&p.merch_design?all.filter(x=>x.merch_design===p.merch_design&&x.brand===p.brand&&x.id!==p.id):[];
     if(body.photo_update?.apply_design===true&&!p.merch_design)fail('Choose an existing shirt design before applying photos to all variants.');
+    if(body.id&&(Number(old.stock)||0)!==saved.stock)await inventory.logMove(s,saved,Number(old.stock)||0,saved.stock);
     await setStock(s,saved,saved.stock);
     for(const member of group){const current=await s.get('products',member.id);if(!catalogPhotos.eligible(current))continue;await s.put('products',member.id,{...current,image:saved.image,additional_images:saved.additional_images,...(saved.model_color===''?{model_color:''}:{}),photo_revision:(member.photo_revision||0)+1})}
     await audit(s,body.photo_update?'product_photos_saved':'product_saved');return{ok:true,id};

@@ -27,6 +27,6 @@ function clean(b,products,now){
 async function route(s,path,body,method,actor,now=Math.floor(Date.now()/1000)){
  if(path!=='/admin/incoming')return null;
  if(method==='GET')return (await s.get('integrations','incoming'))||{source:'',checked_at:0,saved_at:0,shipments:[]};
- if(method==='POST'){const rec=clean(body,await s.list('products'),now);rec.saved_by=actor;await s.put('integrations','incoming',rec);return{ok:true,shipments:rec.shipments.length,lines:rec.shipments.reduce((n,x)=>n+x.lines.length,0),unmatched:rec.shipments.reduce((n,x)=>n+x.lines.filter(l=>l.product_id===null).length,0)}}
+ if(method==='POST'){const rec=clean(body,await s.list('products'),now);{/* a delivery already added to stock (Received) stays received */const got=((await s.get('integrations','incoming_received'))||{}).refs||{};for(const x of rec.shipments)if(x.ref&&got[x.ref])x.status='received'}rec.saved_by=actor;await s.put('integrations','incoming',rec);return{ok:true,shipments:rec.shipments.length,lines:rec.shipments.reduce((n,x)=>n+x.lines.length,0),unmatched:rec.shipments.reduce((n,x)=>n+x.lines.filter(l=>l.product_id===null).length,0)}}
  fail('Endpoint not found.',404)}
 module.exports={route,clean,STATUSES};

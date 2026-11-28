@@ -264,6 +264,9 @@ body.big header h1{font-size:28px}body.big .hstats{font-size:19px}
 .now .scan-tap{display:none}
 @media (pointer:coarse){.now .scan-tap{display:inline-block}}
 @media (pointer:coarse) and (min-width:700px){#week{display:none!important}}
+/* Inventory tab (27 Nov 2026) */
+.inv h2{margin:6px 0 6px;font-size:20px}.inv-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.inv-tools input[type=search],.inv-tools input[type=text]{flex:1;min-width:180px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:16px}
+.inv-t{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;font-size:15px}.inv-t th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px}.inv-t td{padding:7px 8px;border-top:1px solid var(--line)}.inv-t .red{color:var(--warn)}.inv-t .ok{color:var(--ok)}.inv-t .amb{color:#8a5a00}.inv-in{width:92px;font-size:17px;padding:7px 8px;border:2px solid var(--line);border-radius:8px}.inv-in:focus{border-color:var(--gold);outline:none}
 /* Speed: the browser skips laying out boxes that are off screen (28 Nov 2026). */
 .order{content-visibility:auto;contain-intrinsic-size:auto 360px}
 /* iPad (Jonah, 28 Nov 2026: "make it iPad-friendly", like Serum Station). Works from the Home Screen, respects the
@@ -323,6 +326,7 @@ button,.tap{-webkit-user-select:none;user-select:none}
     <button data-view="restock" aria-pressed="false">Restock<span class="n" id="nRestock">0</span></button>
     <button data-view="stats" aria-pressed="false">⚡ Stats</button>
     <button data-view="calls" aria-pressed="false">📞 Calls<span class="n" id="nCalls">0</span></button>
+    <button data-view="count" aria-pressed="false" title="Count the shelf, see every stock move, add deliveries">📋 Inventory</button>
     <button data-view="ship" aria-pressed="false" title="Send a box that is not a store order: a missing item, a replacement, a resend or a gift">📮 New shipment</button>
   </div>
   <div class="chips" id="chips">
@@ -513,11 +517,12 @@ function render(){setTimeout(fitNowBar,0);
   document.getElementById('bar').style.width=(orders.length?Math.round(done*100/orders.length):0)+'%';
   document.getElementById('nTodo').textContent=todo.length;document.getElementById('nDone').textContent=done;document.getElementById('nSkip').textContent=sk;
   var rs=restockRows().filter(function(x){return x.status==='out'||x.status==='now'}).length,nr=document.getElementById('nRestock');nr.textContent=rs;nr.className='n'+(rs?' red':'');
-  document.getElementById('chips').style.display=(view==='pick'||view==='restock'||view==='stats'||view==='calls'||view==='ship')?'none':'';document.getElementById('shipPanel').hidden=view!=='ship';
+  document.getElementById('chips').style.display=(view==='pick'||view==='restock'||view==='stats'||view==='calls'||view==='ship'||view==='count')?'none':'';document.getElementById('shipPanel').hidden=view!=='ship';
   weekBanner();todayNums(todo,st);var nc=callList().filter(function(c){return !callDone(c)}).length,ncb=document.getElementById('nCalls');ncb.textContent=nc;
   alerts();buyAllBox();shirtBox();incomingBox();
   var out=document.getElementById('out');
   if(view==='ship'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=shipList();return}
+  if(view==='count'){document.getElementById('now').hidden=true;lastTarget='';if(!document.querySelector('#out .inv')||invDirty||!inv){invDirty=false;out.innerHTML=invView()}return}
   if(view==='pick'||view==='restock'||view==='stats'||view==='calls'){document.getElementById('now').hidden=true;lastTarget='';out.innerHTML=view==='pick'?pickList():view==='stats'?statsView():view==='calls'?callsView():restock();return}
   var list=visibleList();
   if(!orders.length){out.innerHTML='<div class="msg">No orders waiting to be packed right now.</div>';return}
@@ -1227,6 +1232,44 @@ function buildShirts(){shirtMap={};shirtList=[];var who=function(o){var c=o.cust
     all.filter(function(o){return o.is_test!==true&&o.paid&&(o.status==='paid'||o.status==='shipped')&&o.created>=L.from&&o.created<L.to}).sort(function(a,b){return a.created-b.created}).forEach(function(o){
       var w=who(o);if(n>=SHIRT.per||seen[w])return;seen[w]=1;n++;shirtMap[o.id]={live:L.name,rank:n};shirtList.push(o)})})}
 
+
+// ---- 📋 Inventory (Jonah, 27 Nov 2026: "i need you to know whats going in and out and i want to be more focused and
+// confident about what we have"). Count sheet → store count = shelf − what waiting boxes still need; every move is in
+// the log with before / after / why; deliveries from the incoming list are added with one tap (server: inventory.cjs).
+var inv=null,invLog=null,invCounts={},invQ='',invDirty=true,invBusy=false,invShowAll=false;
+var invLoading=false;
+function invLoad(){if(invLoading)return;invLoading=true;return Promise.all([fetch('/api/admin/inventory',{headers:{'X-Store-Request':'1'},cache:'no-store'}).then(function(r){return r.json()}),fetch('/api/admin/inventory/log',{headers:{'X-Store-Request':'1'},cache:'no-store'}).then(function(r){return r.json()})])
+  .then(function(a){invLoading=false;if(a[0].error)throw 0;inv=a[0];invLog=a[1].log||[];invDirty=true;if(view==='count')render()}).catch(function(){invLoading=false;toast('Could not load inventory. Tap Refresh orders.')})}
+function invRows(){var q=invQ.toLowerCase();return ((inv&&inv.pools)||[]).filter(function(x){return (invShowAll||x.active||x.store||x.waiting)&&(!q||x.name.toLowerCase().indexOf(q)>=0)})}
+function invDiff(x){var v=invCounts[x.key];if(v===undefined||v==='')return '';var d=Number(v)-x.shelf;return d===0?'<span class="ok">✓ matches</span>':'<span class="'+(d<0?'red':'amb')+'">'+(d>0?'+':'')+d+' vs store</span>'}
+function invView(){if(!inv){invLoad();return '<div class="inv"><div class="msg">Loading inventory…</div></div>'}
+  var rows=invRows(),filled=Object.keys(invCounts).filter(function(k){return invCounts[k]!==''&&invCounts[k]!==undefined}).length;
+  var REASON_IC={'Order placed':'🛒','Shelf count':'📋','Delivery received':'📦','Free / replacement box':'🎁','Product edited':'✏️','Order changed or canceled':'↩️','Refund':'↩️','Subscription box':'🔁','Unpaid order closed':'⌛','Automatic (store)':'⚙️'};
+  var log=(invLog||[]).slice(0,80).map(function(r){return '<tr><td>'+esc(new Date(r.at*1000).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))+'</td><td>'+esc(r.name)+'</td><td class="'+(r.delta<0?'red':'ok')+'"><b>'+(r.delta>0?'+':'')+r.delta+'</b></td><td>'+r.from+' → '+r.to+'</td><td>'+(REASON_IC[r.reason]||'•')+' '+esc(r.reason)+(r.ref?' <span class="small">'+esc(r.ref)+'</span>':'')+(r.note?' <span class="small">“'+esc(r.note)+'”</span>':'')+'</td></tr>'}).join('');
+  return '<div class="inv"><div class="inv-head"><h2>📋 Shelf count</h2><p class="small">Type what is <b>physically on the shelf</b> for each item you count (single vials; a kit of 10 = 10). The store count becomes <b>shelf − waiting in boxes</b>, because the store already took those vials off when the orders came in. Leave a box empty to skip it.</p>'
+   +'<div class="inv-tools"><input type="search" id="invQ" placeholder="Find a product…" value="'+esc(invQ)+'" autocomplete="off"><label class="small"><input type="checkbox" id="invAll"'+(invShowAll?' checked':'')+'> Show hidden products</label><input type="text" id="invNote" maxlength="200" placeholder="Note (e.g. Friday night count)"><button type="button" class="primary" id="invSave"'+(filled?'':' disabled')+'>Save '+filled+' count'+(filled===1?'':'s')+'</button><button type="button" id="invReload">↻ Reload</button></div></div>'
+   +'<div class="tscroll"><table class="inv-t"><thead><tr><th>Product</th><th>Store count</th><th>Waiting in boxes</th><th>Should be on shelf</th><th>On the shelf</th><th></th></tr></thead><tbody>'
+   +rows.map(function(x){var v=invCounts[x.key];return '<tr data-k="'+esc(x.key)+'"><td><b>'+esc(x.name)+'</b>'+(x.active?'':' <span class="small">(hidden)</span>')+'</td><td class="'+(x.store<0?'red':'')+'">'+x.store+'</td><td>'+(x.waiting||'')+'</td><td><b>'+x.shelf+'</b></td><td><input type="number" inputmode="numeric" min="0" step="1" class="inv-in" data-inv="'+esc(x.key)+'" value="'+(v===undefined?'':esc(v))+'" placeholder="count"></td><td class="inv-d" data-invd="'+esc(x.key)+'">'+invDiff(x)+'</td></tr>'}).join('')
+   +'</tbody></table></div><h2 style="margin-top:22px">🔄 In &amp; out · last 30 days</h2><p class="small">Every change to a store count: orders, cancels, counts, deliveries, free boxes and edits. Newest first.</p>'
+   +(log?'<div class="tscroll"><table class="inv-t inv-log"><thead><tr><th>When</th><th>Product</th><th>Change</th><th>Count</th><th>Why</th></tr></thead><tbody>'+log+'</tbody></table></div>':'<p class="small">No moves recorded yet. They start from this update.</p>')+'</div>'}
+document.addEventListener('input',function(e){var t=e.target;if(!t)return;
+  if(t.id==='invQ'){invQ=t.value;var o=document.getElementById('out');var pos=t.selectionStart;o.innerHTML=invView();var q=document.getElementById('invQ');if(q){q.focus();try{q.setSelectionRange(pos,pos)}catch(x){}}return}
+  if(t.dataset&&t.dataset.inv){lastKey=Date.now();invCounts[t.dataset.inv]=t.value.trim();var x=((inv&&inv.pools)||[]).find(function(p){return p.key===t.dataset.inv});var d=document.querySelector('[data-invd="'+t.dataset.inv+'"]');if(d&&x)d.innerHTML=invDiff(x);
+    var n=Object.keys(invCounts).filter(function(k){return invCounts[k]!==''}).length,b=document.getElementById('invSave');if(b){b.disabled=!n;b.textContent='Save '+n+' count'+(n===1?'':'s')}}});
+document.addEventListener('change',function(e){if(e.target&&e.target.id==='invAll'){invShowAll=e.target.checked;document.getElementById('out').innerHTML=invView()}});
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('#invSave,#invReload,[data-receive]');if(!b)return;
+  if(b.id==='invReload'){inv=null;document.getElementById('out').innerHTML=invView();return}
+  if(b.dataset.receive){var ref=b.dataset.receive;if(!confirm('Add delivery #'+ref+' to the store counts now?\n\nOnly do this once the box is here and unpacked.'))return;b.disabled=true;
+    fetch('/api/admin/inventory/receive',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({ref:ref})}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Could not add it')});return d})
+     .then(function(d){toast('📦 Added to stock: '+d.added.map(function(a){return a.name+' +'+a.qty}).join(', ')+(d.unmatched&&d.unmatched.length?' · not matched: '+d.unmatched.join(', '):''));inv=null;fetchOrders(true);fetchIncoming()},function(err){b.disabled=false;toast(err.message)});return}
+  if(invBusy)return;var list=((inv&&inv.pools)||[]).filter(function(x){var v=invCounts[x.key];return v!==undefined&&v!==''});if(!list.length)return;
+  var bad=list.filter(function(x){return !/^\d+$/.test(invCounts[x.key])});if(bad.length){toast('Counts must be whole numbers: '+bad.map(function(x){return x.name}).join(', '));return}
+  var big=list.filter(function(x){return Math.abs(Number(invCounts[x.key])-x.shelf)>=10});
+  if(!confirm('Save '+list.length+' shelf count'+(list.length===1?'':'s')+'?'+(big.length?'\n\nBig differences (10+): '+big.map(function(x){return x.name+' '+x.shelf+' → '+invCounts[x.key]}).join(', '):'')))return;
+  invBusy=true;b.disabled=true;b.textContent='Saving…';
+  fetch('/api/admin/inventory/count',{method:'POST',headers:{'X-Store-Request':'1','Content-Type':'application/json'},body:JSON.stringify({note:(document.getElementById('invNote')||{}).value||'',counts:list.map(function(x){return{product_id:x.product_id,shelf:Number(invCounts[x.key])}})})})
+   .then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Could not save');return d})})
+   .then(function(d){toast('📋 Saved '+d.counted.length+' counts · '+d.changed+' store count'+(d.changed===1?'':'s')+' changed');invCounts={};inv=null;invBusy=false;fetchOrders(true)},function(err){invBusy=false;b.disabled=false;b.textContent='Save counts';toast(err.message)})});
 // ---- Coming in + pack plan (Jonah, 27 Nov 2026) ----
 // The incoming list comes from the supplier ERP (scheduled task, every 2 hours 8 AM–6 PM ET → POST /api/admin/incoming).
 // On the shelf = the store count + what the waiting boxes already took off it (the store takes stock off when an order
@@ -1256,7 +1299,7 @@ function planTag(o){var x=planMap[o.id];if(!x||x.st==='now')return '';
   return '<span class="tag pl-miss" title="Not enough on the shelf and not on any order: '+esc(x.miss.join(', '))+'">❌ NOT ON ORDER: '+esc(x.miss.slice(0,2).join(', '))+'</span>'}
 function incomingBox(){var el=document.getElementById('incoming');if(!el)return;if((view!=='todo'&&view!=='all')||!planSum){el.innerHTML='';return}
   var ships=(incoming&&incoming.shipments)||[],tday=ships.filter(function(x){return x.status!=='received'&&incToday(x)}),lat=ships.filter(function(x){return x.status!=='received'&&!incToday(x)});
-  var line=function(x){return '<li><b>'+x.lines.map(function(l){return esc((l.product_id!=null&&byId[l.product_id]?byId[l.product_id].name:l.name)+' ×'+l.qty)+(l.product_id==null?' <em class="red">(not matched to a product)</em>':'')}).join(', ')+'</b> <span class="small">'+esc([x.status.replace(/_/g,' '),x.carrier,x.eta?'ETA '+md2(x.eta):'',x.ref?'#'+x.ref:''].filter(Boolean).join(' · '))+'</span></li>'};
+  var line=function(x){return '<li><b>'+x.lines.map(function(l){return esc((l.product_id!=null&&byId[l.product_id]?byId[l.product_id].name:l.name)+' ×'+l.qty)+(l.product_id==null?' <em class="red">(not matched to a product)</em>':'')}).join(', ')+'</b> <span class="small">'+esc([x.status.replace(/_/g,' '),x.carrier,x.eta?'ETA '+md2(x.eta):'',x.ref?'#'+x.ref:''].filter(Boolean).join(' · '))+'</span>'+(x.ref&&(x.status==='delivered'||x.status==='out_for_delivery'||incToday(x))?' <button type="button" class="mini" data-receive="'+esc(x.ref)+'">✅ Received · add to stock</button>':'')+'</li>'};
   var short=Object.keys(planSum.short).map(function(k){return esc(pools[k].name)+' (need '+planSum.short[k]+')'});
   var checked=incoming&&incoming.checked_at?'Checked '+new Date(incoming.checked_at*1000).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})+' · '+esc(incoming.source||'supplier'):'Supplier not checked yet';
   el.innerHTML='<details class="inc"'+(tday.length||short.length?' open':'')+'><summary>🚚 Coming in &amp; pack plan · ✅ '+planSum.now+' can pack now'+(planSum.today?' · 🚚 '+planSum.today+' when today’s delivery lands':'')+(planSum.later?' · ⏳ '+planSum.later+' waiting':'')+(planSum.missing?' · ❌ '+planSum.missing+' not on order':'')+'</summary>'

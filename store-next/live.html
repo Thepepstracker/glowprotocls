@@ -202,8 +202,9 @@ var beepCtx=null;function beep(){if(!cfg.sound)return;try{beepCtx=beepCtx||new (
 // track it manually"). Same orders as the feed (from this live's start), oldest first. Done ticks and notes stay on
 // this device, kept per live (by its start time).
 var F15K='glow_live_first15_v1';function f15Load(){try{return JSON.parse(localStorage.getItem(F15K)||'{}')||{}}catch(e){return{}}}
+function f15Key(){var L=shownLive();return L&&L.id?String(L.id):String(startEpoch())} // by the live's id, so fixing its start time keeps the ticks
 function f15Save(x){try{localStorage.setItem(F15K,JSON.stringify(x))}catch(e){}}
-function first15(list){var body=$('f15');if(!body)return;var key=String(startEpoch()),st=f15Load(),mine=st[key]||{};
+function first15(list){var body=$('f15');if(!body)return;var key=f15Key(),st=f15Load(),mine=st[key]||{};
   var asc=list.slice().sort(function(a,b){return (a.submitted_at||a.created)-(b.submitted_at||b.created)}).slice(0,15),seen={};
   $('f15n').textContent=asc.length?asc.length+' of 15'+(asc.length===15?' · full':'')+' · '+asc.filter(function(o){return (mine[o.id]||{}).done}).length+' done':'';
   if(!asc.length){body.innerHTML='<tr><td colspan="8" class="muted">No orders yet this live.</td></tr>';return}
@@ -212,7 +213,7 @@ function first15(list){var body=$('f15');if(!body)return;var key=String(startEpo
     return '<tr class="'+(m.done?'done':'')+'"><td><b>'+(i+1)+'</b></td><td>'+hm(o.submitted_at||o.created)+'</td><td><b>'+esc(c.name||'Customer')+'</b>'+(rep?' <small class="rep">2nd order</small>':'')+'<br><small class="muted">'+esc([c.city,c.state].filter(Boolean).join(', '))+'</small></td>'
      +'<td><a href="/store-next/admin?order='+encodeURIComponent(o.id)+'" target="_blank" rel="noopener">'+esc(o.id)+'</a></td><td>'+money2(o.total)+'</td><td><span class="'+(isPaid(o)?'st-paid">Paid':'st-wait">Not yet')+'</span></td>'
      +'<td><input type="checkbox" data-f15="'+esc(o.id)+'"'+(m.done?' checked':'')+' aria-label="Done: '+esc(o.id)+'"></td><td><input type="text" class="f15note" data-f15n="'+esc(o.id)+'" value="'+esc(m.note||'')+'" maxlength="80" placeholder="Note"></td></tr>'}).join('')}
-document.addEventListener('change',function(e){var t=e.target,id=t&&t.dataset&&(t.dataset.f15||t.dataset.f15n);if(!id)return;var key=String(startEpoch()),st=f15Load(),mine=st[key]=st[key]||{},m=mine[id]=mine[id]||{};
+document.addEventListener('change',function(e){var t=e.target,id=t&&t.dataset&&(t.dataset.f15||t.dataset.f15n);if(!id)return;var key=f15Key(),st=f15Load(),mine=st[key]=st[key]||{},m=mine[id]=mine[id]||{};
   if(t.dataset.f15)m.done=t.checked;else m.note=t.value.slice(0,80);f15Save(st);var tr=t.closest('tr');if(tr&&t.dataset.f15)tr.classList.toggle('done',t.checked);
   var all=Object.keys(st).sort();while(all.length>10)delete st[all.shift()];f15Save(st);
   var n=$('f15n');if(n)n.textContent=n.textContent.replace(/\d+ done/,document.querySelectorAll('#f15 input[data-f15]:checked').length+' done')});
