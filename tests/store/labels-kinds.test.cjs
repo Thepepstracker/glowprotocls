@@ -54,6 +54,7 @@ test('serum labels: Protocol 01 (15 and 50 mL), Protocol 02 and Glow Eyes Luxe o
 // 1.5 × 0.75 in vial labels on OL1067WG, 60 per sheet (Jonah, 27 Nov 2026: GLP-3R 20 mg).
 test('vial15: OL1067WG 60 per sheet, GLP-3R 20 mg, builds a PDF and never mixes with the 1.75 in vial sheet',async()=>{
  const L=lab.lib();assert.equal(L.kinds.vial15.cm.length,60);assert.equal(L.kinds.vial15.cols,5);
+ assert.equal(L.labels.filter(l=>l.kind==='vial15').length,L.labels.filter(l=>(l.kind||'vial')==='vial').length,'every vial label has a 1.5 × 0.75 twin (27 Nov 2026)');for(const l of L.labels.filter(l=>l.kind==='vial15')){assert.equal(l.w,900);assert.ok(L.byId.has(l.id.replace(/-ol1067$/,'')))}
  const g=L.labels.find(l=>l.id==='glp-3r-20-mg-ol1067');assert.equal(g.kind,'vial15');assert.equal(g.w,900);assert.equal(g.h,450);
  const p=lab.plan([{id:'glp-3r-20-mg-ol1067',count:60}],{kind:'vial15'});assert.equal(p.length,1);assert.equal(p[0].filter(Boolean).length,60);
  assert.throws(()=>lab.plan([{id:'glp-3r-20-mg-ol1067',count:1}],{kind:'vial'}),/different sheets/);
